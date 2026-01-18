@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Pacientes - Exportar Dados</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='Home/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='Exportar/css/style.css') }}">
+</head>
+<body>
+    <!-- Top Bar Fixa -->
+    <nav class="topbar">
+        <div class="topbar-content">
+            <div class="topbar-logo">
+                <h3>Gestão de Pacientes</h3>
+            </div>
+            <div class="topbar-links">
+                <a href="/" class="topbar-link">Indicadores</a>
+                <a href="/novo_paciente" class="topbar-link">Novo Paciente</a>
+                <a href="/pacientes" class="topbar-link">Pacientes</a>
+                <a href="/exportar" class="topbar-link active">Exportar</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>Exportar Dados dos Pacientes</h1>
+            <p>Escolha o formato e baixe os dados</p>
+        </div>
+
+        <!-- Seleção de Formato -->
+        <div class="export-section">
+            <h2>Selecione o Formato de Exportação</h2>
+            
+            <div class="format-options">
+                <div class="format-card" data-format="excel">
+                    <div class="format-icon">📊</div>
+                    <h3>Excel (.xlsx)</h3>
+                    <p>Arquivo Excel com tabelas formatadas</p>
+                    <div class="format-badge">Recomendado</div>
+                </div>
+
+                <div class="format-card" data-format="word">
+                    <div class="format-icon">📄</div>
+                    <h3>Word (.docx)</h3>
+                    <p>Documento Word formatado</p>
+                </div>
+
+                <div class="format-card" data-format="txt">
+                    <div class="format-icon">📝</div>
+                    <h3>Texto (.txt)</h3>
+                    <p>Arquivo de texto simples</p>
+                </div>
+            </div>
+
+            <!-- Informações adicionais -->
+            <div class="export-info">
+                <div class="info-card">
+                    <span class="info-icon">ℹ️</span>
+                    <div class="info-content">
+                        <strong>Total de pacientes:</strong>
+                        <span id="totalPacientes">Carregando...</span>
+                    </div>
+                </div>
+            </div>
+
+        <!-- Filtros por pontos -->
+        <div class="export-filters">
+            <h3>Filtros por pontos</h3>
+            <p class="filter-subtitle">Limite a exportação aos registros que atendem aos pontos selecionados.</p>
+
+            <div class="filter-grid">
+                <label class="filter-card">
+                    <input type="checkbox" id="filterInicio">
+                    <div>
+                        <strong>Pré-natal antes de 12 semanas</strong>
+                        <span>Mostra apenas pacientes que iniciaram o pré-natal cedo.</span>
+                    </div>
+                </label>
+
+                <label class="filter-card">
+                    <input type="checkbox" id="filterPlano">
+                    <div>
+                        <strong>Plano de parto</strong>
+                        <span>Inclui apenas gestantes com plano de parto registrado.</span>
+                    </div>
+                </label>
+
+                <label class="filter-card">
+                    <input type="checkbox" id="filterGrupos">
+                    <div>
+                        <strong>Participou de grupos</strong>
+                        <span>Filtra pacientes que participaram de grupos de suporte.</span>
+                    </div>
+                </label>
+            </div>
+
+            <label class="filter-select">
+                <span>Vacinas completas</span>
+                <select id="filterVacinas">
+                    <option value="">Todas</option>
+                    <option value="completa">Completas</option>
+                    <option value="incompleta">Incompletas</option>
+                    <option value="nao_avaliado">Não avaliadas</option>
+                </select>
+            </label>
+
+        <p id="filtrosResumo" class="filter-summary">Nenhum filtro ativo.</p>
+        </div>
+
+        <div class="custom-toggle">
+            <label class="custom-switch">
+                <input type="checkbox" id="togglePersonalizar">
+                <span>Personalizar planilha</span>
+            </label>
+            <p class="custom-note">Ative para montar a própria planilha e exportar apenas os campos desejados.</p>
+        </div>
+
+        <div id="customPanel" class="custom-panel">
+            <div class="custom-panel-header">
+                <h3>Mini planilha personalizada</h3>
+                <p>Selecione um campo e clique em "+" para adicioná-lo à exportação.</p>
+            </div>
+
+            <div class="custom-builder-input">
+                <select id="customColumnSelect"></select>
+                <button type="button" id="customAddBtn" class="btn btn-info custom-add">+</button>
+            </div>
+
+            <div id="customList" class="custom-list">
+                <span class="custom-placeholder">Nenhuma coluna selecionada.</span>
+            </div>
+        </div>
+
+        <!-- Botão de Exportação -->
+        <div class="export-button-container">
+            <button id="exportBtn" class="btn btn-primary" disabled>
+                <span class="btn-icon">⬇️</span>
+                Exportar Dados
+            </button>
+        </div>
+
+        <!-- Mensagem de status -->
+        <div id="statusMessage" class="status-message" style="display: none;"></div>
+    </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='Exportar/js/main.js') }}"></script>
+</body>
+</html>

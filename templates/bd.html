@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Pacientes - Gerenciar Banco de Dados</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='Home/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='BD/css/style.css') }}">
+</head>
+<body>
+    <!-- Top Bar Fixa -->
+    <nav class="topbar">
+        <div class="topbar-content">
+            <div class="topbar-logo">
+                <h3>Gestão de Pacientes</h3>
+            </div>
+            <div class="topbar-links">
+                <a href="/" class="topbar-link">Indicadores</a>
+                <a href="/novo_paciente" class="topbar-link">Novo Paciente</a>
+                <a href="/pacientes" class="topbar-link">Pacientes</a>
+                <a href="/exportar" class="topbar-link">Exportar</a>
+                <a href="/bd" class="topbar-link active">Banco de Dados</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>Gerenciar Banco de Dados</h1>
+            <p>Controle total e fácil da tabela de pacientes</p>
+        </div>
+
+        <!-- Barra de Ações -->
+        <div class="actions-bar">
+            <div class="search-container">
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    class="search-input" 
+                    placeholder="🔍 Pesquisar por nome ou unidade..."
+                    autocomplete="off"
+                >
+            </div>
+
+            <div class="actions-buttons">
+                <button id="addBtn" class="btn btn-success">
+                    <span>➕</span> Adicionar
+                </button>
+                <button id="refreshBtn" class="btn btn-info">
+                    <span>🔄</span> Atualizar
+                </button>
+                <button id="backupBtn" class="btn btn-primary">
+                    <span>💾</span> Criar Cópia BD
+                </button>
+                <button id="loadBackupBtn" class="btn btn-secondary">
+                    <span>📂</span> Carregar Cópia
+                </button>
+                <button id="clearDbBtn" class="btn btn-danger">
+                    <span>🗑️</span> Excluir Dados BD
+                </button>
+            </div>
+        </div>
+
+        <!-- Informações -->
+        <div class="info-stats">
+            <div class="stat-card">
+                <span class="stat-label">Total de Registros:</span>
+                <span id="totalRecords" class="stat-value">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Exibindo:</span>
+                <span id="showingRecords" class="stat-value">0</span>
+            </div>
+        </div>
+
+        <!-- Tabela de Pacientes -->
+        <div class="table-wrapper">
+            <table id="pacientesTable" class="data-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-column="nome">Nome <span class="sort-icon">⇅</span></th>
+                        <th class="sortable" data-column="unidade">Unidade de Saúde <span class="sort-icon">⇅</span></th>
+                        <th class="sortable" data-column="data">Data Cadastro <span class="sort-icon">⇅</span></th>
+                        <th>Pré-natal 12s</th>
+                        <th>Consultas</th>
+                        <th>Vacinas</th>
+                        <th>Plano Parto</th>
+                        <th>Participou Grupos</th>
+                        <th class="actions-column">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td colspan="9" class="loading-row">Carregando dados...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginação -->
+        <div class="pagination-container">
+            <div class="pagination-info">
+                <span id="paginationText">Página 1 de 1</span>
+            </div>
+            <div class="pagination-controls">
+                <button id="prevPageBtn" class="btn btn-secondary" disabled>← Anterior</button>
+                <button id="nextPageBtn" class="btn btn-secondary" disabled>Próxima →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Edição/Adição -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Editar Paciente</h2>
+                <button class="modal-close" id="closeModal">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="patientForm">
+                    <input type="hidden" id="patientId">
+                    
+                    <div class="form-section">
+                        <h3>Identificação</h3>
+                        <div class="form-group">
+                            <label for="nomeGestante">Nome da Gestante *</label>
+                            <input type="text" id="nomeGestante" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="unidadeSaude">Unidade de Saúde</label>
+                            <input type="text" id="unidadeSaude">
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Avaliação</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="inicioPreNatal">
+                                    Início pré-natal antes de 12 semanas
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="planoParto">
+                                    Plano de parto
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="participouGrupos">
+                                    Participou de grupos
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="avaliacaoOdontologica">
+                                    Avaliação odontológica
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="estratificacao">
+                                    Estratificação
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="cartaoPreNatalCompleto">
+                                    Cartão pré-natal completo
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="consultasPreNatal">Consultas de Pré-Natal</label>
+                                <input type="number" id="consultasPreNatal" min="0" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="vacinasCompletas">Vacinas Completas</label>
+                                <select id="vacinasCompletas">
+                                    <option value="">Não avaliado</option>
+                                    <option value="Completa">Completa</option>
+                                    <option value="Incompleta">Incompleta</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancelBtn">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="saveBtn">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mensagem de Status -->
+    <div id="statusMessage" class="status-message" style="display: none;"></div>
+
+    <!-- Modal para confirmação de exclusão de BD -->
+    <div id="confirmClearModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⚠️ Confirmar Exclusão</h2>
+                <button class="modal-close" id="closeConfirmModal">×</button>
+            </div>
+            <div class="modal-body">
+                <p><strong>ATENÇÃO:</strong> Esta ação irá excluir TODOS os dados do banco de dados!</p>
+                <p>Esta ação não pode ser desfeita. Tem certeza que deseja continuar?</p>
+                <p>Digite <strong>CONFIRMAR</strong> para prosseguir:</p>
+                <input type="text" id="confirmText" class="control-select" placeholder="Digite CONFIRMAR">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancelClearBtn">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmClearBtn" disabled>Excluir Todos os Dados</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Input oculto para carregar backup -->
+    <input type="file" id="backupFileInput" accept=".json" style="display: none;">
+
+    <script src="{{ url_for('static', filename='BD/js/main.js') }}"></script>
+</body>
+</html>

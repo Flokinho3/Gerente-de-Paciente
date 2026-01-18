@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Pacientes - Lista de Pacientes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='Home/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='Pacientes/css/style.css') }}">
+</head>
+<body>
+    <!-- Top Bar Fixa -->
+    <nav class="topbar">
+        <div class="topbar-content">
+            <div class="topbar-logo">
+                <h3>Gestão de Pacientes</h3>
+            </div>
+            <div class="topbar-links">
+                <a href="/" class="topbar-link">Indicadores</a>
+                <a href="/novo_paciente" class="topbar-link">Novo Paciente</a>
+                <a href="/pacientes" class="topbar-link active">Pacientes</a>
+                <a href="/exportar" class="topbar-link">Exportar</a>
+                <a href="/bd" class="topbar-link">Banco de Dados</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>Lista de Pacientes</h1>
+            <p>Pesquise e visualize os dados dos pacientes</p>
+        </div>
+
+        <!-- Campo de Pesquisa -->
+        <div class="search-container">
+            <input 
+                type="text" 
+                id="searchInput" 
+                class="search-input" 
+                placeholder="Digite o nome do paciente para pesquisar..."
+                autocomplete="off"
+            >
+            <span class="search-icon">🔍</span>
+        </div>
+
+        <!-- Informações de Paginação -->
+        <div class="pagination-info">
+            <span id="paginationInfo">Carregando...</span>
+        </div>
+
+        <!-- Lista de Pacientes -->
+        <div class="pacientes-container">
+            <div id="pacientesList" class="pacientes-list">
+                <!-- Pacientes serão inseridos aqui via JavaScript -->
+            </div>
+        </div>
+
+        <!-- Controles de Paginação -->
+        <div class="pagination-controls">
+            <button id="prevBtn" class="btn btn-secondary" disabled>← Anterior</button>
+            <span id="pageInfo" class="page-info">Página 1</span>
+            <button id="nextBtn" class="btn btn-secondary" disabled>Próxima →</button>
+        </div>
+
+        <!-- Perfil do Paciente Selecionado -->
+        <div id="pacientePerfil" class="paciente-perfil" style="display: none;">
+            <div class="perfil-header">
+                <h2>Perfil do Paciente</h2>
+                <button id="closePerfil" class="btn-close">×</button>
+            </div>
+            <div id="perfilContent" class="perfil-content">
+                <!-- Conteúdo do perfil será inserido aqui -->
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='Pacientes/js/main.js') }}"></script>
+</body>
+</html>

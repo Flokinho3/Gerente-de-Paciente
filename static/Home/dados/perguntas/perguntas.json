@@ -1,0 +1,16 @@
+{
+  "identificacao": {
+    "nome_gestante": "string",
+    "unidade_saude": "string"
+  },
+  "avaliacao": {
+    "participou_grupos": "boolean",
+    "avaliacao_odontologica": "boolean",
+    "inicio_pre_natal_antes_12s": "boolean",
+    "estratificacao": "boolean",
+    "consultas_pre_natal": "number",
+    "vacinas_completas": "enum",
+    "plano_parto": "boolean",
+    "cartao_pre_natal_completo": "boolean"
+  }
+}

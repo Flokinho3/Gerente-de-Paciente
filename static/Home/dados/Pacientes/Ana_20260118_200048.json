@@ -1,0 +1,18 @@
+{
+    "id": "Ana_20260118_200048",
+    "data_salvamento": "2026-01-18 20:00:48",
+    "identificacao": {
+        "nome_gestante": "Ana",
+        "unidade_saude": "UBS Ipanema"
+    },
+    "avaliacao": {
+        "inicio_pre_natal_antes_12s": false,
+        "consultas_pre_natal": 20,
+        "vacinas_completas": "Incompleta",
+        "plano_parto": false,
+        "participou_grupos": false,
+        "avaliacao_odontologica": true,
+        "estratificacao": true,
+        "cartao_pre_natal_completo": true
+    }
+}

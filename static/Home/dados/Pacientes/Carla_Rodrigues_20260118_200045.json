@@ -1,0 +1,18 @@
+{
+    "id": "Carla_Rodrigues_20260118_200045",
+    "data_salvamento": "2026-01-18 20:00:45",
+    "identificacao": {
+        "nome_gestante": "Carla Rodrigues",
+        "unidade_saude": "Posto de Saúde Tijuca"
+    },
+    "avaliacao": {
+        "inicio_pre_natal_antes_12s": false,
+        "consultas_pre_natal": 11,
+        "vacinas_completas": "Não avaliado",
+        "plano_parto": true,
+        "participou_grupos": true,
+        "avaliacao_odontologica": false,
+        "estratificacao": true,
+        "cartao_pre_natal_completo": true
+    }
+}

@@ -1,0 +1,18 @@
+{
+    "id": "Karina_Costa_20260118_200035",
+    "data_salvamento": "2026-01-18 20:00:35",
+    "identificacao": {
+        "nome_gestante": "Karina Costa",
+        "unidade_saude": "Centro de Saúde Bom Pastor"
+    },
+    "avaliacao": {
+        "inicio_pre_natal_antes_12s": true,
+        "consultas_pre_natal": 6,
+        "vacinas_completas": "Incompleta",
+        "plano_parto": true,
+        "participou_grupos": false,
+        "avaliacao_odontologica": true,
+        "estratificacao": true,
+        "cartao_pre_natal_completo": false
+    }
+}

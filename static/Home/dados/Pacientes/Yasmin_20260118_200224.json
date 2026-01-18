@@ -1,0 +1,18 @@
+{
+    "id": "Yasmin_20260118_200224",
+    "data_salvamento": "2026-01-18 20:02:24",
+    "identificacao": {
+        "nome_gestante": "Yasmin",
+        "unidade_saude": "UBS Centro"
+    },
+    "avaliacao": {
+        "inicio_pre_natal_antes_12s": false,
+        "consultas_pre_natal": 9,
+        "vacinas_completas": "Completa",
+        "plano_parto": false,
+        "participou_grupos": true,
+        "avaliacao_odontologica": false,
+        "estratificacao": true,
+        "cartao_pre_natal_completo": true
+    }
+}

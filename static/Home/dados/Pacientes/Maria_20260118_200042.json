@@ -1,0 +1,18 @@
+{
+    "id": "Maria_20260118_200042",
+    "data_salvamento": "2026-01-18 20:00:42",
+    "identificacao": {
+        "nome_gestante": "Maria",
+        "unidade_saude": "Centro de Saúde Bom Pastor"
+    },
+    "avaliacao": {
+        "inicio_pre_natal_antes_12s": true,
+        "consultas_pre_natal": 1,
+        "vacinas_completas": "Não avaliado",
+        "plano_parto": true,
+        "participou_grupos": false,
+        "avaliacao_odontologica": false,
+        "estratificacao": true,
+        "cartao_pre_natal_completo": true
+    }
+}

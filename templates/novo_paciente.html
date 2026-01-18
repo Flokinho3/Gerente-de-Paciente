@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Novo Paciente - Gestão de Pacientes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='Home/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='Novo_paciente/css/style.css') }}">
+</head>
+<body>
+    <!-- Top Bar Fixa -->
+    <nav class="topbar">
+        <div class="topbar-content">
+            <div class="topbar-logo">
+                <h3>Gestão de Pacientes</h3>
+            </div>
+            <div class="topbar-links">
+                <a href="/" class="topbar-link">Indicadores</a>
+                <a href="/novo_paciente" class="topbar-link active">Novo Paciente</a>
+                <a href="/pacientes" class="topbar-link">Pacientes</a>
+                <a href="/exportar" class="topbar-link">Exportar</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>📋 Cadastro de Novo Paciente</h1>
+            <p>Preencha os dados da gestante e sua avaliação de pré-natal</p>
+        </div>
+
+        <!-- Indicador de Progresso -->
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text">
+                <span id="currentStep">1</span> de <span id="totalSteps">10</span>
+            </div>
+        </div>
+
+        <form id="formPaciente" class="form-paciente" novalidate>
+            <!-- Step 1: Nome da Gestante -->
+            <div class="wizard-step active" data-step="1">
+                <div class="step-content">
+                    <h2 class="step-title">👤 Identificação</h2>
+                    <div class="form-group">
+                        <label for="nome_gestante" class="required">Nome da Gestante</label>
+                        <input 
+                            type="text" 
+                            id="nome_gestante" 
+                            name="nome_gestante" 
+                            required 
+                            placeholder="Digite o nome completo da gestante"
+                            class="form-input"
+                        >
+                        <small class="form-help">Digite o nome completo da gestante</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Unidade de Saúde -->
+            <div class="wizard-step" data-step="2">
+                <div class="step-content">
+                    <h2 class="step-title">🏥 Unidade de Saúde</h2>
+                    <div class="form-group">
+                        <label for="unidade_saude" class="required">Unidade de Saúde</label>
+                        <input 
+                            type="text" 
+                            id="unidade_saude" 
+                            name="unidade_saude" 
+                            required 
+                            placeholder="Ex: UBS Centro, Centro de Saúde Leste..."
+                            class="form-input"
+                        >
+                        <small class="form-help">Informe a unidade de saúde onde a gestante é atendida</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Início pré-natal antes de 12 semanas -->
+            <div class="wizard-step" data-step="3">
+                <div class="step-content">
+                    <h2 class="step-title">📅 Início do Pré-Natal</h2>
+                    <div class="form-group">
+                        <label class="required">Início do pré-natal antes de 12 semanas?</label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="inicio_pre_natal_antes_12s" value="true" required>
+                                <span>✅ Sim</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="inicio_pre_natal_antes_12s" value="false">
+                                <span>❌ Não</span>
+                            </label>
+                        </div>
+                        <small class="form-help">Captação precoce é fundamental para o acompanhamento adequado</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4: Número de consultas -->
+            <div class="wizard-step" data-step="4">
+                <div class="step-content">
+                    <h2 class="step-title">📊 Consultas de Pré-Natal</h2>
+                    <div class="form-group">
+                        <label for="consultas_pre_natal" class="required">
+                            Número de consultas de pré-natal realizadas
+                        </label>
+                        <input 
+                            type="number" 
+                            id="consultas_pre_natal" 
+                            name="consultas_pre_natal" 
+                            min="0" 
+                            max="50"
+                            required 
+                            placeholder="Ex: 8"
+                            class="form-input"
+                        >
+                        <small class="form-help">Recomenda-se mínimo de 6 consultas durante a gestação</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 5: Status das vacinas -->
+            <div class="wizard-step" data-step="5">
+                <div class="step-content">
+                    <h2 class="step-title">💉 Vacinas</h2>
+                    <div class="form-group">
+                        <label for="vacinas_completas" class="required">
+                            Status das vacinas
+                        </label>
+                        <select id="vacinas_completas" name="vacinas_completas" required class="form-input">
+                            <option value="">Selecione uma opção</option>
+                            <option value="Completa">✅ Completa</option>
+                            <option value="Incompleta">⚠️ Incompleta</option>
+                            <option value="Não avaliado">❓ Não avaliado</option>
+                        </select>
+                        <small class="form-help">Verifique o cartão de vacinação da gestante</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 6: Plano de parto -->
+            <div class="wizard-step" data-step="6">
+                <div class="step-content">
+                    <h2 class="step-title">📝 Plano de Parto</h2>
+                    <div class="form-group">
+                        <label class="required">
+                            Possui plano de parto?
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="plano_parto" value="true" required>
+                                <span>✅ Sim</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="plano_parto" value="false">
+                                <span>❌ Não</span>
+                            </label>
+                        </div>
+                        <small class="form-help">Plano de parto é parte da humanização do cuidado</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 7: Participação em grupos -->
+            <div class="wizard-step" data-step="7">
+                <div class="step-content">
+                    <h2 class="step-title">👥 Grupos de Gestantes</h2>
+                    <div class="form-group">
+                        <label class="required">
+                            Participou de grupos de gestantes?
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="participou_grupos" value="true" required>
+                                <span>✅ Sim</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="participou_grupos" value="false">
+                                <span>❌ Não</span>
+                            </label>
+                        </div>
+                        <small class="form-help">Participação em grupos é importante para educação em saúde</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 8: Avaliação odontológica -->
+            <div class="wizard-step" data-step="8">
+                <div class="step-content">
+                    <h2 class="step-title">🦷 Avaliação Odontológica</h2>
+                    <div class="form-group">
+                        <label class="required">
+                            Realizou avaliação odontológica?
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="avaliacao_odontologica" value="true" required>
+                                <span>✅ Sim</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="avaliacao_odontologica" value="false">
+                                <span>❌ Não</span>
+                            </label>
+                        </div>
+                        <small class="form-help">A avaliação odontológica é importante durante a gestação</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 9: Estratificação de risco -->
+            <div class="wizard-step" data-step="9">
+                <div class="step-content">
+                    <h2 class="step-title">⚠️ Estratificação de Risco</h2>
+                    <div class="form-group">
+                        <label class="required">
+                            Foi realizada estratificação de risco?
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="estratificacao" value="true" required>
+                                <span>✅ Sim</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="estratificacao" value="false">
+                                <span>❌ Não</span>
+                            </label>
+                        </div>
+                        <small class="form-help">A estratificação de risco ajuda no acompanhamento adequado</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 10: Cartão de pré-natal completo -->
+            <div class="wizard-step" data-step="10">
+                <div class="step-content">
+                    <h2 class="step-title">📋 Cartão de Pré-Natal</h2>
+                    <div class="form-group">
+                        <label class="required">
+                            Cartão de pré-natal está completo?
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="cartao_pre_natal_completo" value="true" required>
+                                <span>✅ Sim</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="cartao_pre_natal_completo" value="false">
+                                <span>❌ Não</span>
+                            </label>
+                        </div>
+                        <small class="form-help">Verifique se o cartão de pré-natal está preenchido corretamente</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botões de navegação -->
+            <div class="wizard-actions">
+                <button type="button" id="btnAnterior" class="btn btn-secondary" style="display: none;">
+                    ← Anterior
+                </button>
+                <button type="button" id="btnProximo" class="btn btn-primary" disabled>
+                    Próximo →
+                </button>
+                <button type="submit" id="btnSalvar" class="btn btn-primary" style="display: none;">
+                    💾 Salvar Paciente
+                </button>
+            </div>
+
+            <!-- Mensagem de feedback -->
+            <div id="message" class="message" style="display: none;"></div>
+        </form>
+    </div>
+    <script src="{{ url_for('static', filename='Novo_paciente/js/main.js') }}"></script>
+</body>
+</html>

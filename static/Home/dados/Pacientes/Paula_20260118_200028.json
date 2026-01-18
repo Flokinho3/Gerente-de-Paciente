@@ -1,0 +1,18 @@
+{
+    "id": "Paula_20260118_200028",
+    "data_salvamento": "2026-01-18 20:00:28",
+    "identificacao": {
+        "nome_gestante": "Paula",
+        "unidade_saude": "UBS Ipanema"
+    },
+    "avaliacao": {
+        "inicio_pre_natal_antes_12s": true,
+        "consultas_pre_natal": 5,
+        "vacinas_completas": "Não avaliado",
+        "plano_parto": false,
+        "participou_grupos": true,
+        "avaliacao_odontologica": false,
+        "estratificacao": true,
+        "cartao_pre_natal_completo": true
+    }
+}

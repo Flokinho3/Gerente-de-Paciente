@@ -1,0 +1,18 @@
+{
+    "id": "Juliana_20260118_200037",
+    "data_salvamento": "2026-01-18 20:00:37",
+    "identificacao": {
+        "nome_gestante": "Juliana",
+        "unidade_saude": "UBS Botafogo"
+    },
+    "avaliacao": {
+        "inicio_pre_natal_antes_12s": true,
+        "consultas_pre_natal": 13,
+        "vacinas_completas": "Completa",
+        "plano_parto": false,
+        "participou_grupos": true,
+        "avaliacao_odontologica": false,
+        "estratificacao": true,
+        "cartao_pre_natal_completo": true
+    }
+}

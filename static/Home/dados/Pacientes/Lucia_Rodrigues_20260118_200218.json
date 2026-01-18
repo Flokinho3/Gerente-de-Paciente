@@ -1,0 +1,18 @@
+{
+    "id": "Lucia_Rodrigues_20260118_200218",
+    "data_salvamento": "2026-01-18 20:02:18",
+    "identificacao": {
+        "nome_gestante": "Lucia Rodrigues",
+        "unidade_saude": "Posto de Saúde Santa Maria"
+    },
+    "avaliacao": {
+        "inicio_pre_natal_antes_12s": true,
+        "consultas_pre_natal": 2,
+        "vacinas_completas": "",
+        "plano_parto": false,
+        "participou_grupos": false,
+        "avaliacao_odontologica": true,
+        "estratificacao": true,
+        "cartao_pre_natal_completo": true
+    }
+}

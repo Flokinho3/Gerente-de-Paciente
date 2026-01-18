@@ -1,0 +1,18 @@
+{
+    "id": "Karina_Oliveira_20260118_200148",
+    "data_salvamento": "2026-01-18 20:01:48",
+    "identificacao": {
+        "nome_gestante": "Karina Oliveira",
+        "unidade_saude": "Posto de Saúde São José"
+    },
+    "avaliacao": {
+        "inicio_pre_natal_antes_12s": false,
+        "consultas_pre_natal": 19,
+        "vacinas_completas": "Completa",
+        "plano_parto": false,
+        "participou_grupos": true,
+        "avaliacao_odontologica": false,
+        "estratificacao": true,
+        "cartao_pre_natal_completo": true
+    }
+}

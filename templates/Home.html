@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Pacientes - Indicadores</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='Home/css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Top Bar Fixa -->
+    <nav class="topbar">
+        <div class="topbar-content">
+            <div class="topbar-logo">
+                <h3>Gestão de Pacientes</h3>
+            </div>
+            <div class="topbar-links">
+                <a href="/" class="topbar-link active">Indicadores</a>
+                <a href="/novo_paciente" class="topbar-link">Novo Paciente</a>
+                <a href="/pacientes" class="topbar-link">Pacientes</a>
+                <a href="/exportar" class="topbar-link">Exportar</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>Gestão de Pacientes</h1>
+            <p>Indicadores de Pré-Natal</p>
+        </div>
+
+        <!-- Seção de Comparação de Gráficos -->
+        <div class="comparacao-section">
+            <h2 class="section-title">Comparar Indicadores</h2>
+            <div class="comparacao-controls">
+                <div class="control-group">
+                    <label for="comparacao-filtro">Filtro do Gráfico:</label>
+                    <select id="comparacao-filtro" class="control-select">
+                        <option value="inicio_pre_natal_antes_12s">Início do pré-natal antes de 12 semanas</option>
+                        <option value="consultas_pre_natal">Consultas de pré-natal</option>
+                        <option value="vacinas_completas">Vacinas completas</option>
+                        <option value="plano_parto">Plano de parto</option>
+                        <option value="participou_grupos">Participação em grupos</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="comparacao-estilo">Estilo do Gráfico:</label>
+                    <select id="comparacao-estilo" class="control-select">
+                        <option value="pie">Pizza</option>
+                        <option value="bar">Barras</option>
+                        <option value="line">Linha</option>
+                        <option value="doughnut">Rosca</option>
+                    </select>
+                </div>
+                <button id="btn-adicionar-comparacao" class="btn btn-primary">Adicionar ao Comparativo</button>
+            </div>
+            <div id="comparacao-charts-container" class="comparacao-charts-container"></div>
+        </div>
+
+        <!-- Seção de Comparação de Pacientes Específicos -->
+        <div class="comparacao-section">
+            <h2 class="section-title">Comparar Pacientes Específicos</h2>
+            <div class="pacientes-selecao">
+                <div class="control-group">
+                    <label for="paciente-search">Buscar Paciente:</label>
+                    <input 
+                        type="text" 
+                        id="paciente-search" 
+                        class="control-select" 
+                        placeholder="Digite o nome do paciente..."
+                        autocomplete="off"
+                    >
+                </div>
+                <div class="pacientes-lista-container">
+                    <label>Pacientes Selecionados:</label>
+                    <div id="pacientes-selecionados" class="pacientes-selecionados-list"></div>
+                    <div id="pacientes-lista" class="pacientes-lista-dropdown"></div>
+                </div>
+                <div class="comparacao-controls">
+                    <button id="btn-comparar-pacientes" class="btn btn-primary" disabled>Comparar Pacientes Selecionados</button>
+                    <button id="btn-limpar-pacientes" class="btn btn-secondary">Limpar Seleção</button>
+                </div>
+            </div>
+            <div id="comparacao-pacientes-container" class="comparacao-charts-container"></div>
+        </div>
+
+        <div class="indicadores-grid">
+            <!-- Indicador 1: Início pré-natal antes de 12 semanas -->
+            <div class="indicador-card">
+                <div class="indicador-header">
+                    <h2><span class="status-indicator" id="status1">🟢</span> Início do pré-natal antes de 12 semanas</h2>
+                    <span class="badge">Indicador clássico do SUS</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="chart1"></canvas>
+                </div>
+            </div>
+
+            <!-- Indicador 2: Média de consultas de pré-natal -->
+            <div class="indicador-card">
+                <div class="indicador-header">
+                    <h2><span class="status-indicator" id="status2">🟢</span> Média de consultas de pré-natal</h2>
+                    <span class="badge">Qualidade do acompanhamento</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="chart2"></canvas>
+                </div>
+            </div>
+
+            <!-- Indicador 3: Vacinas completas -->
+            <div class="indicador-card">
+                <div class="indicador-header">
+                    <h2><span class="status-indicator" id="status3">🟢</span> Vacinas completas</h2>
+                    <span class="badge">Segurança materno-infantil</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="chart3"></canvas>
+                </div>
+            </div>
+
+            <!-- Indicador 4: Plano de parto -->
+            <div class="indicador-card">
+                <div class="indicador-header">
+                    <h2><span class="status-indicator" id="status4">🟢</span> Plano de parto</h2>
+                    <span class="badge">Humanização do cuidado</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="chart4"></canvas>
+                </div>
+            </div>
+
+            <!-- Indicador 5: Participação em grupos -->
+            <div class="indicador-card">
+                <div class="indicador-header">
+                    <h2><span class="status-indicator" id="status5">🟢</span> Participação em grupos</h2>
+                    <span class="badge">Educação em saúde</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="chart5"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='Home/js/Home.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+    "id": "Rita_20260118_200047",
+    "data_salvamento": "2026-01-18 20:00:47",
+    "identificacao": {
+        "nome_gestante": "Rita",
+        "unidade_saude": "UBS Oeste"
+    },
+    "avaliacao": {
+        "inicio_pre_natal_antes_12s": false,
+        "consultas_pre_natal": 9,
+        "vacinas_completas": "Incompleta",
+        "plano_parto": true,
+        "participou_grupos": false,
+        "avaliacao_odontologica": true,
+        "estratificacao": true,
+        "cartao_pre_natal_completo": true
+    }
+}

@@ -1,0 +1,18 @@
+{
+    "id": "Lais_20260118_200148",
+    "data_salvamento": "2026-01-18 20:01:48",
+    "identificacao": {
+        "nome_gestante": "Lais",
+        "unidade_saude": "UBS Sul"
+    },
+    "avaliacao": {
+        "inicio_pre_natal_antes_12s": true,
+        "consultas_pre_natal": 9,
+        "vacinas_completas": "Incompleta",
+        "plano_parto": false,
+        "participou_grupos": true,
+        "avaliacao_odontologica": false,
+        "estratificacao": true,
+        "cartao_pre_natal_completo": true
+    }
+}

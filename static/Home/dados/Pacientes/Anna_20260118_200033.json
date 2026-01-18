@@ -1,0 +1,18 @@
+{
+    "id": "Anna_20260118_200033",
+    "data_salvamento": "2026-01-18 20:00:33",
+    "identificacao": {
+        "nome_gestante": "Anna",
+        "unidade_saude": "UBS Oeste"
+    },
+    "avaliacao": {
+        "inicio_pre_natal_antes_12s": false,
+        "consultas_pre_natal": 5,
+        "vacinas_completas": "Incompleta",
+        "plano_parto": true,
+        "participou_grupos": true,
+        "avaliacao_odontologica": true,
+        "estratificacao": false,
+        "cartao_pre_natal_completo": true
+    }
+}

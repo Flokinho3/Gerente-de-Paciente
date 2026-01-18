@@ -1,0 +1,18 @@
+{
+    "id": "Claudia_20260118_200029",
+    "data_salvamento": "2026-01-18 20:00:29",
+    "identificacao": {
+        "nome_gestante": "Claudia",
+        "unidade_saude": "UBS Norte"
+    },
+    "avaliacao": {
+        "inicio_pre_natal_antes_12s": false,
+        "consultas_pre_natal": 7,
+        "vacinas_completas": "Incompleta",
+        "plano_parto": false,
+        "participou_grupos": false,
+        "avaliacao_odontologica": false,
+        "estratificacao": true,
+        "cartao_pre_natal_completo": true
+    }
+}
