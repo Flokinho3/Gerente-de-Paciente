@@ -121,16 +121,37 @@ def criar_backup():
     except Exception as e:
         return jsonify({'success': False, 'message': f'Erro ao criar backup: {str(e)}'}), 500
 
+@app.route('/api/backup/download', methods=['GET'])
+def download_backup():
+    """Permite baixar o último backup como arquivo JSON"""
+    try:
+        resultado = db.criar_backup()
+        buffer = io.BytesIO(json.dumps(resultado['backup'], ensure_ascii=False, indent=2).encode('utf-8'))
+        buffer.seek(0)
+        filename = f"backup_pacientes_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        response = make_response(send_file(
+            buffer,
+            mimetype='application/json',
+            as_attachment=True,
+            download_name=filename
+        ))
+        return response
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Erro ao gerar arquivo de backup: {str(e)}'}), 500
+
 @app.route('/api/backup/restaurar', methods=['POST'])
 def restaurar_backup():
     """Restaura o banco de dados a partir de um backup"""
     try:
         data = request.get_json()
-        
-        if not data or 'backup' not in data:
+        if not data:
             return jsonify({'success': False, 'message': 'Dados do backup não fornecidos'}), 400
-        
-        resultado = db.restaurar_backup(data['backup'])
+
+        backup = data.get('backup') if isinstance(data, dict) else data
+        if not isinstance(backup, list):
+            return jsonify({'success': False, 'message': 'Backup deve ser uma lista de registros'}), 400
+
+        resultado = db.restaurar_backup(backup)
         
         if resultado['success']:
             return jsonify(resultado)
@@ -139,6 +160,33 @@ def restaurar_backup():
             
     except Exception as e:
         return jsonify({'success': False, 'message': f'Erro ao restaurar backup: {str(e)}'}), 500
+
+@app.route('/api/backup/validar', methods=['POST'])
+def validar_backup():
+    """Valida a estrutura do backup antes de restaurar"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'Backup não fornecido'}), 400
+        backup = data.get('backup') if isinstance(data, dict) else data
+        if not isinstance(backup, list):
+            return jsonify({'success': False, 'message': 'Backup deve ser uma lista de pacientes'}), 400
+        erros = []
+        for idx, registro in enumerate(backup):
+            if not isinstance(registro, dict):
+                erros.append(f'Item {idx + 1} não é um objeto válido')
+                continue
+            identificacao = registro.get('identificacao', {})
+            avaliacao = registro.get('avaliacao', {})
+            if not identificacao.get('nome_gestante'):
+                erros.append(f'Item {idx + 1} não possui nome da gestante')
+            if not isinstance(avaliacao, dict) or 'consultas_pre_natal' not in avaliacao:
+                erros.append(f'Item {idx + 1} com avaliação incompleta')
+        if erros:
+            return jsonify({'success': False, 'message': 'Backup inválido', 'errors': erros}), 400
+        return jsonify({'success': True, 'message': 'Backup válido', 'total': len(backup)})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Erro ao validar backup: {str(e)}'}), 500
 
 @app.route('/api/backup/limpar', methods=['DELETE'])
 def limpar_banco_dados():

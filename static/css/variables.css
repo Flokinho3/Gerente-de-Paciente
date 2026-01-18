@@ -1,0 +1,169 @@
+/**
+ * PALETA DE CORES HOSPITALAR - AMIGÁVEL PARA USUÁRIOS COM ÓCULOS
+ * 
+ * Características:
+ * - Cores suaves e não agressivas
+ * - Contraste adequado para leitura prolongada
+ * - Verde hospitalar moderno e profissional
+ * - Zero fadiga visual
+ */
+
+:root {
+  /* ========== CORES PRINCIPAIS ========== */
+  --bg: #f2f5f4;              /* Cinza esverdeado muito claro - fundo geral */
+  --card: #ffffff;            /* Branco para cards */
+  --primary: #2f7d6d;         /* Verde hospitalar moderno */
+  --primary-hover: #266758;   /* Verde mais escuro para hover */
+  --secondary: #4a90a4;       /* Azul suave e confortável */
+  --secondary-hover: #3d7a8a; /* Azul mais escuro para hover */
+  --accent: #e6f2ef;          /* Destaque leve */
+  --text: #263238;            /* Quase preto - texto principal */
+  --text-muted: #607d8b;      /* Cinza azulado para textos secundários */
+  
+  /* ========== ESTADOS E FEEDBACK ========== */
+  --success: #2e7d32;         /* Verde sucesso suave */
+  --success-light: #c8e6c9;   /* Verde claro para fundos */
+  --warning: #f57c00;         /* Laranja suave para avisos */
+  --warning-light: #ffe0b2;   /* Laranja claro para fundos */
+  --danger: #c62828;          /* Vermelho suave para erros */
+  --danger-light: #ffcdd2;    /* Vermelho claro para fundos */
+  --info: #0277bd;            /* Azul informativo */
+  --info-light: #b3e5fc;      /* Azul claro para fundos */
+  
+  /* ========== TONS NEUTROS ========== */
+  --border: #d0d7d5;          /* Bordas suaves */
+  --border-light: #e8edec;    /* Bordas mais claras */
+  --shadow: rgba(38, 50, 56, 0.08); /* Sombra suave */
+  --shadow-medium: rgba(38, 50, 56, 0.12);
+  --shadow-strong: rgba(38, 50, 56, 0.16);
+  
+  /* ========== TIPOGRAFIA ========== */
+  --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+  --font-size-base: 16px;     /* Tamanho base legível */
+  --font-size-small: 0.9rem;
+  --font-size-large: 1.125rem;
+  --font-size-h1: 2rem;
+  --font-size-h2: 1.5rem;
+  --font-size-h3: 1.25rem;
+  --line-height: 1.6;         /* Altura de linha confortável */
+  
+  /* ========== ESPAÇAMENTOS ========== */
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 0.75rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-xxl: 3rem;
+  
+  /* ========== BORDAS E SOMBRAS ========== */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  
+  /* ========== TRANSIÇÕES ========== */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+}
+
+/* ========== RESET E CONFIGURAÇÕES BASE ========== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: var(--font-size-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-family);
+  color: var(--text);
+  background: var(--bg);
+  line-height: var(--line-height);
+  min-height: 100vh;
+}
+
+/* ========== CLASSES UTILITÁRIAS ========== */
+
+/* Cores de texto */
+.text-primary { color: var(--primary); }
+.text-secondary { color: var(--secondary); }
+.text-muted { color: var(--text-muted); }
+.text-success { color: var(--success); }
+.text-warning { color: var(--warning); }
+.text-danger { color: var(--danger); }
+.text-info { color: var(--info); }
+
+/* Cores de fundo */
+.bg-primary { background-color: var(--primary); }
+.bg-secondary { background-color: var(--secondary); }
+.bg-accent { background-color: var(--accent); }
+.bg-card { background-color: var(--card); }
+.bg-success-light { background-color: var(--success-light); }
+.bg-warning-light { background-color: var(--warning-light); }
+.bg-danger-light { background-color: var(--danger-light); }
+.bg-info-light { background-color: var(--info-light); }
+
+/* Bordas */
+.border { border: 2px solid var(--border); }
+.border-light { border: 1px solid var(--border-light); }
+.border-primary { border-color: var(--primary); }
+
+/* Sombras */
+.shadow-sm { box-shadow: 0 2px 8px var(--shadow); }
+.shadow-md { box-shadow: 0 4px 16px var(--shadow-medium); }
+.shadow-lg { box-shadow: 0 8px 24px var(--shadow-strong); }
+
+/* Espaçamentos */
+.p-sm { padding: var(--spacing-sm); }
+.p-md { padding: var(--spacing-md); }
+.p-lg { padding: var(--spacing-lg); }
+.p-xl { padding: var(--spacing-xl); }
+
+.m-sm { margin: var(--spacing-sm); }
+.m-md { margin: var(--spacing-md); }
+.m-lg { margin: var(--spacing-lg); }
+.m-xl { margin: var(--spacing-xl); }
+
+/* Border radius */
+.rounded-sm { border-radius: var(--radius-sm); }
+.rounded-md { border-radius: var(--radius-md); }
+.rounded-lg { border-radius: var(--radius-lg); }
+.rounded-xl { border-radius: var(--radius-xl); }
+
+/* ========== ACESSIBILIDADE ========== */
+
+/* Foco visível para navegação por teclado */
+*:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Garantir contraste mínimo */
+::selection {
+  background-color: var(--primary);
+  color: white;
+}
+
+/* Suporte a preferências de movimento reduzido */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Suporte a modo escuro (preparado para futuro) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Variáveis para modo escuro podem ser adicionadas aqui no futuro */
+  }
+}

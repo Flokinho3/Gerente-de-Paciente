@@ -1,45 +1,48 @@
 /* Estilos específicos para a página de pacientes */
+@import url('/static/css/variables.css');
 
 /* Campo de Pesquisa */
 .search-container {
     position: relative;
-    margin-bottom: 30px;
-    max-width: 600px;
+    margin-bottom: var(--spacing-xl);
+    max-width: 650px;
     margin-left: auto;
     margin-right: auto;
 }
 
 .search-input {
     width: 100%;
-    padding: 15px 50px 15px 20px;
+    padding: 16px 55px 16px 22px;
     font-size: 1.1rem;
-    border: 2px solid #e0e0e0;
-    border-radius: 10px;
-    transition: all 0.3s ease;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-normal);
     outline: none;
+    font-family: var(--font-family);
 }
 
 .search-input:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--accent);
 }
 
 .search-icon {
     position: absolute;
-    right: 20px;
+    right: 22px;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 1.2rem;
-    color: #999;
+    font-size: 1.3rem;
+    color: var(--text-muted);
     pointer-events: none;
 }
 
 /* Informações de Paginação */
 .pagination-info {
     text-align: center;
-    margin-bottom: 20px;
-    color: #666;
+    margin-bottom: var(--spacing-lg);
+    color: var(--text);
     font-size: 1rem;
+    font-weight: 600;
 }
 
 /* Container de Pacientes */
@@ -53,32 +56,32 @@
 }
 
 .paciente-item {
-    background: #f8f9fa;
-    border-radius: 10px;
-    padding: 20px;
+    background: var(--accent);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
     cursor: pointer;
-    transition: all 0.3s ease;
-    border: 2px solid transparent;
+    transition: all var(--transition-normal);
+    border: 2px solid var(--border-light);
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
 .paciente-item:hover {
-    background: #e9ecef;
+    background: var(--card);
     transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    border-color: #667eea;
+    box-shadow: 0 6px 20px var(--shadow-medium);
+    border-color: var(--primary);
 }
 
 .paciente-item.selected {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--primary);
     color: white;
-    border-color: #667eea;
+    border-color: var(--primary);
 }
 
 .paciente-item.selected:hover {
-    background: linear-gradient(135deg, #5a6fd8 0%, #6a4090 100%);
+    background: var(--primary-hover);
 }
 
 .paciente-info {
@@ -88,18 +91,18 @@
 .paciente-nome {
     font-size: 1.2rem;
     font-weight: 600;
-    margin-bottom: 5px;
+    margin-bottom: var(--spacing-xs);
 }
 
 .paciente-detalhes {
-    font-size: 0.95rem;
-    opacity: 0.8;
-    margin-top: 5px;
+    font-size: 1rem;
+    opacity: 0.85;
+    margin-top: var(--spacing-xs);
 }
 
 .paciente-data {
-    font-size: 0.9rem;
-    opacity: 0.7;
+    font-size: 0.95rem;
+    opacity: 0.75;
 }
 
 .empty-state {
@@ -147,12 +150,13 @@
 
 /* Perfil do Paciente */
 .paciente-perfil {
-    margin-top: 40px;
-    background: #f8f9fa;
-    border-radius: 15px;
-    padding: 30px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    margin-top: var(--spacing-xxl);
+    background: var(--accent);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xxl);
+    box-shadow: 0 6px 20px var(--shadow-medium);
     animation: slideDown 0.3s ease;
+    border: 2px solid var(--border-light);
 }
 
 @keyframes slideDown {
@@ -170,56 +174,57 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 25px;
-    padding-bottom: 15px;
-    border-bottom: 2px solid #e0e0e0;
+    margin-bottom: var(--spacing-xl);
+    padding-bottom: var(--spacing-lg);
+    border-bottom: 2px solid var(--border);
 }
 
 .perfil-header h2 {
-    color: #333;
-    font-size: 1.8rem;
+    color: var(--text);
+    font-size: var(--font-size-h2);
     margin: 0;
 }
 
 .btn-close {
-    background: #dc3545;
+    background: var(--danger);
     color: white;
     border: none;
-    width: 35px;
-    height: 35px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
-    font-size: 1.5rem;
+    font-size: 1.6rem;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s ease;
+    transition: all var(--transition-normal);
     line-height: 1;
 }
 
 .btn-close:hover {
-    background: #c82333;
+    background: #8e0000;
     transform: scale(1.1);
 }
 
 .perfil-content {
     display: grid;
-    gap: 25px;
+    gap: var(--spacing-xl);
 }
 
 .perfil-section {
-    background: white;
-    border-radius: 10px;
-    padding: 20px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    background: var(--card);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    box-shadow: 0 4px 12px var(--shadow);
+    border: 2px solid var(--border-light);
 }
 
 .perfil-section h3 {
-    color: #667eea;
-    font-size: 1.3rem;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #f0f0f0;
+    color: var(--primary);
+    font-size: var(--font-size-h3);
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 2px solid var(--border-light);
 }
 
 .perfil-field {
@@ -232,19 +237,19 @@
 
 .perfil-label {
     font-weight: 600;
-    color: #555;
+    color: var(--text);
     display: block;
-    margin-bottom: 5px;
-    font-size: 0.95rem;
+    margin-bottom: var(--spacing-xs);
+    font-size: 1rem;
 }
 
 .perfil-value {
-    color: #333;
+    color: var(--text);
     font-size: 1rem;
-    padding: 8px 12px;
-    background: #f8f9fa;
-    border-radius: 5px;
-    min-height: 35px;
+    padding: 10px 14px;
+    background: var(--accent);
+    border-radius: var(--radius-sm);
+    min-height: 42px;
     display: flex;
     align-items: center;
 }
@@ -252,68 +257,69 @@
 .perfil-field-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 15px;
+    gap: var(--spacing-lg);
 }
 
 .badge-status {
     display: inline-block;
-    padding: 5px 12px;
+    padding: 7px 14px;
     border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 500;
+    font-size: 0.9rem;
+    font-weight: 600;
 }
 
 .badge-success {
-    background: #28a745;
+    background: var(--success);
     color: white;
 }
 
 .badge-danger {
-    background: #dc3545;
+    background: var(--danger);
     color: white;
 }
 
 .badge-warning {
-    background: #ffc107;
-    color: #333;
+    background: var(--warning);
+    color: white;
 }
 
 .badge-info {
-    background: #17a2b8;
+    background: var(--info);
     color: white;
 }
 
 /* Seção de Ações do Perfil */
 .perfil-actions {
-    margin-top: 25px;
-    padding-top: 25px;
-    border-top: 2px solid #e0e0e0;
+    margin-top: var(--spacing-xl);
+    padding-top: var(--spacing-xl);
+    border-top: 2px solid var(--border);
     display: flex;
     justify-content: flex-end;
-    gap: 15px;
+    gap: var(--spacing-lg);
 }
 
 .perfil-actions .btn {
-    padding: 12px 24px;
+    padding: 14px 28px;
     font-size: 1rem;
     border: none;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     cursor: pointer;
-    transition: all 0.3s ease;
-    font-weight: 500;
+    transition: all var(--transition-normal);
+    font-weight: 600;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--spacing-sm);
 }
 
 .perfil-actions .btn-danger {
-    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    background: var(--danger);
     color: white;
 }
 
 .perfil-actions .btn-danger:hover {
+    background: #8e0000;
     transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(250, 112, 154, 0.4);
+    box-shadow: 0 6px 16px var(--shadow-medium);
 }
 
 /* Loading State */
