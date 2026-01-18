@@ -6,7 +6,7 @@ block_cipher = None
 added_files = [
     ('templates', 'templates'),
     ('static', 'static'),
-    ('database.json', '.'),
+    ('data', 'data'),
 ]
 
 a = Analysis(
@@ -16,13 +16,32 @@ a = Analysis(
     datas=added_files,
     hiddenimports=[
         'flask',
+        'flask.app',
+        'flask.helpers',
+        'flask.json',
+        'flask.templating',
+        'flask.wrappers',
+        'werkzeug',
+        'werkzeug.serving',
+        'werkzeug.utils',
+        'jinja2',
+        'jinja2.ext',
+        'markupsafe',
         'openpyxl',
+        'openpyxl.workbook',
+        'openpyxl.styles',
+        'openpyxl.utils',
         'docx',
+        'docx.document',
         'docx.enum.text',
+        'docx.shared',
         'tkinter',
         'tkinter.messagebox',
+        'tkinter.ttk',
+        '_tkinter',
         'webbrowser',
-        'database'
+        'database',
+        'sqlite3'
     ],
     hookspath=[],
     hooksconfig={},
