@@ -17,7 +17,15 @@ def int_to_bool(value: Optional[int]) -> bool:
 
 class Database:
     def __init__(self, db_path: Optional[str] = None):
-        base_dir = os.path.dirname(__file__)
+        # Detecta se está rodando como executável PyInstaller
+        import sys
+        if getattr(sys, 'frozen', False):
+            # Executável: usa diretório do executável
+            base_dir = os.path.dirname(sys.executable)
+        else:
+            # Modo desenvolvimento: usa diretório do script
+            base_dir = os.path.dirname(__file__)
+        
         self.db_path = db_path or os.path.join(base_dir, 'data', 'pacientes.db')
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
