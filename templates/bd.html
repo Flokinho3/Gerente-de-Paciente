@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão de Pacientes - Gerenciar Banco de Dados</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='Home/css/style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='BD/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='home/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='bd/css/style.css') }}">
 </head>
 <body>
     <!-- Top Bar Fixa -->
@@ -224,6 +224,25 @@
     <!-- Input oculto para carregar backup -->
     <input type="file" id="backupFileInput" accept=".json" style="display: none;">
 
-    <script src="{{ url_for('static', filename='BD/js/main.js') }}"></script>
+    <!-- Overlay de Loading -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-container">
+            <div class="loading-spinner"></div>
+            <div class="loading-content">
+                <h3 id="loadingTitle">Processando...</h3>
+                <p id="loadingMessage">Por favor, aguarde enquanto processamos sua solicitação.</p>
+                <div class="loading-progress">
+                    <div class="loading-progress-bar">
+                        <div id="loadingProgressFill" class="loading-progress-fill"></div>
+                    </div>
+                    <div class="loading-progress-text">
+                        <span id="loadingProgressPercent">0%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='bd/js/main.js') }}"></script>
 </body>
 </html>

@@ -201,7 +201,8 @@ def limpar_banco_dados():
 def indicadores():
     """Calcula os indicadores agregados dos pacientes usando o banco de dados"""
     try:
-        stats = db.obter_estatisticas()
+        unidade_saude = request.args.get('unidade_saude')
+        stats = db.obter_estatisticas(unidade_saude=unidade_saude)
         return jsonify({
             'total': stats['total_pacientes'],
             'inicio_pre_natal_antes_12s': stats['inicio_pre_natal_antes_12s'],
@@ -218,6 +219,22 @@ def indicadores():
             'vacinas_completas': {'completa': 0, 'incompleta': 0, 'nao_avaliado': 0},
             'plano_parto': {'sim': 0, 'nao': 0},
             'participou_grupos': {'sim': 0, 'nao': 0}
+        }), 500
+
+@app.route('/api/unidades_saude')
+def listar_unidades_saude():
+    """Lista todas as unidades de saúde únicas"""
+    try:
+        unidades = db.obter_unidades_saude_unicas()
+        return jsonify({
+            'success': True,
+            'unidades': unidades
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao buscar unidades: {str(e)}',
+            'unidades': []
         }), 500
 
 @app.route('/api/indicadores/temporais/<filtro>', methods=['GET'])
@@ -526,18 +543,102 @@ def obter_valor_coluna(paciente, coluna):
         return ''
     return valor
 
-def run_flask(debug=False, use_reloader=False):
+def run_flask(debug=False, use_reloader=False, silent=False):
     """Inicia o servidor Flask"""
+    if silent:
+        # Modo silencioso: desabilitar logging do Werkzeug
+        import logging
+        log = logging.getLogger('werkzeug')
+        log.setLevel(logging.ERROR)
+    
     app.run(host='127.0.0.1', port=5000, debug=debug, use_reloader=use_reloader)
 
 def main():
-    # Detecta se está rodando como executável
+    # Detecta se está rodando como executável ou em modo silencioso
     import sys
     is_executable = getattr(sys, 'frozen', False)
     
-    if is_executable:
-        # Modo executável: mostra janela informativa e abre navegador
-        # IMPORTANTE: debug=False e use_reloader=False quando em thread
+    # Verificar se está sendo executado em modo silencioso (via script)
+    is_silent = '--silent' in sys.argv or os.environ.get('SILENT_MODE') == '1'
+    
+    # Verificar se deve usar tray icon
+    # SEMPRE tentar usar tray icon quando possível (padrão)
+    # Exceto se explicitamente desabilitado com --no-tray
+    no_tray = '--no-tray' in sys.argv  # Flag para desabilitar tray
+    force_tray = '--tray' in sys.argv  # Flag para forçar tray
+    use_tray = not no_tray and (force_tray or os.environ.get('USE_TRAY') == '1' or is_executable or is_silent)
+    
+    if use_tray and not no_tray:
+        # Modo com tray icon - TENTAR SEMPRE iniciar o tray icon
+        try:
+            from tray_icon import TrayIconManager
+            
+            port = int(os.environ.get('PORT', 5000))
+            tray_manager = TrayIconManager(app, port=port)
+            
+            # Iniciar Flask em thread separada ANTES do tray
+            print(f"Iniciando servidor Flask na porta {port}...")
+            tray_manager.iniciar_flask()
+            
+            # Aguardar Flask iniciar
+            threading.Event().wait(2)
+            
+            # Verificar se Flask iniciou corretamente
+            if tray_manager.verificar_porta():
+                print(f"✓ Servidor Flask iniciado na porta {port}")
+            else:
+                print("⚠ Aviso: Porta pode não estar disponível")
+            
+            # Iniciar tray icon (bloqueia até sair - thread principal)
+            print("Iniciando tray icon...")
+            tray_manager.iniciar_tray()
+            
+        except ImportError as e:
+            print(f"⚠ pystray não instalado: {e}")
+            print("Instale com: pip install pystray pillow")
+            print("Continuando sem tray icon...")
+            # Fallback para modo sem tray
+            if is_executable:
+                root = tk.Tk()
+                root.withdraw()
+                messagebox.showinfo(
+                    "Sistema de Gestão de Pacientes",
+                    "Sistema iniciado com sucesso!\nClique em OK para abrir no navegador."
+                )
+                threading.Thread(target=run_flask, args=(False, False, True), daemon=True).start()
+                webbrowser.open('http://localhost:5000')
+                root.mainloop()
+            elif is_silent:
+                threading.Thread(target=run_flask, args=(False, False, True), daemon=False).start()
+                try:
+                    while True:
+                        threading.Event().wait(1)
+                except KeyboardInterrupt:
+                    pass
+        except Exception as e:
+            print(f"Erro ao iniciar tray icon: {e}")
+            import traceback
+            traceback.print_exc()
+            # Fallback: continuar sem tray
+            if is_executable:
+                root = tk.Tk()
+                root.withdraw()
+                messagebox.showinfo(
+                    "Sistema de Gestão de Pacientes",
+                    "Sistema iniciado com sucesso!\nClique em OK para abrir no navegador."
+                )
+                threading.Thread(target=run_flask, args=(False, False, True), daemon=True).start()
+                webbrowser.open('http://localhost:5000')
+                root.mainloop()
+            elif is_silent:
+                threading.Thread(target=run_flask, args=(False, False, True), daemon=False).start()
+                try:
+                    while True:
+                        threading.Event().wait(1)
+                except KeyboardInterrupt:
+                    pass
+    elif is_executable:
+        # Modo executável sem tray: mostra janela informativa e abre navegador
         root = tk.Tk()
         root.withdraw()  # esconde a janela principal
 
@@ -547,14 +648,68 @@ def main():
         )
 
         # Flask em thread separada SEM debug (evita erro de signal)
-        threading.Thread(target=run_flask, args=(False, False), daemon=True).start()
+        threading.Thread(target=run_flask, args=(False, False, True), daemon=True).start()
         webbrowser.open('http://localhost:5000')
         
         # Mantém a aplicação rodando
         root.mainloop()
+    elif is_silent:
+        # Modo silencioso: execução em background sem output
+        threading.Thread(target=run_flask, args=(False, False, True), daemon=False).start()
+        # Aguardar indefinidamente
+        try:
+            while True:
+                threading.Event().wait(1)
+        except KeyboardInterrupt:
+            pass
     else:
-        # Modo desenvolvimento: inicia Flask na thread principal COM debug
-        run_flask(debug=True, use_reloader=True)
+        # Modo desenvolvimento: usar tray apenas se explicitamente solicitado
+        if '--tray' in sys.argv:
+            # Modo desenvolvimento COM tray icon
+            try:
+                from tray_icon import TrayIconManager
+                
+                port = int(os.environ.get('PORT', 5000))
+                tray_manager = TrayIconManager(app, port=port)
+                
+                # Iniciar Flask em thread separada
+                tray_manager.iniciar_flask()
+                
+                # Aguardar Flask iniciar
+                threading.Event().wait(2)
+                
+                # Tentar iniciar tray icon
+                print("Modo desenvolvimento com tray icon...")
+                tray_manager.iniciar_tray()
+                
+            except (ImportError, Exception) as e:
+                print(f"Tray icon não disponível: {e}")
+                print("Continuando em modo desenvolvimento normal...")
+                run_flask(debug=True, use_reloader=True, silent=False)
+        else:
+            # Modo desenvolvimento: tentar usar tray icon se disponível
+            try:
+                from tray_icon import TrayIconManager
+                
+                port = int(os.environ.get('PORT', 5000))
+                tray_manager = TrayIconManager(app, port=port)
+                
+                # Iniciar Flask em thread separada
+                print(f"Iniciando servidor Flask na porta {port}...")
+                tray_manager.iniciar_flask()
+                
+                # Aguardar Flask iniciar
+                threading.Event().wait(2)
+                
+                # Tentar iniciar tray icon
+                print("Iniciando tray icon...")
+                tray_manager.iniciar_tray()
+                
+            except (ImportError, Exception) as e:
+                # Fallback: modo desenvolvimento normal sem tray
+                print(f"Tray icon não disponível ({e}). Modo desenvolvimento normal...")
+                print("Instale pystray e Pillow para usar tray icon: pip install pystray pillow")
+                run_flask(debug=True, use_reloader=True, silent=False)
 
 if __name__ == '__main__':
     main()

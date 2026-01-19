@@ -171,9 +171,19 @@ class Database:
         cursor.execute("SELECT * FROM pacientes ORDER BY data_salvamento DESC")
         return [self._row_to_dict(row) for row in cursor.fetchall()]
 
-    def obter_estatisticas(self) -> Dict:
+    def obter_unidades_saude_unicas(self) -> List[str]:
+        """Retorna lista de unidades de saúde únicas"""
         cursor = self.conn.cursor()
-        cursor.execute("SELECT * FROM pacientes")
+        cursor.execute("SELECT DISTINCT unidade_saude FROM pacientes WHERE unidade_saude IS NOT NULL AND unidade_saude != '' ORDER BY unidade_saude")
+        rows = cursor.fetchall()
+        return [row['unidade_saude'] for row in rows if row['unidade_saude']]
+
+    def obter_estatisticas(self, unidade_saude: Optional[str] = None) -> Dict:
+        cursor = self.conn.cursor()
+        if unidade_saude:
+            cursor.execute("SELECT * FROM pacientes WHERE LOWER(unidade_saude) = LOWER(?)", (unidade_saude,))
+        else:
+            cursor.execute("SELECT * FROM pacientes")
         rows = cursor.fetchall()
         stats = {
             'total_pacientes': len(rows),
@@ -223,6 +233,86 @@ class Database:
             'success': True,
             'backup': pacientes,
             'data_backup': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+
+    def obter_estatisticas_temporais(self, filtro: str) -> Dict:
+        """Retorna estatísticas temporais agrupadas por data para um indicador específico"""
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM pacientes ORDER BY data_salvamento ASC")
+        rows = cursor.fetchall()
+        
+        # Agrupar por data
+        dados_por_data = {}
+        
+        for row in rows:
+            data_salvamento = row['data_salvamento']
+            if not data_salvamento:
+                continue
+            
+            # Extrair apenas a data (sem hora)
+            data = data_salvamento.split(' ')[0] if ' ' in data_salvamento else data_salvamento
+            
+            if data not in dados_por_data:
+                dados_por_data[data] = {
+                    'inicio_pre_natal_antes_12s': {'sim': 0, 'nao': 0},
+                    'consultas_pre_natal': {'ate_6': 0, 'mais_6': 0},
+                    'vacinas_completas': {'completa': 0, 'incompleta': 0, 'nao_avaliado': 0},
+                    'plano_parto': {'sim': 0, 'nao': 0},
+                    'participou_grupos': {'sim': 0, 'nao': 0}
+                }
+            
+            stats = dados_por_data[data]
+            
+            # Processar cada indicador
+            inicio = row['inicio_pre_natal_antes_12s']
+            stats['inicio_pre_natal_antes_12s']['sim'] += 1 if inicio == 1 else 0
+            stats['inicio_pre_natal_antes_12s']['nao'] += 1 if inicio == 0 else 0
+            
+            num_consultas = row['consultas_pre_natal'] or 0
+            stats['consultas_pre_natal']['mais_6'] += 1 if num_consultas >= 6 else 0
+            stats['consultas_pre_natal']['ate_6'] += 1 if num_consultas < 6 else 0
+            
+            vacinas = (row['vacinas_completas'] or '').lower()
+            if 'completa' in vacinas:
+                stats['vacinas_completas']['completa'] += 1
+            elif 'incompleta' in vacinas:
+                stats['vacinas_completas']['incompleta'] += 1
+            else:
+                stats['vacinas_completas']['nao_avaliado'] += 1
+            
+            stats['plano_parto']['sim'] += 1 if row['plano_parto'] == 1 else 0
+            stats['plano_parto']['nao'] += 1 if row['plano_parto'] == 0 else 0
+            stats['participou_grupos']['sim'] += 1 if row['participou_grupos'] == 1 else 0
+            stats['participou_grupos']['nao'] += 1 if row['participou_grupos'] == 0 else 0
+        
+        # Preparar resposta no formato esperado
+        datas = sorted(dados_por_data.keys())
+        valores = {}
+        
+        for data in datas:
+            stats = dados_por_data[data]
+            valores[data] = {}
+            
+            if filtro == 'inicio_pre_natal_antes_12s':
+                valores[data]['Sim'] = stats['inicio_pre_natal_antes_12s']['sim']
+                valores[data]['Não'] = stats['inicio_pre_natal_antes_12s']['nao']
+            elif filtro == 'consultas_pre_natal':
+                valores[data]['≥ 6 consultas'] = stats['consultas_pre_natal']['mais_6']
+                valores[data]['< 6 consultas'] = stats['consultas_pre_natal']['ate_6']
+            elif filtro == 'vacinas_completas':
+                valores[data]['Completo'] = stats['vacinas_completas']['completa']
+                valores[data]['Incompleto'] = stats['vacinas_completas']['incompleta']
+                valores[data]['Não avaliado'] = stats['vacinas_completas']['nao_avaliado']
+            elif filtro == 'plano_parto':
+                valores[data]['Sim'] = stats['plano_parto']['sim']
+                valores[data]['Não'] = stats['plano_parto']['nao']
+            elif filtro == 'participou_grupos':
+                valores[data]['Participou'] = stats['participou_grupos']['sim']
+                valores[data]['Não participou'] = stats['participou_grupos']['nao']
+        
+        return {
+            'datas': datas,
+            'valores': valores
         }
 
     def restaurar_backup(self, backup_data: List[Dict]) -> Dict:

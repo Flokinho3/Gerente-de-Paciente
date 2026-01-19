@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Gerente de Pacientes
+Comment=Sistema de Gestão de Pacientes - Pré-Natal
+Exec=/home/yuno/Documentos/Projetos/Gerente\ de\ Paciente/iniciar_silencioso.sh
+Icon=applications-internet
+Terminal=false
+Categories=Office;Medical;
+StartupNotify=true

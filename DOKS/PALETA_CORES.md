@@ -87,11 +87,11 @@ A nova paleta de cores amigável para usuários com óculos foi implementada em 
 - ✅ `/static/css/variables.css` - Variáveis CSS globais
 
 ### Arquivos Atualizados
-1. ✅ `/static/Home/css/style.css` - Página principal
-2. ✅ `/static/BD/css/style.css` - Banco de dados
-3. ✅ `/static/Novo_paciente/css/style.css` - Novo paciente
-4. ✅ `/static/Pacientes/css/style.css` - Lista de pacientes
-5. ✅ `/static/Exportar/css/style.css` - Exportação
+1. ✅ `/static/home/css/style.css` - Página principal
+2. ✅ `/static/bd/css/style.css` - Banco de dados
+3. ✅ `/static/novo_paciente/css/style.css` - Novo paciente
+4. ✅ `/static/pacientes/css/style.css` - Lista de pacientes
+5. ✅ `/static/exportar/css/style.css` - Exportação
 
 ---
 

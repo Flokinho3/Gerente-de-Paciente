@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão de Pacientes - Indicadores</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='Home/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='home/css/style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -41,6 +41,13 @@
                         <option value="vacinas_completas">Vacinas completas</option>
                         <option value="plano_parto">Plano de parto</option>
                         <option value="participou_grupos">Participação em grupos</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="comparacao-unidade">Unidade de Saúde:</label>
+                    <select id="comparacao-unidade" class="control-select">
+                        <option value="">📊 Geral (Todas)</option>
+                        <!-- Opções dinâmicas serão inseridas aqui -->
                     </select>
                 </div>
                 <div class="control-group">
@@ -84,63 +91,76 @@
             <div id="comparacao-pacientes-container" class="comparacao-charts-container"></div>
         </div>
 
-        <div class="indicadores-grid">
-            <!-- Indicador 1: Início pré-natal antes de 12 semanas -->
-            <div class="indicador-card">
-                <div class="indicador-header">
-                    <h2><span class="status-indicator" id="status1">🟢</span> Início do pré-natal antes de 12 semanas</h2>
-                    <span class="badge">Indicador clássico do SUS</span>
-                </div>
-                <div class="chart-container">
-                    <canvas id="chart1"></canvas>
-                </div>
+        <!-- Sistema de Abas -->
+        <div class="tabs-container">
+            <div class="tabs-header">
+                <button class="tab-button active" data-tab="geral" id="tab-geral">
+                    📊 Geral
+                </button>
+                <!-- Abas dinâmicas serão inseridas aqui -->
             </div>
+            <div class="tabs-content">
+                <div class="tab-panel active" id="panel-geral">
+                    <div class="indicadores-grid">
+                <!-- Indicador 1: Início pré-natal antes de 12 semanas -->
+                <div class="indicador-card">
+                    <div class="indicador-header">
+                        <h2><span class="status-indicator" id="status1-geral">🟢</span> Início do pré-natal antes de 12 semanas</h2>
+                        <span class="badge">Indicador clássico do SUS</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chart1-geral"></canvas>
+                    </div>
+                </div>
 
-            <!-- Indicador 2: Média de consultas de pré-natal -->
-            <div class="indicador-card">
-                <div class="indicador-header">
-                    <h2><span class="status-indicator" id="status2">🟢</span> Média de consultas de pré-natal</h2>
-                    <span class="badge">Qualidade do acompanhamento</span>
+                <!-- Indicador 2: Média de consultas de pré-natal -->
+                <div class="indicador-card">
+                    <div class="indicador-header">
+                        <h2><span class="status-indicator" id="status2-geral">🟢</span> Média de consultas de pré-natal</h2>
+                        <span class="badge">Qualidade do acompanhamento</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chart2-geral"></canvas>
+                    </div>
                 </div>
-                <div class="chart-container">
-                    <canvas id="chart2"></canvas>
-                </div>
-            </div>
 
-            <!-- Indicador 3: Vacinas completas -->
-            <div class="indicador-card">
-                <div class="indicador-header">
-                    <h2><span class="status-indicator" id="status3">🟢</span> Vacinas completas</h2>
-                    <span class="badge">Segurança materno-infantil</span>
+                <!-- Indicador 3: Vacinas completas -->
+                <div class="indicador-card">
+                    <div class="indicador-header">
+                        <h2><span class="status-indicator" id="status3-geral">🟢</span> Vacinas completas</h2>
+                        <span class="badge">Segurança materno-infantil</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chart3-geral"></canvas>
+                    </div>
                 </div>
-                <div class="chart-container">
-                    <canvas id="chart3"></canvas>
-                </div>
-            </div>
 
-            <!-- Indicador 4: Plano de parto -->
-            <div class="indicador-card">
-                <div class="indicador-header">
-                    <h2><span class="status-indicator" id="status4">🟢</span> Plano de parto</h2>
-                    <span class="badge">Humanização do cuidado</span>
+                <!-- Indicador 4: Plano de parto -->
+                <div class="indicador-card">
+                    <div class="indicador-header">
+                        <h2><span class="status-indicator" id="status4-geral">🟢</span> Plano de parto</h2>
+                        <span class="badge">Humanização do cuidado</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chart4-geral"></canvas>
+                    </div>
                 </div>
-                <div class="chart-container">
-                    <canvas id="chart4"></canvas>
-                </div>
-            </div>
 
-            <!-- Indicador 5: Participação em grupos -->
-            <div class="indicador-card">
-                <div class="indicador-header">
-                    <h2><span class="status-indicator" id="status5">🟢</span> Participação em grupos</h2>
-                    <span class="badge">Educação em saúde</span>
+                <!-- Indicador 5: Participação em grupos -->
+                <div class="indicador-card">
+                    <div class="indicador-header">
+                        <h2><span class="status-indicator" id="status5-geral">🟢</span> Participação em grupos</h2>
+                        <span class="badge">Educação em saúde</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chart5-geral"></canvas>
+                    </div>
+                    </div>
                 </div>
-                <div class="chart-container">
-                    <canvas id="chart5"></canvas>
-                </div>
+                <!-- Painéis dinâmicos serão inseridos aqui -->
             </div>
         </div>
     </div>
-    <script src="{{ url_for('static', filename='Home/js/Home.js') }}"></script>
+    <script src="{{ url_for('static', filename='home/js/home.js') }}"></script>
 </body>
 </html>

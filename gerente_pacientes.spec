@@ -41,7 +41,11 @@ a = Analysis(
         '_tkinter',
         'webbrowser',
         'database',
-        'sqlite3'
+        'sqlite3',
+        'pystray',
+        'PIL',
+        'PIL.Image',
+        'PIL.ImageDraw'
     ],
     hookspath=[],
     hooksconfig={},
@@ -69,7 +73,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=True,  # Mostrar console para debug (mude para False em produção)
+    console=False,  # Sem console visível - execução silenciosa
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
