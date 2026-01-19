@@ -526,26 +526,35 @@ def obter_valor_coluna(paciente, coluna):
         return ''
     return valor
 
-def run_flask():
-    app.run(host='127.0.0.1', port=5000, debug=True)
+def run_flask(debug=False, use_reloader=False):
+    """Inicia o servidor Flask"""
+    app.run(host='127.0.0.1', port=5000, debug=debug, use_reloader=use_reloader)
 
 def main():
+    # Detecta se está rodando como executável
+    import sys
+    is_executable = getattr(sys, 'frozen', False)
+    
+    if is_executable:
+        # Modo executável: mostra janela informativa e abre navegador
+        # IMPORTANTE: debug=False e use_reloader=False quando em thread
+        root = tk.Tk()
+        root.withdraw()  # esconde a janela principal
 
-    """
-    para ativar o debug do flask, basta comentar a linha 20 e descomentar a linha 21
-    root = tk.Tk()
-    root.withdraw()  # esconde a janela principal
+        messagebox.showinfo(
+            "Sistema de Gestão de Pacientes",
+            "Sistema iniciado com sucesso!\nClique em OK para abrir no navegador."
+        )
 
-    messagebox.showinfo(
-        "Sistema de Gestão de Pacientes",
-        "Sistema iniciado com sucesso.\nClique em OK para abrir no navegador."
-    )
-
-    threading.Thread(target=run_flask, daemon=True).start()
-    webbrowser.open('http://localhost:5000')
-    """
-    # inicia sem o tkinter
-    run_flask()
+        # Flask em thread separada SEM debug (evita erro de signal)
+        threading.Thread(target=run_flask, args=(False, False), daemon=True).start()
+        webbrowser.open('http://localhost:5000')
+        
+        # Mantém a aplicação rodando
+        root.mainloop()
+    else:
+        # Modo desenvolvimento: inicia Flask na thread principal COM debug
+        run_flask(debug=True, use_reloader=True)
 
 if __name__ == '__main__':
     main()
