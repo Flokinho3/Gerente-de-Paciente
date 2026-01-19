@@ -229,6 +229,14 @@ function exibirPerfil(paciente) {
                         ${formatarBoolean(avaliacao.estratificacao)}
                     </div>
                 </div>
+                ${avaliacao.estratificacao && avaliacao.estratificacao_problema ? `
+                <div class="perfil-field" style="grid-column: 1 / -1;">
+                    <span class="perfil-label">Problema Identificado na Estratificação</span>
+                    <div class="perfil-value" style="background: #fff3cd; padding: 12px; border-radius: 8px; border-left: 4px solid #ffc107; white-space: pre-wrap; word-wrap: break-word;">
+                        ${avaliacao.estratificacao_problema}
+                    </div>
+                </div>
+                ` : ''}
                 <div class="perfil-field">
                     <span class="perfil-label">Cartão Pré-Natal Completo</span>
                     <div class="perfil-value">

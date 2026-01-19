@@ -6,12 +6,14 @@
     <title>Gestão de Pacientes - Gerenciar Banco de Dados</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='home/css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='bd/css/style.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
 </head>
 <body>
     <!-- Top Bar Fixa -->
     <nav class="topbar">
         <div class="topbar-content">
             <div class="topbar-logo">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo Sistema Gestão Gestante">
                 <h3>Gestão de Pacientes</h3>
             </div>
             <div class="topbar-links">
@@ -20,6 +22,8 @@
                 <a href="/pacientes" class="topbar-link">Pacientes</a>
                 <a href="/exportar" class="topbar-link">Exportar</a>
                 <a href="/bd" class="topbar-link active">Banco de Dados</a>
+                <button onclick="abrirAjuda()" class="topbar-link" style="background: none; border: none; cursor: pointer; font-family: inherit;">❓ Ajuda</button>
+                <span id="version-info" class="topbar-version" style="margin-left: 15px; font-size: 0.85rem; color: var(--text-muted); opacity: 0.7;">v{{ version }}</span>
             </div>
         </div>
     </nav>
@@ -188,6 +192,16 @@
                                 </select>
                             </div>
                         </div>
+                        <div class="form-group" id="estratificacao-problema-group" style="display: none;">
+                            <label for="estratificacaoProblema">Problema Identificado na Estratificação</label>
+                            <textarea 
+                                id="estratificacaoProblema" 
+                                class="form-input" 
+                                rows="4"
+                                placeholder="Descreva o problema identificado na estratificação de risco..."
+                                style="resize: vertical; min-height: 100px;"
+                            ></textarea>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -244,5 +258,67 @@
     </div>
 
     <script src="{{ url_for('static', filename='bd/js/main.js') }}"></script>
+    <script>
+        // Suprimir erros de extensões do navegador (Copilot, etc.)
+        window.addEventListener('error', function(e) {
+            if (e.message && (
+                e.message.includes('message channel closed') ||
+                e.message.includes('contentLogger') ||
+                e.message.includes('chrome.runtime') ||
+                e.message.includes('browser.runtime')
+            )) {
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        window.addEventListener('unhandledrejection', function(e) {
+            if (e.reason && (
+                e.reason.message && (
+                    e.reason.message.includes('message channel closed') ||
+                    e.reason.message.includes('contentLogger')
+                )
+            )) {
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        function abrirAjuda() {
+            fetch('/api/abrir_ajuda')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Arquivo de ajuda aberto no Bloco de Notas!');
+                    } else {
+                        alert('Erro ao abrir ajuda: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    alert('Erro ao abrir arquivo de ajuda.');
+                });
+        }
+        
+        // Carregar versão do sistema
+        async function carregarVersao() {
+            try {
+                const response = await fetch('/api/version');
+                const data = await response.json();
+                if (data.success) {
+                    const versionElement = document.getElementById('version-info');
+                    if (versionElement) {
+                        versionElement.textContent = `v${data.version}`;
+                        versionElement.title = `Build: ${data.build_date}`;
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao carregar versão:', error);
+            }
+        }
+        
+        // Carregar versão ao carregar a página
+        document.addEventListener('DOMContentLoaded', carregarVersao);
+    </script>
 </body>
 </html>

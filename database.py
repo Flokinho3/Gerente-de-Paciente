@@ -46,11 +46,18 @@ class Database:
             participou_grupos INTEGER,
             avaliacao_odontologica INTEGER,
             estratificacao INTEGER,
+            estratificacao_problema TEXT,
             cartao_pre_natal_completo INTEGER,
             arquivo_origem TEXT
         )
         """
         self.conn.execute(ddl)
+        # Adicionar coluna estratificacao_problema se não existir (migração)
+        try:
+            self.conn.execute("ALTER TABLE pacientes ADD COLUMN estratificacao_problema TEXT")
+            self.conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Coluna já existe
         self.conn.execute("CREATE INDEX IF NOT EXISTS idx_nome ON pacientes(nome_gestante)")
         self.conn.execute("CREATE INDEX IF NOT EXISTS idx_unidade ON pacientes(unidade_saude)")
         self.conn.commit()
@@ -59,6 +66,25 @@ class Database:
         self.conn.close()
 
     def _row_to_dict(self, row: sqlite3.Row) -> Dict:
+        # sqlite3.Row não tem método .get(), então precisamos usar try/except ou verificar se a chave existe
+        estratificacao_problema = ''
+        try:
+            # Tentar acessar a coluna estratificacao_problema
+            estratificacao_problema = row['estratificacao_problema'] or ''
+        except (KeyError, IndexError):
+            # Coluna não existe ou não está disponível
+            estratificacao_problema = ''
+        
+        # Verificar se arquivo_origem existe na row
+        arquivo_origem = None
+        try:
+            # Verificar se a coluna existe usando keys()
+            if 'arquivo_origem' in row.keys():
+                arquivo_origem = row['arquivo_origem']
+        except (KeyError, IndexError):
+            # Coluna não existe
+            arquivo_origem = None
+        
         return {
             'id': row['id'],
             'data_salvamento': row['data_salvamento'],
@@ -74,9 +100,10 @@ class Database:
                 'participou_grupos': int_to_bool(row['participou_grupos']),
                 'avaliacao_odontologica': int_to_bool(row['avaliacao_odontologica']),
                 'estratificacao': int_to_bool(row['estratificacao']),
+                'estratificacao_problema': estratificacao_problema,
                 'cartao_pre_natal_completo': int_to_bool(row['cartao_pre_natal_completo'])
             },
-            'arquivo_origem': row['arquivo_origem']
+            'arquivo_origem': arquivo_origem
         }
 
     def gerar_id(self, nome: str, data_salvamento: Optional[str] = None) -> str:
@@ -105,8 +132,8 @@ class Database:
                 id, nome_gestante, unidade_saude, data_salvamento,
                 inicio_pre_natal_antes_12s, consultas_pre_natal, vacinas_completas,
                 plano_parto, participou_grupos, avaliacao_odontologica,
-                estratificacao, cartao_pre_natal_completo, arquivo_origem
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                estratificacao, estratificacao_problema, cartao_pre_natal_completo, arquivo_origem
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
             (
                 paciente_id,
@@ -120,6 +147,7 @@ class Database:
                 bool_to_int(avaliacao.get('participou_grupos')),
                 bool_to_int(avaliacao.get('avaliacao_odontologica')),
                 bool_to_int(avaliacao.get('estratificacao')),
+                avaliacao.get('estratificacao_problema', '').strip(),
                 bool_to_int(avaliacao.get('cartao_pre_natal_completo')),
                 arquivo_origem
             )

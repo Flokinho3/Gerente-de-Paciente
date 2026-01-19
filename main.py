@@ -3,13 +3,26 @@ import webbrowser
 import json
 import os
 import io
+import subprocess
+import signal
+import atexit
+import sys
 from flask import Flask, jsonify, render_template, request, send_file, make_response
 from datetime import datetime
 import tkinter as tk
 from tkinter import messagebox
 from database import db
 
+# Versão do sistema
+VERSION = "1.0.2"
+BUILD_DATE = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
 app = Flask(__name__)
+
+# Injetar versão em todos os templates
+@app.context_processor
+def inject_version():
+    return dict(version=VERSION, build_date=BUILD_DATE)
 
 @app.route('/')
 def home():
@@ -30,6 +43,52 @@ def exportar():
 @app.route('/bd')
 def bd():
     return render_template('bd.html')
+
+@app.route('/api/version', methods=['GET'])
+def get_version():
+    """Retorna a versão atual do sistema"""
+    return jsonify({
+        'success': True,
+        'version': VERSION,
+        'build_date': BUILD_DATE
+    })
+
+@app.route('/api/abrir_ajuda', methods=['GET'])
+def abrir_ajuda():
+    """Abre o arquivo de ajuda no Bloco de Notas do Windows"""
+    try:
+        import sys
+        
+        caminho_ajuda = None
+        
+        # Detectar se está rodando como executável ou em desenvolvimento
+        if getattr(sys, 'frozen', False):
+            # Modo executável: procurar em vários locais possíveis
+            # 1. No diretório temporário do PyInstaller (sys._MEIPASS)
+            if hasattr(sys, '_MEIPASS'):
+                caminho_temp = os.path.join(sys._MEIPASS, 'COMO_USAR.txt')
+                if os.path.exists(caminho_temp):
+                    caminho_ajuda = caminho_temp
+            
+            # 2. No diretório do executável
+            if not caminho_ajuda:
+                caminho_exe = os.path.join(os.path.dirname(sys.executable), 'COMO_USAR.txt')
+                if os.path.exists(caminho_exe):
+                    caminho_ajuda = caminho_exe
+        else:
+            # Modo desenvolvimento: usar o diretório do script
+            caminho_ajuda = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'COMO_USAR.txt')
+        
+        # Verificar se o arquivo existe
+        if not caminho_ajuda or not os.path.exists(caminho_ajuda):
+            return jsonify({'success': False, 'message': 'Arquivo de ajuda não encontrado'}), 404
+        
+        # Abrir no Bloco de Notas do Windows
+        subprocess.Popen(['notepad.exe', caminho_ajuda])
+        
+        return jsonify({'success': True, 'message': 'Arquivo de ajuda aberto no Bloco de Notas'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Erro ao abrir ajuda: {str(e)}'}), 500
 
 @app.route('/api/salvar_paciente', methods=['POST'])
 def salvar_paciente():
@@ -75,7 +134,14 @@ def listar_pacientes():
             'pacientes': pacientes
         })
     except Exception as e:
-        return jsonify({'success': False, 'message': f'Erro ao buscar: {str(e)}'}), 500
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Erro ao buscar pacientes: {error_details}")
+        return jsonify({
+            'success': False, 
+            'message': f'Erro ao buscar pacientes: {str(e)}',
+            'error': str(e)
+        }), 500
 
 @app.route('/api/atualizar_paciente/<paciente_id>', methods=['PUT'])
 def atualizar_paciente(paciente_id):
@@ -543,19 +609,70 @@ def obter_valor_coluna(paciente, coluna):
         return ''
     return valor
 
+# Variável global para armazenar o servidor Flask
+_flask_server = None
+
 def run_flask(debug=False, use_reloader=False, silent=False):
     """Inicia o servidor Flask"""
+    global _flask_server
+    
     if silent:
         # Modo silencioso: desabilitar logging do Werkzeug
         import logging
         log = logging.getLogger('werkzeug')
         log.setLevel(logging.ERROR)
     
-    app.run(host='127.0.0.1', port=5000, debug=debug, use_reloader=use_reloader)
+    # Se não usar reloader, usar make_server para permitir shutdown
+    if not use_reloader:
+        try:
+            from werkzeug.serving import make_server
+            _flask_server = make_server('127.0.0.1', 5000, app)
+            print("Servidor Flask iniciado na porta 5000")
+            _flask_server.serve_forever()
+        except KeyboardInterrupt:
+            print("\nEncerrando servidor Flask...")
+            if _flask_server:
+                _flask_server.shutdown()
+            print("Servidor Flask encerrado")
+    else:
+        # Modo desenvolvimento com reloader
+        app.run(host='127.0.0.1', port=5000, debug=debug, use_reloader=use_reloader)
+
+def cleanup_flask():
+    """Limpeza ao encerrar aplicação"""
+    global _flask_server
+    if _flask_server:
+        try:
+            print("Encerrando servidor Flask...")
+            _flask_server.shutdown()
+            _flask_server = None
+            print("Servidor Flask encerrado")
+        except:
+            pass
+
+# Registrar cleanup
+atexit.register(cleanup_flask)
+
+def signal_handler(signum, frame):
+    """Handler para sinais de encerramento"""
+    print(f"\nRecebido sinal {signum}, encerrando aplicação...")
+    cleanup_flask()
+    sys.exit(0)
 
 def main():
+    # Registrar handlers de sinal (apenas em sistemas Unix)
+    if sys.platform != 'win32':
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+    
+    # Mostrar versão do sistema
+    print("=" * 60)
+    print(f"🏥 Sistema de Gestão de Pacientes")
+    print(f"📦 Versão: {VERSION}")
+    print(f"📅 Build: {BUILD_DATE}")
+    print("=" * 60)
+    
     # Detecta se está rodando como executável ou em modo silencioso
-    import sys
     is_executable = getattr(sys, 'frozen', False)
     
     # Verificar se está sendo executado em modo silencioso (via script)
@@ -605,16 +722,31 @@ def main():
                     "Sistema de Gestão de Pacientes",
                     "Sistema iniciado com sucesso!\nClique em OK para abrir no navegador."
                 )
-                threading.Thread(target=run_flask, args=(False, False, True), daemon=True).start()
+                flask_thread = threading.Thread(target=run_flask, args=(False, False, True), daemon=False)
+                flask_thread.start()
                 webbrowser.open('http://localhost:5000')
-                root.mainloop()
-            elif is_silent:
-                threading.Thread(target=run_flask, args=(False, False, True), daemon=False).start()
+                
+                def on_closing():
+                    print("Janela fechada, encerrando aplicação...")
+                    cleanup_flask()
+                    root.destroy()
+                    sys.exit(0)
+                
+                root.protocol("WM_DELETE_WINDOW", on_closing)
+                
                 try:
-                    while True:
-                        threading.Event().wait(1)
+                    root.mainloop()
                 except KeyboardInterrupt:
-                    pass
+                    on_closing()
+            elif is_silent:
+                flask_thread = threading.Thread(target=run_flask, args=(False, False, True), daemon=False)
+                flask_thread.start()
+                try:
+                    flask_thread.join()
+                except KeyboardInterrupt:
+                    print("\nInterrompido pelo usuário")
+                    cleanup_flask()
+                    sys.exit(0)
         except Exception as e:
             print(f"Erro ao iniciar tray icon: {e}")
             import traceback
@@ -627,16 +759,31 @@ def main():
                     "Sistema de Gestão de Pacientes",
                     "Sistema iniciado com sucesso!\nClique em OK para abrir no navegador."
                 )
-                threading.Thread(target=run_flask, args=(False, False, True), daemon=True).start()
+                flask_thread = threading.Thread(target=run_flask, args=(False, False, True), daemon=False)
+                flask_thread.start()
                 webbrowser.open('http://localhost:5000')
-                root.mainloop()
-            elif is_silent:
-                threading.Thread(target=run_flask, args=(False, False, True), daemon=False).start()
+                
+                def on_closing():
+                    print("Janela fechada, encerrando aplicação...")
+                    cleanup_flask()
+                    root.destroy()
+                    sys.exit(0)
+                
+                root.protocol("WM_DELETE_WINDOW", on_closing)
+                
                 try:
-                    while True:
-                        threading.Event().wait(1)
+                    root.mainloop()
                 except KeyboardInterrupt:
-                    pass
+                    on_closing()
+            elif is_silent:
+                flask_thread = threading.Thread(target=run_flask, args=(False, False, True), daemon=False)
+                flask_thread.start()
+                try:
+                    flask_thread.join()
+                except KeyboardInterrupt:
+                    print("\nInterrompido pelo usuário")
+                    cleanup_flask()
+                    sys.exit(0)
     elif is_executable:
         # Modo executável sem tray: mostra janela informativa e abre navegador
         root = tk.Tk()
@@ -648,20 +795,35 @@ def main():
         )
 
         # Flask em thread separada SEM debug (evita erro de signal)
-        threading.Thread(target=run_flask, args=(False, False, True), daemon=True).start()
+        flask_thread = threading.Thread(target=run_flask, args=(False, False, True), daemon=False)
+        flask_thread.start()
         webbrowser.open('http://localhost:5000')
         
+        # Handler para quando a janela fecha
+        def on_closing():
+            print("Janela fechada, encerrando aplicação...")
+            cleanup_flask()
+            root.destroy()
+            sys.exit(0)
+        
+        root.protocol("WM_DELETE_WINDOW", on_closing)
+        
         # Mantém a aplicação rodando
-        root.mainloop()
+        try:
+            root.mainloop()
+        except KeyboardInterrupt:
+            on_closing()
     elif is_silent:
         # Modo silencioso: execução em background sem output
-        threading.Thread(target=run_flask, args=(False, False, True), daemon=False).start()
+        flask_thread = threading.Thread(target=run_flask, args=(False, False, True), daemon=False)
+        flask_thread.start()
         # Aguardar indefinidamente
         try:
-            while True:
-                threading.Event().wait(1)
+            flask_thread.join()  # Aguardar thread do Flask
         except KeyboardInterrupt:
-            pass
+            print("\nInterrompido pelo usuário")
+            cleanup_flask()
+            sys.exit(0)
     else:
         # Modo desenvolvimento: usar tray apenas se explicitamente solicitado
         if '--tray' in sys.argv:

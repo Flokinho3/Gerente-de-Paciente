@@ -1,0 +1,111 @@
+================================================================================
+                    GUIA DE USO FÁCIL - GESTÃO DE PACIENTES
+                    Acompanhamento de Gestantes em Pré-Natal
+================================================================================
+
+Olá! Este guia foi feito para você que quer usar o sistema sem complicações. 
+Não precisa entender de informática, basta seguir os passos abaixo! 🎉
+
+================================================================================
+                              1. COMO COMEÇAR
+================================================================================
+
+1. ABRIR O PROGRAMA
+   - Procure pelo arquivo "Gerente_de_Pacientes.exe" e dê dois cliques.
+   - Uma janelinha vai aparecer dizendo que o sistema começou. Clique em "OK".
+   - O sistema vai abrir automaticamente no seu navegador de internet (Chrome, 
+     Edge ou Firefox).
+
+2. O ÍCONE PERTO DO RELÓGIO (MUITO IMPORTANTE!) 🔵
+   - Sabe aquela área no canto direito debaixo da tela, onde fica a hora?
+   - Procure por um **círculo azul com uma cruz branca**. 
+   - Esse é o seu "Gerente". Se você clicar com o botão direito nele, pode:
+     * Abrir no Navegador (se você fechou a página sem querer)
+     * Reiniciar (se o sistema estiver lento ou com problemas)
+     * Sair (para fechar o programa de vez)
+
+3. SE A PÁGINA NÃO ABRIR:
+   - Abra seu navegador e digite lá em cima na barra de endereços: 
+     http://localhost:5000
+
+================================================================================
+                         2. CONHECENDO O MENU (LÁ NO TOPO)
+================================================================================
+
+No topo da tela, você verá estas opções para clicar:
+📊 Indicadores: Mostra gráficos coloridos sobre como está o atendimento.
+➕ Novo Paciente: Onde você cadastra uma nova gestante.
+👥 Pacientes: Onde você vê a lista de quem já cadastrou.
+📥 Exportar: Para salvar os dados no seu computador (Excel ou Word).
+💾 Banco de Dados: Para organizar, editar ou salvar cópias de tudo.
+❓ Ajuda: Abre este guia que você está lendo agora.
+
+================================================================================
+                      3. CADASTRAR UMA NOVA GESTANTE
+================================================================================
+
+Clique em "Novo Paciente". O sistema vai te guiar em 10 passos simples:
+
+Passo 1: Digite o nome completo da gestante.
+Passo 2: Digite o nome da Unidade de Saúde (ex: UBS Centro).
+Passo 3: Clique se o pré-natal começou cedo (antes de 12 semanas).
+Passo 4: Digite quantas consultas ela já fez (digite apenas o número).
+Passo 5: Escolha se as vacinas estão em dia ou não.
+Passos 6 a 10: Clique em "Sim" ou "Não" para as perguntas que aparecerem.
+
+Ao final, clique no botão azul "Salvar Paciente". 
+Pronto! Ela já está cadastrada.
+
+================================================================================
+                        4. VER E EDITAR PACIENTES
+================================================================================
+
+1. Clique em "Pacientes":
+   - Para achar alguém, digite o nome na barra "Pesquisar".
+   - Clique no cartão da paciente para ver todos os detalhes dela.
+
+2. Clique em "Banco de Dados":
+   - Aqui você vê uma tabela como se fosse uma folha de papel.
+   - Você pode clicar no botão de "Lápis" para mudar algum dado errado.
+   - Você pode clicar na "Lixeira" para apagar um cadastro.
+
+================================================================================
+                      5. SALVAR UMA CÓPIA DE SEGURANÇA
+================================================================================
+
+Isso é MUITO IMPORTANTE para não perder seu trabalho se o computador estragar!
+
+1. Clique em "Banco de Dados" no topo.
+2. Clique no botão azul "Criar Cópia BD".
+3. Clique em "Download" para salvar o arquivo no seu computador.
+4. Dica: Guarde esse arquivo em um Pen Drive ou mande para seu e-mail.
+
+Se um dia você precisar recuperar os dados, use o botão "Carregar Cópia".
+
+================================================================================
+                             6. DICAS DE OURO ✨
+================================================================================
+
+✓ Sempre confira se escreveu o nome da gestante corretamente.
+✓ Faça uma "Cópia de Segurança" (Backup) toda semana.
+✓ Se o sistema parecer "travado", clique com o botão direito no ícone azul 
+  perto do relógio e escolha "Reiniciar".
+
+================================================================================
+                            PROBLEMAS COMUNS
+================================================================================
+
+❓ A página está em branco ou não carrega?
+➜ Verifique se o ícone azul está lá perto do relógio. Se não estiver, abra 
+   o programa de novo.
+
+❓ O botão "Salvar" não funciona?
+➜ Veja se você esqueceu de preencher algo. O sistema avisa o que falta.
+
+❓ Como eu fecho o programa?
+➜ Não basta fechar a página da internet! Você deve ir no ícone azul perto 
+   do relógio (canto inferior direito), clicar com o botão direito e escolher "Sair".
+
+================================================================================
+Precisa de mais ajuda? Peça auxílio ao suporte técnico ou ao seu coordenador.
+================================================================================

@@ -30,6 +30,61 @@ totalStepsSpan.textContent = totalSteps;
 showStep(currentStep); // Inicializar o primeiro step corretamente
 updateProgress();
 
+// Função para mostrar/esconder campo de problema de estratificação
+function toggleCampoEstratificacaoProblema() {
+    // Buscar elementos de forma mais robusta - buscar em todo o documento
+    const radiosEstratificacao = document.querySelectorAll('input[name="estratificacao"]');
+    const problemaGroup = document.getElementById('estratificacao-problema-group');
+    const problemaInput = document.getElementById('estratificacao_problema');
+    
+    if (!problemaGroup || !problemaInput) {
+        console.warn('Elementos de estratificação não encontrados! Tentando novamente...');
+        // Tentar novamente após um pequeno delay
+        setTimeout(toggleCampoEstratificacaoProblema, 100);
+        return;
+    }
+    
+    // Verificar qual radio está selecionado
+    const estratificacaoSelecionada = Array.from(radiosEstratificacao).find(radio => radio.checked);
+    const valorSelecionado = estratificacaoSelecionada ? estratificacaoSelecionada.value : null;
+    
+    if (valorSelecionado === 'true') {
+        // Mostrar o campo usando múltiplas estratégias
+        problemaGroup.style.display = 'block';
+        problemaGroup.style.visibility = 'visible';
+        problemaGroup.style.opacity = '1';
+        problemaGroup.style.marginTop = '20px';
+        problemaGroup.removeAttribute('hidden');
+        problemaGroup.classList.remove('hidden');
+        
+        // Forçar exibição com !important via setProperty
+        problemaGroup.style.setProperty('display', 'block', 'important');
+        
+        problemaInput.setAttribute('required', 'required');
+        problemaInput.setAttribute('data-original-required', 'true');
+        problemaInput.removeAttribute('disabled');
+        
+        // Focar no campo quando aparecer
+        setTimeout(() => {
+            if (problemaInput.offsetParent !== null) {
+                problemaInput.focus();
+                problemaInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+            // Atualizar validação após mostrar o campo
+            updateProgress();
+        }, 200);
+    } else {
+        // Esconder o campo
+        problemaGroup.style.display = 'none';
+        problemaGroup.style.visibility = 'hidden';
+        problemaGroup.style.opacity = '0';
+        problemaInput.removeAttribute('required');
+        problemaInput.value = '';
+        // Atualizar validação imediatamente ao esconder
+        updateProgress();
+    }
+}
+
 // Função para mostrar mensagem
 function showMessage(text, isError = false) {
     messageDiv.textContent = text;
@@ -46,10 +101,38 @@ function validateCurrentStep() {
     const currentStepElement = document.querySelector(`.wizard-step[data-step="${currentStep}"]`);
     if (!currentStepElement) return false;
     
+    // Validar campo de problema de estratificação se necessário (verificação especial)
+    if (currentStep === 9) {
+        const estratificacaoRadio = currentStepElement.querySelector('input[name="estratificacao"]:checked');
+        const problemaInput = document.getElementById('estratificacao_problema');
+        const problemaGroup = document.getElementById('estratificacao-problema-group');
+        
+        if (estratificacaoRadio && estratificacaoRadio.value === 'true' && problemaInput && problemaGroup) {
+            // Verificar se o grupo está visível
+            const isGroupVisible = problemaGroup.style.display !== 'none' && 
+                                  !problemaGroup.style.display.includes('none') &&
+                                  problemaGroup.offsetParent !== null;
+            
+            if (isGroupVisible && problemaInput.hasAttribute('required')) {
+                if (!problemaInput.value || problemaInput.value.trim() === '') {
+                    return false;
+                }
+            }
+        }
+    }
+    
     // Validar inputs de texto e number
-    const textInputs = currentStepElement.querySelectorAll('input[type="text"], input[type="number"], select');
+    const textInputs = currentStepElement.querySelectorAll('input[type="text"], input[type="number"], select, textarea');
     for (let input of textInputs) {
-        if (input.hasAttribute('required')) {
+        // Pular validação do campo de problema de estratificação (já validado acima)
+        if (input.id === 'estratificacao_problema') continue;
+        
+        // Verificar se o campo está visível antes de validar
+        const isVisible = input.offsetParent !== null && 
+                         !input.closest('[style*="display: none"]') &&
+                         !input.closest('[style*="display:none"]');
+        
+        if (input.hasAttribute('required') && isVisible) {
             if (!input.value || input.value.trim() === '') {
                 return false;
             }
@@ -137,6 +220,38 @@ function showStep(step) {
         // Gerenciar atributos required
         toggleRequiredAttributes(step);
         
+        // Verificar estado do campo de estratificação se estiver no step 9
+        if (step === 9) {
+            // Configurar event listeners diretamente nos radio buttons do step 9
+            setTimeout(() => {
+                const radiosEstratificacao = stepElement.querySelectorAll('input[name="estratificacao"]');
+                
+                // Criar uma função wrapper para garantir que funcione
+                const handleEstratificacaoChange = function() {
+                    setTimeout(() => {
+                        toggleCampoEstratificacaoProblema();
+                    }, 50);
+                };
+                
+                radiosEstratificacao.forEach(radio => {
+                    // Remover listeners anteriores usando a função wrapper
+                    radio.removeEventListener('change', handleEstratificacaoChange);
+                    // Adicionar novo listener
+                    radio.addEventListener('change', handleEstratificacaoChange, true);
+                    
+                    // Também adicionar listener de click como fallback
+                    radio.addEventListener('click', function() {
+                        setTimeout(() => {
+                            toggleCampoEstratificacaoProblema();
+                        }, 100);
+                    }, true);
+                });
+                
+                // Verificar estado atual e mostrar/esconder campo conforme necessário
+                toggleCampoEstratificacaoProblema();
+            }, 300);
+        }
+        
         // Scroll suave para o topo do container
         document.querySelector('.container').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -180,7 +295,8 @@ form.addEventListener('input', function(e) {
     const inputStep = e.target.closest('.wizard-step');
     const currentStepElement = document.querySelector('.wizard-step.active');
     
-    if (inputStep === currentStepElement) {
+    // Também considerar o campo de problema de estratificação que pode estar fora do step mas visível
+    if (inputStep === currentStepElement || e.target.id === 'estratificacao_problema') {
         updateProgress();
     }
 });
@@ -191,11 +307,19 @@ form.addEventListener('change', function(e) {
         const inputStep = e.target.closest('.wizard-step');
         const currentStepElement = document.querySelector('.wizard-step.active');
         
+        // Mostrar/esconder campo de problema de estratificação (sempre verificar, independente do step ativo)
+        if (e.target.name === 'estratificacao') {
+            // Usar setTimeout para garantir que o DOM esteja atualizado
+            setTimeout(() => {
+                toggleCampoEstratificacaoProblema();
+            }, 50);
+        }
+        
         if (inputStep === currentStepElement) {
             updateProgress();
         }
     }
-});
+}, true); // Usar capture phase para garantir que seja capturado
 
 // Event listeners para botões
 btnProximo.addEventListener('click', nextStep);
@@ -330,6 +454,9 @@ form.addEventListener('submit', async (e) => {
         input.removeAttribute('required');
     });
     
+    // Coletar dados do formulário primeiro (antes de validar)
+    const formData = new FormData(form);
+    
     // Validar último step manualmente
     if (!validateCurrentStep()) {
         showMessage('❌ Por favor, preencha todos os campos obrigatórios', true);
@@ -338,11 +465,20 @@ form.addEventListener('submit', async (e) => {
         return;
     }
     
+    // Validar campo de estratificação_problema apenas se estratificacao for true
+    const estratificacaoValue = formData.get('estratificacao');
+    const estratificacaoProblemaValue = formData.get('estratificacao_problema');
+    if (estratificacaoValue === 'true' && (!estratificacaoProblemaValue || estratificacaoProblemaValue.trim() === '')) {
+        showMessage('❌ Por favor, descreva o problema identificado na estratificação de risco', true);
+        // Ir para o step 9 para mostrar o campo
+        currentStep = 9;
+        showStep(9);
+        updateProgress();
+        return;
+    }
+    
     // Restaurar required nos campos escondidos
     restoreRequiredAttributes();
-    
-    // Coletar dados do formulário
-    const formData = new FormData(form);
     const nomeGestante = formData.get('nome_gestante').trim();
     
     // Verificar se paciente já existe
@@ -361,6 +497,7 @@ form.addEventListener('submit', async (e) => {
             participou_grupos: formData.get('participou_grupos') === 'true',
             avaliacao_odontologica: formData.get('avaliacao_odontologica') === 'true',
             estratificacao: formData.get('estratificacao') === 'true',
+            estratificacao_problema: formData.get('estratificacao_problema') || '',
             cartao_pre_natal_completo: formData.get('cartao_pre_natal_completo') === 'true'
         }
     };

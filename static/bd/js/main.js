@@ -43,6 +43,8 @@ const planoParto = document.getElementById('planoParto');
 const participouGrupos = document.getElementById('participouGrupos');
 const avaliacaoOdontologica = document.getElementById('avaliacaoOdontologica');
 const estratificacao = document.getElementById('estratificacao');
+const estratificacaoProblema = document.getElementById('estratificacaoProblema');
+const estratificacaoProblemaGroup = document.getElementById('estratificacao-problema-group');
 const cartaoPreNatalCompleto = document.getElementById('cartaoPreNatalCompleto');
 
 // Inicialização
@@ -99,6 +101,20 @@ function configurarEventos() {
     // Botões de ação
     addBtn.addEventListener('click', () => abrirModalAdicionar());
     refreshBtn.addEventListener('click', () => carregarPacientes());
+    
+    // Mostrar/esconder campo de problema de estratificação
+    if (estratificacao) {
+        estratificacao.addEventListener('change', () => {
+            if (estratificacaoProblemaGroup) {
+                if (estratificacao.checked) {
+                    estratificacaoProblemaGroup.style.display = 'block';
+                } else {
+                    estratificacaoProblemaGroup.style.display = 'none';
+                    estratificacaoProblema.value = '';
+                }
+            }
+        });
+    }
     
     // Botões de backup/restore
     const backupBtn = document.getElementById('backupBtn');
@@ -319,6 +335,9 @@ function abrirModalAdicionar() {
     modalTitle.textContent = 'Adicionar Novo Paciente';
     patientForm.reset();
     patientId.value = '';
+    if (estratificacaoProblemaGroup) {
+        estratificacaoProblemaGroup.style.display = 'none';
+    }
     editModal.classList.add('active');
 }
 
@@ -360,6 +379,12 @@ function preencherFormulario(paciente) {
     participouGrupos.checked = avaliacao.participou_grupos === true;
     avaliacaoOdontologica.checked = avaliacao.avaliacao_odontologica === true;
     estratificacao.checked = avaliacao.estratificacao === true;
+    if (estratificacaoProblema) {
+        estratificacaoProblema.value = avaliacao.estratificacao_problema || '';
+        if (estratificacaoProblemaGroup) {
+            estratificacaoProblemaGroup.style.display = estratificacao.checked ? 'block' : 'none';
+        }
+    }
     cartaoPreNatalCompleto.checked = avaliacao.cartao_pre_natal_completo === true;
 }
 
@@ -383,6 +408,7 @@ async function salvarPaciente() {
             participou_grupos: participouGrupos.checked,
             avaliacao_odontologica: avaliacaoOdontologica.checked,
             estratificacao: estratificacao.checked,
+            estratificacao_problema: estratificacaoProblema ? estratificacaoProblema.value.trim() : '',
             cartao_pre_natal_completo: cartaoPreNatalCompleto.checked
         }
     };

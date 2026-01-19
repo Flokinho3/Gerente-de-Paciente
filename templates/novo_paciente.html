@@ -6,12 +6,14 @@
     <title>Novo Paciente - Gestão de Pacientes</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='home/css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='novo_paciente/css/style.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
 </head>
 <body>
     <!-- Top Bar Fixa -->
     <nav class="topbar">
         <div class="topbar-content">
             <div class="topbar-logo">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo Sistema Gestão Gestante">
                 <h3>Gestão de Pacientes</h3>
             </div>
             <div class="topbar-links">
@@ -19,6 +21,8 @@
                 <a href="/novo_paciente" class="topbar-link active">Novo Paciente</a>
                 <a href="/pacientes" class="topbar-link">Pacientes</a>
                 <a href="/exportar" class="topbar-link">Exportar</a>
+                <button onclick="abrirAjuda()" class="topbar-link" style="background: none; border: none; cursor: pointer; font-family: inherit;">❓ Ajuda</button>
+                <span id="version-info" class="topbar-version" style="margin-left: 15px; font-size: 0.85rem; color: var(--text-muted); opacity: 0.7;">v{{ version }}</span>
             </div>
         </div>
     </nav>
@@ -27,6 +31,7 @@
         <div class="header">
             <h1>📋 Cadastro de Novo Paciente</h1>
             <p>Preencha os dados da gestante e sua avaliação de pré-natal</p>
+            <p>Teste 123</p>
         </div>
 
         <!-- Indicador de Progresso -->
@@ -230,6 +235,20 @@
                         </div>
                         <small class="form-help">A estratificação de risco ajuda no acompanhamento adequado</small>
                     </div>
+                    <div class="form-group" id="estratificacao-problema-group" style="display: none; margin-top: 20px;">
+                        <label for="estratificacao_problema" class="required">
+                            Qual o problema identificado na estratificação?
+                        </label>
+                        <textarea 
+                            id="estratificacao_problema" 
+                            name="estratificacao_problema" 
+                            class="form-input" 
+                            rows="4"
+                            placeholder="Descreva o problema identificado na estratificação de risco..."
+                            style="resize: vertical; min-height: 100px; width: 100%;"
+                        ></textarea>
+                        <small class="form-help">Descreva detalhadamente o problema de risco identificado</small>
+                    </div>
                 </div>
             </div>
 
@@ -274,5 +293,110 @@
         </form>
     </div>
     <script src="{{ url_for('static', filename='novo_paciente/js/main.js') }}"></script>
+    <script>
+        // Suprimir erros de extensões do navegador (Copilot, Edge, etc.)
+        (function() {
+            'use strict';
+            
+            // Lista de padrões de erro a suprimir
+            const errorPatterns = [
+                'message channel closed',
+                'contentLogger',
+                'chrome.runtime',
+                'browser.runtime',
+                'TDUqHSu2',
+                'asynchronous response',
+                'listener indicated',
+                'Extension context invalidated'
+            ];
+            
+            function shouldSuppressError(msg) {
+                if (!msg) return false;
+                const msgStr = String(msg).toLowerCase();
+                return errorPatterns.some(pattern => msgStr.includes(pattern.toLowerCase()));
+            }
+            
+            // Interceptar window.onerror
+            const originalError = window.onerror;
+            window.onerror = function(msg, url, line, col, error) {
+                if (shouldSuppressError(msg)) {
+                    return true; // Suprimir o erro
+                }
+                if (originalError) {
+                    return originalError.apply(this, arguments);
+                }
+                return false;
+            };
+            
+            // Interceptar unhandledrejection
+            window.addEventListener('unhandledrejection', function(e) {
+                const reason = e.reason;
+                const message = reason?.message || reason?.toString() || String(reason) || '';
+                
+                if (shouldSuppressError(message)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    return false;
+                }
+            }, true); // Capture phase
+            
+            // Interceptar console.error
+            const originalConsoleError = console.error;
+            console.error = function(...args) {
+                const message = args.map(arg => String(arg)).join(' ');
+                if (shouldSuppressError(message)) {
+                    return; // Não exibir no console
+                }
+                originalConsoleError.apply(console, args);
+            };
+            
+            // Interceptar console.warn também
+            const originalConsoleWarn = console.warn;
+            console.warn = function(...args) {
+                const message = args.map(arg => String(arg)).join(' ');
+                if (shouldSuppressError(message)) {
+                    return; // Não exibir no console
+                }
+                originalConsoleWarn.apply(console, args);
+            };
+        })();
+        
+        function abrirAjuda() {
+            fetch('/api/abrir_ajuda')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Arquivo de ajuda aberto no Bloco de Notas!');
+                    } else {
+                        alert('Erro ao abrir ajuda: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    alert('Erro ao abrir arquivo de ajuda.');
+                });
+        }
+        
+        // Carregar versão do sistema
+        async function carregarVersao() {
+            try {
+                const response = await fetch('/api/version');
+                const data = await response.json();
+                if (data.success) {
+                    const versionElement = document.getElementById('version-info');
+                    if (versionElement) {
+                        versionElement.textContent = `v${data.version}`;
+                        versionElement.title = `Build: ${data.build_date}`;
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao carregar versão:', error);
+            }
+        }
+        
+        // Carregar versão ao carregar a página
+        document.addEventListener('DOMContentLoaded', carregarVersao);
+    </script>
 </body>
 </html>

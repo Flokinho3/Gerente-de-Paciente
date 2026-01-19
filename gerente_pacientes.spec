@@ -7,6 +7,7 @@ added_files = [
     ('templates', 'templates'),
     ('static', 'static'),
     ('data', 'data'),
+    ('COMO_USAR.txt', '.'),  # Arquivo de ajuda na raiz
 ]
 
 a = Analysis(

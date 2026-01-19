@@ -28,6 +28,18 @@ body {
     padding: 18px 30px;
 }
 
+.topbar-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.topbar-logo img {
+    height: 40px;
+    width: auto;
+    object-fit: contain;
+}
+
 .topbar-logo h3 {
     color: white;
     font-size: 1.5rem;
