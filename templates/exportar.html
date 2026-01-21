@@ -137,48 +137,28 @@
                 </div>
             </div>
 
-        <!-- Filtros por pontos -->
+        <!-- Filtros por Unidade -->
         <div class="export-filters">
-            <h3>Filtros por pontos</h3>
-            <p class="filter-subtitle">Limite a exportação aos registros que atendem aos pontos selecionados.</p>
+            <h3>Filtros por Unidade</h3>
+            <p class="filter-subtitle">Selecione uma unidade para filtrar os dados da exportação.</p>
 
-            <div class="filter-grid">
-                <label class="filter-card">
-                    <input type="checkbox" id="filterInicio">
-                    <div>
-                        <strong>Pré-natal antes de 12 semanas</strong>
-                        <span>Mostra apenas pacientes que iniciaram o pré-natal cedo.</span>
-                    </div>
+            <div class="filter-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <label class="filter-select">
+                    <span>UPAs</span>
+                    <select id="filterUpas">
+                        <option value="">Todas as UPAs</option>
+                    </select>
                 </label>
 
-                <label class="filter-card">
-                    <input type="checkbox" id="filterPlano">
-                    <div>
-                        <strong>Plano de parto</strong>
-                        <span>Inclui apenas gestantes com plano de parto registrado.</span>
-                    </div>
-                </label>
-
-                <label class="filter-card">
-                    <input type="checkbox" id="filterGrupos">
-                    <div>
-                        <strong>Participou de grupos</strong>
-                        <span>Filtra pacientes que participaram de grupos de suporte.</span>
-                    </div>
+                <label class="filter-select">
+                    <span>Kitis</span>
+                    <select id="filterKitis">
+                        <option value="">Todos os Kitis</option>
+                    </select>
                 </label>
             </div>
 
-            <label class="filter-select">
-                <span>Vacinas completas</span>
-                <select id="filterVacinas">
-                    <option value="">Todas</option>
-                    <option value="completa">Completas</option>
-                    <option value="incompleta">Incompletas</option>
-                    <option value="nao_avaliado">Não avaliadas</option>
-                </select>
-            </label>
-
-        <p id="filtrosResumo" class="filter-summary">Nenhum filtro ativo.</p>
+            <p id="filtrosResumo" class="filter-summary">Nenhum filtro ativo.</p>
         </div>
 
         <div class="custom-toggle">

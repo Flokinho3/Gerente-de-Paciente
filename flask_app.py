@@ -307,6 +307,261 @@ def deletar_agendamento(agendamento_id):
             'message': f'Erro ao deletar agendamento: {str(e)}'
         }), 500
 
+@app.route('/api/sync/discover', methods=['GET'])
+def discover_servers():
+    """Descobre outros servidores na rede local"""
+    try:
+        import socket
+        import threading
+        import time
+        
+        # Obter IP local
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(('8.8.8.8', 80))
+            local_ip = s.getsockname()[0]
+        except:
+            local_ip = '127.0.0.1'
+        finally:
+            s.close()
+        
+        # Obter porta atual
+        port = int(os.getenv('PORT', 5000))
+        
+        # Descobrir outros servidores na rede
+        discovered_servers = []
+        ip_parts = local_ip.split('.')
+        base_ip = '.'.join(ip_parts[:-1])
+        
+        def check_server(ip):
+            try:
+                test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                test_socket.settimeout(0.5)
+                result = test_socket.connect_ex((ip, port))
+                test_socket.close()
+                
+                if result == 0:
+                    # Tentar fazer requisição HTTP
+                    import urllib.request
+                    try:
+                        url = f'http://{ip}:{port}/api/version'
+                        req = urllib.request.Request(url, timeout=1)
+                        response = urllib.request.urlopen(req)
+                        if response.status == 200:
+                            discovered_servers.append({
+                                'ip': ip,
+                                'port': port,
+                                'hostname': socket.gethostbyaddr(ip)[0] if ip != local_ip else socket.gethostname()
+                            })
+                    except:
+                        pass
+            except:
+                pass
+        
+        # Verificar IPs na mesma rede (último octeto de 1 a 254)
+        threads = []
+        for i in range(1, 255):
+            ip = f'{base_ip}.{i}'
+            if ip != local_ip:  # Não verificar o próprio IP
+                thread = threading.Thread(target=check_server, args=(ip,))
+                thread.daemon = True
+                thread.start()
+                threads.append(thread)
+        
+        # Aguardar um pouco para as threads terminarem
+        time.sleep(2)
+        
+        return jsonify({
+            'success': True,
+            'local_ip': local_ip,
+            'port': port,
+            'servers': discovered_servers
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao descobrir servidores: {str(e)}'
+        }), 500
+
+@app.route('/api/sync/data', methods=['GET'])
+def get_sync_data():
+    """Retorna dados para sincronização (pacientes e agendamentos)"""
+    try:
+        pacientes = db.buscar_pacientes()
+        agendamentos = db.listar_agendamentos()
+        
+        return jsonify({
+            'success': True,
+            'pacientes': pacientes,
+            'agendamentos': agendamentos,
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao obter dados para sincronização: {str(e)}'
+        }), 500
+
+@app.route('/api/sync/merge', methods=['POST'])
+def merge_sync_data():
+    """Recebe dados de sincronização e faz merge inteligente (adiciona, atualiza e detecta remoções)"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'Dados não fornecidos'}), 400
+        
+        pacientes_remotos = data.get('pacientes', [])
+        agendamentos_remotos = data.get('agendamentos', [])
+        
+        # Comparar bancos para detectar pacientes removidos no remoto
+        comparacao = db.comparar_com_banco_remoto(pacientes_remotos)
+        
+        # Obter pacientes locais e seus IDs
+        pacientes_locais = db.buscar_pacientes()
+        pacientes_locais_ids = {p['id'] for p in pacientes_locais}
+        
+        # Obter agendamentos locais
+        agendamentos_locais = db.listar_agendamentos()
+        agendamentos_locais_ids = {a['id'] for a in agendamentos_locais}
+        
+        # Estatísticas
+        pacientes_adicionados = 0
+        pacientes_atualizados = 0
+        agendamentos_adicionados = 0
+        agendamentos_atualizados = 0
+        
+        # Sincronizar pacientes (adicionar novos e atualizar existentes)
+        for paciente_remoto in pacientes_remotos:
+            paciente_id = paciente_remoto['id']
+            
+            if paciente_id in pacientes_locais_ids:
+                # Paciente já existe localmente - atualizar se dados remotos forem mais recentes
+                paciente_local = next((p for p in pacientes_locais if p['id'] == paciente_id), None)
+                if paciente_local:
+                    data_local = paciente_local.get('data_salvamento', '')
+                    data_remota = paciente_remoto.get('data_salvamento', '')
+                    
+                    # Se dados remotos são mais recentes ou iguais, atualizar
+                    if data_remota >= data_local:
+                        try:
+                            db.atualizar_paciente(paciente_id, paciente_remoto)
+                            pacientes_atualizados += 1
+                        except:
+                            pass
+            else:
+                # Paciente novo - adicionar
+                try:
+                    # Usar inserir_registro diretamente para manter o ID original
+                    db.inserir_registro(
+                        paciente_id,
+                        paciente_remoto,
+                        arquivo_origem='sync',
+                        data_salvamento=paciente_remoto.get('data_salvamento')
+                    )
+                    pacientes_adicionados += 1
+                except Exception as e:
+                    # Se falhar, tentar adicionar normalmente
+                    try:
+                        db.adicionar_paciente(paciente_remoto)
+                        pacientes_adicionados += 1
+                    except:
+                        pass
+        
+        # Sincronizar agendamentos (só adicionar/atualizar, nunca remover)
+        for agendamento_remoto in agendamentos_remotos:
+            agendamento_id = agendamento_remoto['id']
+            
+            if agendamento_id in agendamentos_locais_ids:
+                # Agendamento já existe - atualizar se dados remotos forem mais recentes
+                agendamento_local = next((a for a in agendamentos_locais if a['id'] == agendamento_id), None)
+                if agendamento_local:
+                    data_atualizacao_local = agendamento_local.get('data_atualizacao', '')
+                    data_atualizacao_remota = agendamento_remoto.get('data_atualizacao', '')
+                    
+                    if data_atualizacao_remota >= data_atualizacao_local:
+                        try:
+                            db.atualizar_agendamento(
+                                agendamento_id,
+                                agendamento_remoto['paciente_id'],
+                                agendamento_remoto['data_consulta'],
+                                agendamento_remoto['hora_consulta'],
+                                agendamento_remoto.get('tipo_consulta'),
+                                agendamento_remoto.get('status', 'agendado'),
+                                agendamento_remoto.get('observacoes')
+                            )
+                            agendamentos_atualizados += 1
+                        except:
+                            pass
+            else:
+                # Agendamento novo - adicionar
+                try:
+                    db.criar_agendamento(
+                        agendamento_id,
+                        agendamento_remoto['paciente_id'],
+                        agendamento_remoto['data_consulta'],
+                        agendamento_remoto['hora_consulta'],
+                        agendamento_remoto.get('tipo_consulta'),
+                        agendamento_remoto.get('status', 'agendado'),
+                        agendamento_remoto.get('observacoes'),
+                        agendamento_remoto.get('data_criacao'),
+                        agendamento_remoto.get('data_atualizacao')
+                    )
+                    agendamentos_adicionados += 1
+                except Exception as e:
+                    pass
+        
+        # Preparar informações dos pacientes removidos no servidor remoto
+        # (para o cliente decidir se quer remover também localmente)
+        pacientes_removidos_info = [
+            {
+                'id': p['id'],
+                'nome_gestante': p.get('identificacao', {}).get('nome_gestante') or p.get('nome_gestante', 'Sem nome'),
+                'unidade_saude': p.get('identificacao', {}).get('unidade_saude') or p.get('unidade_saude', ''),
+                'data_salvamento': p.get('data_salvamento', '')
+            }
+            for p in comparacao['pacientes_removidos_no_remoto']
+        ]
+        
+        return jsonify({
+            'success': True,
+            'message': 'Sincronização concluída',
+            'stats': {
+                'pacientes_adicionados': pacientes_adicionados,
+                'pacientes_atualizados': pacientes_atualizados,
+                'agendamentos_adicionados': agendamentos_adicionados,
+                'agendamentos_atualizados': agendamentos_atualizados
+            },
+            'pacientes_removidos': pacientes_removidos_info  # Para o cliente decidir se quer remover também
+        })
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao sincronizar: {str(e)}',
+            'traceback': traceback.format_exc()
+        }), 500
+
+@app.route('/api/sync/remover_pacientes', methods=['POST'])
+def remover_pacientes_confirmados():
+    """Remove pacientes após confirmação do usuário"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'Dados não fornecidos'}), 400
+        
+        paciente_ids = data.get('paciente_ids', [])
+        if not paciente_ids:
+            return jsonify({'success': False, 'message': 'Nenhum ID fornecido'}), 400
+        
+        resultado = db.remover_pacientes(paciente_ids)
+        
+        return jsonify(resultado)
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao remover pacientes: {str(e)}'
+        }), 500
+
 @app.route('/api/backup/criar', methods=['GET'])
 def criar_backup():
     """Cria um backup completo do banco de dados"""
@@ -451,7 +706,15 @@ def indicadores_temporais(filtro):
 def exportar_pacientes(formato):
     """Exporta os dados dos pacientes no formato especificado"""
     try:
-        pacientes = db.obter_todos_pacientes()
+        # Aplicar filtro por unidade de saúde se fornecido
+        filtro = {}
+        unidade_saude = request.args.get('unidade_saude')
+        if unidade_saude:
+            filtro['unidade_saude'] = unidade_saude
+            pacientes = db.buscar_pacientes(filtro)
+        else:
+            pacientes = db.obter_todos_pacientes()
+        
         filtros = {
             'inicio_pre_natal': request.args.get('inicio_pre_natal'),
             'plano_parto': request.args.get('plano_parto'),

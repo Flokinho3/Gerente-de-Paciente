@@ -17,19 +17,49 @@ def int_to_bool(value: Optional[int]) -> bool:
 
 class Database:
     def __init__(self, db_path: Optional[str] = None):
-        # Detecta se está rodando como executável PyInstaller
-        import sys
-        if getattr(sys, 'frozen', False):
-            # Executável: usa diretório do executável
-            base_dir = os.path.dirname(sys.executable)
-        else:
-            # Modo desenvolvimento: usa diretório do script
-            base_dir = os.path.dirname(__file__)
+        # Verificar se há um caminho configurado via variável de ambiente
+        from dotenv import load_dotenv
+        load_dotenv()
+        env_db_path = os.getenv('DB_PATH')
         
-        self.db_path = db_path or os.path.join(base_dir, 'data', 'pacientes.db')
-        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-        self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        if db_path:
+            # Prioridade 1: caminho passado explicitamente
+            self.db_path = db_path
+        elif env_db_path:
+            # Prioridade 2: caminho do arquivo .env
+            self.db_path = env_db_path
+        else:
+            # Prioridade 3: caminho padrão local
+            import sys
+            if getattr(sys, 'frozen', False):
+                # Executável: usa diretório do executável
+                base_dir = os.path.dirname(sys.executable)
+            else:
+                # Modo desenvolvimento: usa diretório do script
+                base_dir = os.path.dirname(__file__)
+            
+            self.db_path = os.path.join(base_dir, 'data', 'pacientes.db')
+        
+        # Criar diretório se necessário (apenas para caminhos locais)
+        try:
+            db_dir = os.path.dirname(self.db_path)
+            if db_dir and not os.path.isabs(db_dir) or not os.path.exists(os.path.dirname(os.path.abspath(self.db_path))):
+                os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+        except (OSError, ValueError):
+            # Se for um caminho de rede ou caminho absoluto problemático, apenas tentar conectar
+            pass
+        
+        # Configurar timeout maior para banco compartilhado em rede
+        # WAL mode para melhor concorrência (opcional, mas recomendado)
+        self.conn = sqlite3.connect(self.db_path, check_same_thread=False, timeout=30.0)
         self.conn.row_factory = sqlite3.Row
+        # Habilitar WAL mode para melhor suporte a múltiplos acessos simultâneos
+        try:
+            self.conn.execute('PRAGMA journal_mode=WAL;')
+            self.conn.commit()
+        except sqlite3.OperationalError:
+            # Se WAL não for suportado (ex: em alguns sistemas de arquivos de rede), continuar normalmente
+            pass
         self._ensure_schema()
 
     def _ensure_schema(self) -> None:
@@ -738,15 +768,18 @@ class Database:
     # Métodos para agendamentos
     def criar_agendamento(self, agendamento_id: str, paciente_id: str, data_consulta: str, 
                           hora_consulta: str, tipo_consulta: str = None, observacoes: str = None, 
-                          status: str = 'agendado') -> Dict:
+                          status: str = 'agendado', data_criacao: str = None, data_atualizacao: str = None) -> Dict:
         """Cria um novo agendamento"""
         try:
-            data_criacao = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            if not data_criacao:
+                data_criacao = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            if not data_atualizacao:
+                data_atualizacao = data_criacao
             self.conn.execute("""
                 INSERT INTO agendamentos 
                 (id, paciente_id, data_consulta, hora_consulta, tipo_consulta, observacoes, status, data_criacao, data_atualizacao)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (agendamento_id, paciente_id, data_consulta, hora_consulta, tipo_consulta, observacoes, status, data_criacao, data_criacao))
+            """, (agendamento_id, paciente_id, data_consulta, hora_consulta, tipo_consulta, observacoes, status, data_criacao, data_atualizacao))
             self.conn.commit()
             return {'success': True, 'message': 'Agendamento criado com sucesso'}
         except Exception as e:
@@ -835,14 +868,19 @@ class Database:
         except Exception as e:
             return None
 
-    def atualizar_agendamento(self, agendamento_id: str, data_consulta: str = None,
+    def atualizar_agendamento(self, agendamento_id: str, paciente_id: str = None, data_consulta: str = None,
                               hora_consulta: str = None, tipo_consulta: str = None,
-                              observacoes: str = None, status: str = None) -> Dict:
+                              observacoes: str = None, status: str = None, data_atualizacao: str = None) -> Dict:
         """Atualiza um agendamento existente"""
         try:
-            data_atualizacao = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            if not data_atualizacao:
+                data_atualizacao = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             updates = []
             params = []
+            
+            if paciente_id is not None:
+                updates.append("paciente_id = ?")
+                params.append(paciente_id)
             
             if data_consulta is not None:
                 updates.append("data_consulta = ?")
@@ -887,6 +925,63 @@ class Database:
             return {'success': True, 'message': 'Agendamento excluído com sucesso'}
         except Exception as e:
             return {'success': False, 'message': f'Erro ao excluir agendamento: {str(e)}'}
+
+    def comparar_com_banco_remoto(self, pacientes_remotos: List[Dict]) -> Dict:
+        """
+        Compara o banco local com um banco remoto e detecta:
+        - Pacientes que existem localmente mas não no remoto (removidos no remoto)
+        - Pacientes que existem no remoto mas não localmente (novos no remoto)
+        - Pacientes que existem em ambos (para atualização)
+        """
+        pacientes_locais = self.obter_todos_pacientes()
+        pacientes_locais_ids = {p['id'] for p in pacientes_locais}
+        pacientes_remotos_ids = {p['id'] for p in pacientes_remotos}
+        
+        # Pacientes que existem localmente mas não no remoto (removidos no remoto)
+        pacientes_removidos_no_remoto = [
+            p for p in pacientes_locais 
+            if p['id'] not in pacientes_remotos_ids
+        ]
+        
+        # Pacientes que existem no remoto mas não localmente (novos)
+        pacientes_novos = [
+            p for p in pacientes_remotos 
+            if p['id'] not in pacientes_locais_ids
+        ]
+        
+        # Pacientes que existem em ambos (podem precisar atualização)
+        pacientes_em_ambos = [
+            p for p in pacientes_remotos 
+            if p['id'] in pacientes_locais_ids
+        ]
+        
+        return {
+            'pacientes_removidos_no_remoto': pacientes_removidos_no_remoto,
+            'pacientes_novos': pacientes_novos,
+            'pacientes_em_ambos': pacientes_em_ambos,
+            'total_local': len(pacientes_locais),
+            'total_remoto': len(pacientes_remotos)
+        }
+
+    def remover_pacientes(self, paciente_ids: List[str]) -> Dict:
+        """Remove múltiplos pacientes por seus IDs"""
+        try:
+            if not paciente_ids:
+                return {'success': False, 'message': 'Nenhum ID fornecido'}
+            
+            cursor = self.conn.cursor()
+            placeholders = ','.join(['?'] * len(paciente_ids))
+            cursor.execute(f"DELETE FROM pacientes WHERE id IN ({placeholders})", paciente_ids)
+            self.conn.commit()
+            
+            removidos = cursor.rowcount
+            return {
+                'success': True, 
+                'message': f'{removidos} paciente(s) removido(s) com sucesso',
+                'removidos': removidos
+            }
+        except Exception as e:
+            return {'success': False, 'message': f'Erro ao remover pacientes: {str(e)}'}
 
 
 # Instância global do banco de dados

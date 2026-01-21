@@ -129,6 +129,9 @@
                 <button id="clearDbBtn" class="btn btn-danger">
                     <span>🗑️</span> Excluir Dados BD
                 </button>
+                <button id="syncBtn" class="btn btn-primary">
+                    <span>🔄</span> Sincronizar BD
+                </button>
             </div>
         </div>
 
@@ -304,6 +307,62 @@
 
     <!-- Input oculto para carregar backup -->
     <input type="file" id="backupFileInput" accept=".json" style="display: none;">
+
+    <!-- Modal de Sincronização -->
+    <div id="syncModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2>🔄 Sincronizar Bancos de Dados</h2>
+                <button class="modal-close" id="closeSyncModal">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="syncContent">
+                    <div class="sync-section">
+                        <h3>Descobrir Servidores na Rede</h3>
+                        <p>Clique no botão abaixo para descobrir outros computadores na rede com o sistema rodando.</p>
+                        <button id="discoverBtn" class="btn btn-info" style="width: 100%;">
+                            <span>🔍</span> Descobrir Servidores
+                        </button>
+                    </div>
+
+                    <div id="serversList" style="display: none; margin-top: 20px;">
+                        <h3>Servidores Encontrados:</h3>
+                        <div id="serversContainer"></div>
+                    </div>
+
+                    <div id="syncProgress" style="display: none; margin-top: 20px;">
+                        <h3>Sincronizando...</h3>
+                        <div class="loading-progress">
+                            <div class="loading-progress-bar">
+                                <div id="syncProgressFill" class="loading-progress-fill"></div>
+                            </div>
+                            <div class="loading-progress-text">
+                                <span id="syncProgressPercent">0%</span>
+                            </div>
+                        </div>
+                        <p id="syncStatusMessage">Preparando sincronização...</p>
+                    </div>
+
+                    <div id="syncResults" style="display: none; margin-top: 20px;">
+                        <h3>Resultado da Sincronização:</h3>
+                        <div id="syncStats"></div>
+                        <div id="removedPatientsSection" style="display: none; margin-top: 20px;">
+                            <h4>⚠️ Pacientes Removidos em Outro Servidor:</h4>
+                            <p>Os seguintes pacientes foram removidos em outro servidor. Deseja removê-los também aqui?</p>
+                            <div id="removedPatientsList"></div>
+                            <div style="margin-top: 15px;">
+                                <button id="removeSelectedBtn" class="btn btn-danger">Remover Selecionados</button>
+                                <button id="keepAllBtn" class="btn btn-secondary">Manter Todos</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="closeSyncModalBtn">Fechar</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Overlay de Loading -->
     <div id="loadingOverlay" class="loading-overlay" style="display: none;">

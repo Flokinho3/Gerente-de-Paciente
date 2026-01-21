@@ -164,6 +164,8 @@ class TrayIconManager:
     
     def reiniciar_aplicacao(self, icon=None, item=None):
         """Reinicia a aplicação Flask"""
+        print("Reiniciando servidor Flask...")
+        
         # Parar Flask atual
         self.parar_flask()
         
@@ -178,6 +180,7 @@ class TrayIconManager:
         
         if result == 0:
             # Porta ainda em uso, tentar liberar
+            print("Aguardando porta ser liberada...")
             threading.Event().wait(1)
         
         # Iniciar Flask novamente
@@ -194,6 +197,10 @@ class TrayIconManager:
     
     def parar_flask(self):
         """Para o servidor Flask"""
+        # Se já estiver parado, não fazer nada
+        if not self.is_running:
+            return
+        
         self.is_running = False
         
         # Usar shutdown do Werkzeug se disponível
@@ -220,6 +227,11 @@ class TrayIconManager:
     
     def iniciar_flask(self):
         """Inicia o servidor Flask em thread separada"""
+        # Se já estiver rodando, não iniciar novamente
+        if self.is_running and self.flask_thread and self.flask_thread.is_alive():
+            print("Servidor Flask já está rodando")
+            return
+        
         def run():
             try:
                 import logging
@@ -235,14 +247,21 @@ class TrayIconManager:
                 else:
                     log.setLevel(logging.ERROR)
                 
+                # IMPORTANTE: Desabilitar reloader mesmo em modo debug
+                # pois o reloader causa problemas com threads e tray icon
+                if hasattr(self.flask_app, 'config'):
+                    self.flask_app.config['DEBUG'] = debug_mode
+                
                 self.is_running = True
                 from werkzeug.serving import make_server
                 host = os.getenv('FLASK_HOST', '127.0.0.1')
-                self._server = make_server(host, self.port, self.flask_app)
+                self._server = make_server(host, self.port, self.flask_app, threaded=True)
                 print(f"Servidor Flask iniciado em http://{host}:{self.port} (Debug: {debug_mode})")
                 self._server.serve_forever()
             except Exception as e:
                 print(f"Erro ao iniciar Flask: {e}")
+                import traceback
+                traceback.print_exc()
                 self.is_running = False
         
         self.flask_thread = threading.Thread(target=run, daemon=True)

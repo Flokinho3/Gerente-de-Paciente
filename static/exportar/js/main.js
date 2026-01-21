@@ -16,16 +16,16 @@ const COLUNAS_DISPONIVEIS = [
 let formatoSelecionado = null;
 let totalPacientes = 0;
 let colunasPersonalizadas = [];
+let unidadesDisponiveis = [];
+let pacientesFiltrados = [];
 
 // Elementos DOM
 const formatCards = document.querySelectorAll('.format-card');
 const exportBtn = document.getElementById('exportBtn');
 const totalPacientesSpan = document.getElementById('totalPacientes');
 const statusMessage = document.getElementById('statusMessage');
-const filtroInicio = document.getElementById('filterInicio');
-const filtroPlano = document.getElementById('filterPlano');
-const filtroGrupos = document.getElementById('filterGrupos');
-const filtroVacinas = document.getElementById('filterVacinas');
+const filtroUpas = document.getElementById('filterUpas');
+const filtroKitis = document.getElementById('filterKitis');
 const filtrosResumo = document.getElementById('filtrosResumo');
 const togglePersonalizar = document.getElementById('togglePersonalizar');
 const customPanel = document.getElementById('customPanel');
@@ -36,6 +36,7 @@ const customList = document.getElementById('customList');
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
     carregarTotalPacientes();
+    carregarUnidades();
     configurarEventos();
     popularOpcoesPersonalizadas();
     atualizarResumoFiltros();
@@ -59,11 +60,21 @@ function configurarEventos() {
         }
     });
 
-    [filtroInicio, filtroPlano, filtroGrupos].forEach(filtro => {
-        filtro?.addEventListener('change', atualizarResumoFiltros);
+    filtroUpas?.addEventListener('change', () => {
+        if (filtroUpas.value) {
+            filtroKitis.value = '';
+        }
+        aplicarFiltroUnidade();
+        atualizarResumoFiltros();
     });
 
-    filtroVacinas?.addEventListener('change', atualizarResumoFiltros);
+    filtroKitis?.addEventListener('change', () => {
+        if (filtroKitis.value) {
+            filtroUpas.value = '';
+        }
+        aplicarFiltroUnidade();
+        atualizarResumoFiltros();
+    });
 
     togglePersonalizar?.addEventListener('change', () => {
         customPanel?.classList.toggle('active', togglePersonalizar.checked);
@@ -91,6 +102,85 @@ async function carregarTotalPacientes() {
         console.error('Erro ao carregar total de pacientes:', error);
         totalPacientesSpan.textContent = 'Erro';
     }
+}
+
+// Carregar unidades de saúde disponíveis
+async function carregarUnidades() {
+    try {
+        const response = await fetch('/api/unidades_saude');
+        const data = await response.json();
+
+        if (data.success && data.unidades) {
+            unidadesDisponiveis = data.unidades;
+            separarUnidadesPorTipo();
+        }
+    } catch (error) {
+        console.error('Erro ao carregar unidades:', error);
+    }
+}
+
+// Separar unidades por tipo (UPAs e Kitis)
+function separarUnidadesPorTipo() {
+    if (!filtroUpas || !filtroKitis) return;
+
+    const upas = [];
+    const kitis = [];
+
+    unidadesDisponiveis.forEach(unidade => {
+        const unidadeUpper = unidade.toUpperCase();
+        if (unidadeUpper.includes('UPA')) {
+            upas.push(unidade);
+        } else if (unidadeUpper.includes('KITIS') || unidadeUpper.includes('KITI')) {
+            kitis.push(unidade);
+        }
+    });
+
+    // Popular select de UPAs
+    upas.forEach(upa => {
+        const option = document.createElement('option');
+        option.value = upa;
+        option.textContent = upa;
+        filtroUpas.appendChild(option);
+    });
+
+    // Popular select de Kitis
+    kitis.forEach(kitis => {
+        const option = document.createElement('option');
+        option.value = kitis;
+        option.textContent = kitis;
+        filtroKitis.appendChild(option);
+    });
+}
+
+// Aplicar filtro por unidade
+async function aplicarFiltroUnidade() {
+    const unidadeSelecionada = filtroUpas?.value || filtroKitis?.value;
+    
+    if (!unidadeSelecionada) {
+        pacientesFiltrados = [];
+        atualizarTotalFiltrado();
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/pacientes?unidade_saude=${encodeURIComponent(unidadeSelecionada)}`);
+        const data = await response.json();
+
+        if (data.success && data.pacientes) {
+            pacientesFiltrados = data.pacientes;
+            atualizarTotalFiltrado();
+        }
+    } catch (error) {
+        console.error('Erro ao filtrar pacientes:', error);
+        pacientesFiltrados = [];
+        atualizarTotalFiltrado();
+    }
+}
+
+// Atualizar contador de pacientes filtrados
+function atualizarTotalFiltrado() {
+    const total = pacientesFiltrados.length;
+    totalPacientesSpan.textContent = `${total} ${total === 1 ? 'paciente encontrado' : 'pacientes encontrados'}`;
 }
 
 // Exportar dados
@@ -219,10 +309,14 @@ function obterLabelColuna(valor) {
 // Atualiza resumo dos filtros ativos
 function atualizarResumoFiltros() {
     const partes = [];
-    if (filtroInicio?.checked) partes.push('Pré-natal antes de 12 semanas');
-    if (filtroPlano?.checked) partes.push('Plano de parto');
-    if (filtroGrupos?.checked) partes.push('Participou de grupos');
-    if (filtroVacinas?.value) partes.push(`Vacinas: ${filtroVacinas.options[filtroVacinas.selectedIndex].text}`);
+    
+    if (filtroUpas?.value) {
+        partes.push(`UPA: ${filtroUpas.options[filtroUpas.selectedIndex].text}`);
+    }
+    
+    if (filtroKitis?.value) {
+        partes.push(`Kitis: ${filtroKitis.options[filtroKitis.selectedIndex].text}`);
+    }
 
     let texto = partes.length ? `Filtros ativos: ${partes.join(' · ')}` : 'Nenhum filtro ativo.';
 
@@ -243,10 +337,10 @@ function atualizarResumoFiltros() {
 function construirFiltrosParams() {
     const params = new URLSearchParams();
 
-    if (filtroInicio?.checked) params.append('inicio_pre_natal', 'true');
-    if (filtroPlano?.checked) params.append('plano_parto', 'true');
-    if (filtroGrupos?.checked) params.append('participou_grupos', 'true');
-    if (filtroVacinas?.value) params.append('vacinas', filtroVacinas.value);
+    const unidadeSelecionada = filtroUpas?.value || filtroKitis?.value;
+    if (unidadeSelecionada) {
+        params.append('unidade_saude', unidadeSelecionada);
+    }
 
     if (togglePersonalizar?.checked && colunasPersonalizadas.length > 0) {
         params.append('personalizado', 'true');
