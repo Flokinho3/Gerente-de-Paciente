@@ -6,6 +6,8 @@
     <title>Gestão de Pacientes - Gerenciar Banco de Dados</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='home/css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='bd/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='alerts/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='alerts_agendamentos/css/style.css') }}">
     <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
 </head>
 <body>
@@ -17,16 +19,81 @@
                 <h3>Gestão de Pacientes</h3>
             </div>
             <div class="topbar-links">
-                <a href="/" class="topbar-link">Indicadores</a>
-                <a href="/novo_paciente" class="topbar-link">Novo Paciente</a>
-                <a href="/pacientes" class="topbar-link">Pacientes</a>
-                <a href="/exportar" class="topbar-link">Exportar</a>
-                <a href="/bd" class="topbar-link active">Banco de Dados</a>
-                <button onclick="abrirAjuda()" class="topbar-link" style="background: none; border: none; cursor: pointer; font-family: inherit;">❓ Ajuda</button>
-                <span id="version-info" class="topbar-version" style="margin-left: 15px; font-size: 0.85rem; color: var(--text-muted); opacity: 0.7;">v{{ version }}</span>
+                <!-- Gaveta: Pacientes -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👥 Pacientes
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/" class="topbar-dropdown-item">📊 Indicadores</a>
+                        <a href="/novo_paciente" class="topbar-dropdown-item">➕ Novo Paciente</a>
+                        <a href="/pacientes" class="topbar-dropdown-item">📋 Lista de Pacientes</a>
+                        <a href="/exportar" class="topbar-dropdown-item">💾 Exportar</a>
+                    </div>
+                </div>
+
+                <!-- Gaveta: Profissionais -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👨‍⚕️ Profissionais
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/agendamentos" class="topbar-dropdown-item">📅 Agendamentos</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">👨‍⚕️ Lista de Profissionais</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">📊 Relatórios</a>
+                    </div>
+                </div>
+
+                <!-- Gaveta: Configurações -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        ⚙️ Configurações
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/bd" class="topbar-dropdown-item active">🗄️ Banco de Dados</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">🔔 Notificações</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">🎨 Aparência</a>
+                    </div>
+                </div>
+
+                <!-- Ajuda (não é gaveta) -->
+                <button onclick="abrirAjuda()" class="topbar-link btn-ajuda">
+                    ❓ Ajuda
+                </button>
+
+                <span id="version-info" class="topbar-version">v{{ version }}</span>
             </div>
         </div>
     </nav>
+
+    <!-- Sistema de Alertas de Parto Próximo -->
+    <div id="alertas-parto-container" style="display: none;">
+        <div class="alertas-header">
+            <h3>
+                🚨 Alertas de Parto
+                <span class="badge-contador" id="alertas-contador">0</span>
+            </h3>
+        </div>
+        <div id="alertas-parto-list">
+            <!-- Alertas serão inseridos aqui via JavaScript -->
+        </div>
+    </div>
+
+    <!-- Sistema de Alertas de Agendamentos Próximos -->
+    <div id="alertas-agendamentos-container" style="display: none;">
+        <div class="alertas-header-agendamentos">
+            <h3>
+                📅 Agendamentos Próximos
+                <span class="badge-contador" id="alertas-agendamentos-contador">0</span>
+            </h3>
+        </div>
+        <div id="alertas-agendamentos-list">
+            <!-- Alertas serão inseridos aqui via JavaScript -->
+        </div>
+    </div>
 
     <div class="container">
         <div class="header">
@@ -317,8 +384,76 @@
             }
         }
         
+        // Função para configurar os dropdowns do topbar
+        function configurarDropdownsTopbar() {
+            const dropdowns = document.querySelectorAll('.topbar-dropdown');
+            
+            dropdowns.forEach(dropdown => {
+                const btn = dropdown.querySelector('.topbar-dropdown-btn');
+                const content = dropdown.querySelector('.topbar-dropdown-content');
+                
+                if (!btn || !content) return;
+                
+                // Toggle ao clicar no botão
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    
+                    // Fechar todos os outros dropdowns
+                    dropdowns.forEach(otherDropdown => {
+                        if (otherDropdown !== dropdown) {
+                            otherDropdown.classList.remove('active');
+                        }
+                    });
+                    
+                    // Toggle o dropdown atual
+                    dropdown.classList.toggle('active');
+                });
+            });
+            
+            // Fechar dropdowns ao clicar fora
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.topbar-dropdown')) {
+                    dropdowns.forEach(dropdown => {
+                        dropdown.classList.remove('active');
+                    });
+                }
+            });
+            
+            // Fechar dropdowns ao clicar em um item
+            document.querySelectorAll('.topbar-dropdown-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    dropdowns.forEach(dropdown => {
+                        dropdown.classList.remove('active');
+                    });
+                });
+            });
+            
+            // Marcar item ativo baseado na URL atual
+            marcarItemAtivoTopbar();
+        }
+        
+        // Função para marcar o item ativo no topbar baseado na URL
+        function marcarItemAtivoTopbar() {
+            const currentPath = window.location.pathname;
+            const items = document.querySelectorAll('.topbar-dropdown-item');
+            
+            items.forEach(item => {
+                item.classList.remove('active');
+                const href = item.getAttribute('href');
+                
+                if (href === currentPath || (currentPath === '/' && href === '/')) {
+                    item.classList.add('active');
+                }
+            });
+        }
+        
         // Carregar versão ao carregar a página
-        document.addEventListener('DOMContentLoaded', carregarVersao);
+        document.addEventListener('DOMContentLoaded', function() {
+            carregarVersao();
+            configurarDropdownsTopbar();
+        });
     </script>
+    <script src="{{ url_for('static', filename='alerts/js/alerts.js') }}"></script>
+    <script src="{{ url_for('static', filename='alerts_agendamentos/js/alerts.js') }}"></script>
 </body>
 </html>

@@ -1,0 +1,82 @@
+═══════════════════════════════════════════════════════════
+  DISTRIBUIÇÃO: SOMENTE O .EXE É NECESSÁRIO
+═══════════════════════════════════════════════════════════
+
+█ RESPOSTA RÁPIDA:
+
+   ✅ SIM! Apenas o arquivo .exe é suficiente!
+
+   📦 Envie apenas:
+      dist\Gerente_de_Pacientes.exe
+
+
+█ O QUE ACONTECE AO EXECUTAR:
+
+   Quando alguém executa o .exe pela primeira vez:
+
+   1. Sistema inicia normalmente
+   2. Pasta 'data' é criada automaticamente
+   3. Banco de dados 'pacientes.db' é criado automaticamente
+   4. Tudo funciona perfeitamente!
+
+
+█ EXEMPLO DE DISTRIBUIÇÃO:
+
+   Opção 1 - Arquivo único (Recomendado):
+   ────────────────────────────────────────
+   📧 Email: Gerente_de_Pacientes.exe
+   💾 Pendrive: Gerente_de_Pacientes.exe
+   ☁️  Cloud: Gerente_de_Pacientes.exe
+   
+   Resultado após execução:
+   ├── Gerente_de_Pacientes.exe
+   └── data/                    ← Criado automaticamente
+       └── pacientes.db         ← Criado automaticamente
+
+
+█ O QUE ESTÁ INCLUÍDO NO .EXE:
+
+   ✅ Todo o código Python
+   ✅ Todas as bibliotecas (Flask, OpenPyXL, etc.)
+   ✅ Templates HTML
+   ✅ CSS e JavaScript
+   ✅ Arquivos estáticos
+   ✅ TUDO em um único arquivo!
+
+
+█ NÃO PRECISA ENVIAR:
+
+   ❌ Pasta 'data' (criada automaticamente)
+   ❌ Banco de dados (criado automaticamente)
+   ❌ Templates (já estão no .exe)
+   ❌ Static (já está no .exe)
+   ❌ Nada mais!
+
+
+█ TAMANHO DO ARQUIVO:
+
+   📦 Gerente_de_Pacientes.exe
+   Tamanho: ~16-20 MB
+   Tipo: Executável autocontido
+   Plataforma: Windows 64-bit
+
+
+█ COMO COMPARTILHAR:
+
+   1. Vá para: dist\Gerente_de_Pacientes.exe
+   2. Copie o arquivo
+   3. Envie para onde quiser!
+   4. Pronto! 🎉
+
+
+█ IMPORTANTE:
+
+   • O .exe cria a pasta 'data' automaticamente
+   • O banco de dados é criado automaticamente
+   • Não precisa instalar nada
+   • Funciona em qualquer Windows 10/11
+
+
+═══════════════════════════════════════════════════════════
+  RESUMO: ENVIE APENAS O .EXE!
+═══════════════════════════════════════════════════════════

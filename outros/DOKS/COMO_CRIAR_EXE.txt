@@ -1,0 +1,60 @@
+═══════════════════════════════════════════════════════════
+  GUIA RÁPIDO: TRANSFORMAR EM .EXE
+═══════════════════════════════════════════════════════════
+
+█ OPÇÃO 1 - SUPER FÁCIL (1 clique):
+   
+   1. Clique duas vezes em: build_exe.bat
+   2. Aguarde o processo terminar
+   3. Pronto! O .exe estará em: dist\Gerente_de_Pacientes.exe
+
+
+█ OPÇÃO 2 - LINHA DE COMANDO:
+
+   Abra o PowerShell ou CMD e digite:
+
+   pyinstaller gerente_pacientes.spec --clean --noconfirm
+
+   O executável ficará em: dist\Gerente_de_Pacientes.exe
+
+
+█ COMO USAR O .EXE CRIADO:
+
+   1. Vá para a pasta 'dist'
+   2. Execute: Gerente_de_Pacientes.exe
+   3. Uma janela aparecerá
+   4. Clique OK
+   5. O navegador abrirá automaticamente
+   
+
+█ PARA DISTRIBUIR:
+
+   Você pode:
+   - Copiar apenas o .exe (ele tem tudo dentro)
+   - Ou copiar toda a pasta 'dist'
+   
+   Tamanho: ~25-30 MB
+
+
+█ REQUISITOS:
+
+   ✓ Windows 10/11
+   ✓ Nenhuma instalação necessária
+   ✓ Funciona sem Python instalado
+
+
+█ PROBLEMAS COMUNS:
+
+   • Antivírus bloqueia?
+     → Adicione exceção ou execute como Administrador
+   
+   • Não abre navegador?
+     → Abra manualmente: http://localhost:5000
+   
+   • Porta 5000 em uso?
+     → Feche outros programas que usam essa porta
+
+
+═══════════════════════════════════════════════════════════
+  DÚVIDAS? Consulte: README_WINDOWS_EXE.md
+═══════════════════════════════════════════════════════════

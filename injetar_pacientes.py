@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-Script para injetar 400 pacientes de teste no banco de dados.
+Script para injetar 500 pacientes de teste no banco de dados.
 """
 import random
+import uuid
 from datetime import datetime, timedelta
 from database import db
 
@@ -61,10 +62,42 @@ VACINAS_STATUS = [
     "Completa", "Incompleta", "Não avaliado", ""
 ]
 
-def gerar_paciente_aleatorio():
+# Tipos de kit
+TIPOS_KIT = [
+    "Kit Básico", "Kit Completo", "Kit Premium", ""
+]
+
+# Tipos de consulta
+TIPOS_CONSULTA = [
+    "consulta_pre_natal", "avaliacao_odontologica", "consulta_retorno", "consulta_emergencia"
+]
+
+def calcular_dum_dpp(dpp_dias_futuro=None):
+    """
+    Calcula DUM (Data da Última Menstruação) e DPP (Data Provável do Parto).
+    Se dpp_dias_futuro for fornecido, calcula DPP para essa quantidade de dias no futuro.
+    Caso contrário, gera uma gestação aleatória entre 20 e 40 semanas.
+    """
+    if dpp_dias_futuro is not None:
+        # DPP específico: X dias no futuro
+        dpp = datetime.now() + timedelta(days=dpp_dias_futuro)
+        # DUM é aproximadamente 280 dias (40 semanas) antes do DPP
+        dum = dpp - timedelta(days=280)
+    else:
+        # Gestação aleatória entre 20 e 40 semanas
+        semanas_gestacao = random.randint(20, 40)
+        dpp = datetime.now() + timedelta(weeks=(40 - semanas_gestacao))
+        dum = dpp - timedelta(days=280)
+    
+    return dum.strftime('%Y-%m-%d'), dpp.strftime('%Y-%m-%d')
+
+def gerar_paciente_aleatorio(dpp_dias_futuro=None):
     """Gera dados aleatórios para um paciente."""
     nome = random.choice(NOMES_GESTANTES)
     unidade = random.choice(UNIDADES_SAUDE)
+
+    # Calcula DUM e DPP
+    dum, dpp = calcular_dum_dpp(dpp_dias_futuro)
 
     # Dados de identificação
     identificacao = {
@@ -73,15 +106,36 @@ def gerar_paciente_aleatorio():
     }
 
     # Dados de avaliação com distribuições realistas
+    ganhou_kit = random.choices([True, False], weights=[0.4, 0.6])[0]
+    kit_tipo = random.choice(TIPOS_KIT) if ganhou_kit else None
+
+    # Gera próxima avaliação aleatória (30% dos pacientes têm próxima avaliação)
+    tem_proxima_avaliacao = random.choices([True, False], weights=[0.3, 0.7])[0]
+    proxima_avaliacao = None
+    proxima_avaliacao_hora = None
+    if tem_proxima_avaliacao:
+        dias_futuro = random.randint(7, 60)
+        proxima_avaliacao = (datetime.now() + timedelta(days=dias_futuro)).strftime('%Y-%m-%d')
+        proxima_avaliacao_hora = f"{random.randint(8, 17):02d}:{random.choice(['00', '30'])}"
+
     avaliacao = {
         'inicio_pre_natal_antes_12s': random.choices([True, False], weights=[0.75, 0.25])[0],  # 75% iniciou antes de 12 semanas
+        'inicio_pre_natal_semanas': random.randint(8, 16) if random.random() < 0.8 else None,
+        'inicio_pre_natal_observacao': random.choice(['', 'Iniciado na UBS', 'Encaminhado', '']) if random.random() < 0.3 else '',
         'consultas_pre_natal': random.choices([4, 5, 6, 7, 8, 9], weights=[0.1, 0.15, 0.25, 0.25, 0.15, 0.1])[0],
         'vacinas_completas': random.choice(VACINAS_STATUS),
         'plano_parto': random.choices([True, False], weights=[0.6, 0.4])[0],  # 60% têm plano de parto
         'participou_grupos': random.choices([True, False], weights=[0.45, 0.55])[0],  # 45% participaram de grupos
         'avaliacao_odontologica': random.choices([True, False], weights=[0.7, 0.3])[0],  # 70% fizeram avaliação odontológica
         'estratificacao': random.choices([True, False], weights=[0.8, 0.2])[0],  # 80% foram estratificadas
-        'cartao_pre_natal_completo': random.choices([True, False], weights=[0.85, 0.15])[0]  # 85% têm cartão completo
+        'estratificacao_problema': random.choice(['', 'Risco alto', 'Risco médio', '']) if random.random() < 0.2 else '',
+        'cartao_pre_natal_completo': random.choices([True, False], weights=[0.85, 0.15])[0],  # 85% têm cartão completo
+        'dum': dum,
+        'dpp': dpp,
+        'ganhou_kit': ganhou_kit,
+        'kit_tipo': kit_tipo,
+        'proxima_avaliacao': proxima_avaliacao,
+        'proxima_avaliacao_hora': proxima_avaliacao_hora
     }
 
     return {
@@ -95,17 +149,28 @@ def gerar_data_salvamento_aleatoria():
     data = datetime.now() - timedelta(days=dias_atras)
     return data.strftime('%Y-%m-%d %H:%M:%S')
 
-def injetar_pacientes(num_pacientes=400):
+def injetar_pacientes(num_pacientes=500):
     """Injeta o número especificado de pacientes no banco de dados."""
     print(f"Iniciando injeção de {num_pacientes} pacientes no banco de dados...")
 
     pacientes_inseridos = 0
     pacientes_com_erro = 0
+    pacientes_ids_inseridos = []  # Armazena IDs dos pacientes inseridos para criar agendamentos
+
+    # Lista para controlar quais pacientes terão DPP em menos de 20 dias
+    pacientes_dpp_proximo = []
 
     for i in range(num_pacientes):
         try:
-            # Gera dados do paciente
-            paciente_data = gerar_paciente_aleatorio()
+            # Primeiros 5 pacientes terão DPP em menos de 20 dias
+            if i < 5:
+                # DPP entre 1 e 20 dias no futuro
+                dias_futuro = random.randint(1, 20)
+                paciente_data = gerar_paciente_aleatorio(dpp_dias_futuro=dias_futuro)
+                pacientes_dpp_proximo.append(dias_futuro)
+            else:
+                # Demais pacientes terão DPP normal (mais de 20 dias)
+                paciente_data = gerar_paciente_aleatorio()
 
             # Adiciona data de salvamento aleatória
             paciente_data['data_salvamento'] = gerar_data_salvamento_aleatoria()
@@ -115,6 +180,7 @@ def injetar_pacientes(num_pacientes=400):
 
             if resultado['success']:
                 pacientes_inseridos += 1
+                pacientes_ids_inseridos.append(resultado['id'])
                 if (i + 1) % 50 == 0:  # Mostra progresso a cada 50 pacientes
                     print(f"Progresso: {i + 1}/{num_pacientes} pacientes inseridos")
             else:
@@ -130,7 +196,59 @@ def injetar_pacientes(num_pacientes=400):
     print(f"Total de pacientes a inserir: {num_pacientes}")
     print(f"Pacientes inseridos com sucesso: {pacientes_inseridos}")
     print(f"Pacientes com erro: {pacientes_com_erro}")
+    print(f"Pacientes com DPP em menos de 20 dias: {len(pacientes_dpp_proximo)}")
     print("="*50)
+
+    # Criar 3 agendamentos para janeiro
+    print("\nCriando agendamentos para janeiro...")
+    agendamentos_criados = 0
+    agendamentos_erro = 0
+    
+    # Determina o ano de janeiro (próximo ano se já passou janeiro, senão ano atual)
+    agora = datetime.now()
+    # Se já passou janeiro do ano atual, usa próximo ano para garantir que seja no futuro
+    ano_janeiro = agora.year + 1 if agora.month > 1 else agora.year
+    mes_janeiro = 1
+    
+    # Seleciona 3 pacientes aleatórios para agendar em janeiro
+    if len(pacientes_ids_inseridos) >= 3:
+        pacientes_para_agendar = random.sample(pacientes_ids_inseridos, 3)
+        
+        for paciente_id in pacientes_para_agendar:
+            try:
+                # Gera data aleatória em janeiro
+                dia_janeiro = random.randint(1, 31)
+                data_consulta = f"{ano_janeiro}-{mes_janeiro:02d}-{dia_janeiro:02d}"
+                
+                # Gera hora aleatória entre 8h e 17h
+                hora_consulta = f"{random.randint(8, 17):02d}:{random.choice(['00', '30'])}"
+                
+                # Cria agendamento
+                agendamento_id = str(uuid.uuid4())
+                resultado_agendamento = db.criar_agendamento(
+                    agendamento_id=agendamento_id,
+                    paciente_id=paciente_id,
+                    data_consulta=data_consulta,
+                    hora_consulta=hora_consulta,
+                    tipo_consulta=random.choice(TIPOS_CONSULTA),
+                    observacoes='Agendamento de teste para janeiro',
+                    status='agendado'
+                )
+                
+                if resultado_agendamento['success']:
+                    agendamentos_criados += 1
+                    print(f"  ✓ Agendamento criado para {data_consulta} às {hora_consulta}")
+                else:
+                    agendamentos_erro += 1
+                    print(f"  ✗ Erro ao criar agendamento: {resultado_agendamento.get('message', 'Erro desconhecido')}")
+            except Exception as e:
+                agendamentos_erro += 1
+                print(f"  ✗ Erro inesperado ao criar agendamento: {str(e)}")
+    else:
+        print("  ⚠ Não há pacientes suficientes para criar agendamentos")
+    
+    print(f"\nAgendamentos criados: {agendamentos_criados}")
+    print(f"Agendamentos com erro: {agendamentos_erro}")
 
     # Mostra estatísticas finais
     try:
@@ -166,7 +284,7 @@ if __name__ == "__main__":
                     exit(0)
 
         # Injeta os pacientes
-        inseridos, erros = injetar_pacientes(400)
+        inseridos, erros = injetar_pacientes(500)
 
         if erros == 0:
             print("\n✅ Injeção concluída com sucesso!")

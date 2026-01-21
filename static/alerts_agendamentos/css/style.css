@@ -1,0 +1,354 @@
+/* Sistema de Alertas de Agendamentos Próximos - Cores Azuis */
+
+#alertas-agendamentos-container {
+    position: fixed;
+    top: 70px; /* Abaixo da topbar */
+    right: 20px;
+    width: 380px;
+    max-height: calc(100vh - 100px);
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    border: 2px solid #4a90a4;
+    z-index: 1000;
+    overflow: hidden;
+    display: none;
+    flex-direction: column;
+    animation: slideInRightAgendamentos 0.3s ease;
+}
+
+@keyframes slideInRightAgendamentos {
+    from {
+        opacity: 0;
+        transform: translateX(400px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideOutAgendamentos {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(400px);
+    }
+}
+
+.alertas-header-agendamentos {
+    background: linear-gradient(135deg, #4a90a4 0%, #3d7a8a 100%);
+    color: white;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.alertas-header-agendamentos h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.alertas-header-agendamentos .badge-contador {
+    background: rgba(255, 255, 255, 0.3);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.btn-minimizar-alerta {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: all 0.2s ease;
+    line-height: 1;
+}
+
+.btn-minimizar-alerta:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: scale(1.1);
+}
+
+.btn-minimizar-alerta:active {
+    transform: scale(0.95);
+}
+
+#alertas-agendamentos-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    position: relative;
+    min-height: 200px;
+    max-height: calc(100vh - 250px);
+}
+
+#alertas-agendamentos-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+#alertas-agendamentos-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+#alertas-agendamentos-list::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+
+#alertas-agendamentos-list::-webkit-scrollbar-thumb:hover {
+    background: #999;
+}
+
+.alerta-item-agendamentos {
+    background: #f0f9ff;
+    border: 2px solid #b3e5fc;
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 10px;
+    transition: all 0.3s ease;
+    animation: fadeInAgendamentos 0.3s ease;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.alerta-item-agendamentos:last-child {
+    margin-bottom: 0;
+}
+
+.alerta-item-agendamentos:hover {
+    box-shadow: 0 4px 12px rgba(74, 144, 164, 0.2);
+    transform: translateY(-2px);
+}
+
+.alerta-item-agendamentos.alerta-urgente-agendamentos {
+    background: #e3f2fd;
+    border-color: #2196f3;
+    border-width: 3px;
+}
+
+.alerta-item-agendamentos.alerta-ativo-agendamentos {
+    display: block !important;
+    animation: fadeInAgendamentos 0.3s ease;
+}
+
+.alerta-info-agendamentos {
+    margin-bottom: 12px;
+}
+
+.alerta-nome-agendamentos {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #263238;
+    margin-bottom: 6px;
+}
+
+.alerta-detalhes-agendamentos {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.9rem;
+}
+
+.alerta-horas {
+    color: #4a90a4;
+    font-weight: 600;
+}
+
+.alerta-horas.horas-urgente-agendamentos {
+    color: #2196f3;
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+.alerta-data-agendamentos {
+    color: #666;
+    font-size: 0.85rem;
+}
+
+.alerta-tipo-agendamentos {
+    color: #607d8b;
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+.alerta-actions-agendamentos {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 10px;
+    border-top: 1px solid #b3e5fc;
+}
+
+.btn-alerta-ver-agendamentos {
+    background: #4a90a4;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.btn-alerta-ver-agendamentos:hover {
+    background: #3d7a8a;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(74, 144, 164, 0.3);
+}
+
+.btn-alerta-ver-agendamentos:active {
+    transform: translateY(0);
+}
+
+/* Navegação entre alertas */
+.alerta-navegacao-agendamentos {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    margin-top: 12px;
+    border-top: 2px solid #b3e5fc;
+    gap: 12px;
+}
+
+.btn-nav-alerta-agendamentos {
+    background: #4a90a4;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex: 1;
+}
+
+.btn-nav-alerta-agendamentos:hover:not(:disabled) {
+    background: #3d7a8a;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(74, 144, 164, 0.3);
+}
+
+.btn-nav-alerta-agendamentos:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.btn-nav-alerta-agendamentos:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: #ccc;
+}
+
+.alerta-indicador-agendamentos {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #666;
+    padding: 0 8px;
+    white-space: nowrap;
+}
+
+/* Botão minimizado no canto inferior */
+.alerta-minimizado-btn-agendamentos {
+    position: fixed;
+    bottom: 90px; /* Acima do botão de parto */
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #4a90a4 0%, #3d7a8a 100%);
+    border-radius: 50%;
+    box-shadow: 0 4px 16px rgba(74, 144, 164, 0.4);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1001;
+    transition: all 0.3s ease;
+    border: 3px solid white;
+    flex-direction: column;
+    gap: 2px;
+    animation: pulseAgendamentos 2s infinite;
+}
+
+.alerta-minimizado-btn-agendamentos:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(74, 144, 164, 0.6);
+}
+
+.alerta-minimizado-btn-agendamentos:active {
+    transform: scale(0.95);
+}
+
+.alerta-minimizado-btn-agendamentos .alerta-minimizado-contador-agendamentos {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: white;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    padding: 2px 6px;
+    min-width: 20px;
+    text-align: center;
+    line-height: 1.2;
+}
+
+@keyframes pulseAgendamentos {
+    0%, 100% {
+        box-shadow: 0 4px 16px rgba(74, 144, 164, 0.4);
+    }
+    50% {
+        box-shadow: 0 4px 20px rgba(74, 144, 164, 0.6);
+    }
+}
+
+@keyframes fadeInAgendamentos {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    #alertas-agendamentos-container {
+        width: calc(100% - 40px);
+        right: 20px;
+        left: 20px;
+        max-width: 380px;
+        margin: 0 auto;
+    }
+    
+    .alerta-minimizado-btn-agendamentos {
+        bottom: 85px; /* Acima do botão de parto em mobile */
+        right: 15px;
+        width: 55px;
+        height: 55px;
+    }
+}

@@ -248,20 +248,16 @@ Desktop.ini
 Thumbs.db
 
 # PyInstaller build files
-build/
-dist/
-*.spec
+outros/build/
+outros/dist/
 
 # Executáveis gerados (ignora builds, mas pode versionar releases)
-dist/*.exe
-build/*.exe
+outros/dist/*.exe
+outros/build/*.exe
 *.app
 *.dmg
 
-# Arquivos de documentação temporários (ignora alguns, mantém importantes)
-COMO_CRIAR_EXE.txt
-DISTRIBUIR_SOMENTE_EXE.txt
-SUCESSO_BUILD.txt
+# Arquivos de documentação temporários já estão em outros/DOKS/
 # Mantém requirements.txt e outros importantes
 
 # Manter a pasta data mas ignorar o conteúdo do banco
@@ -277,17 +273,17 @@ config.local.py
 settings.local.py
 .env.local
 
-# Arquivos de build do PyInstaller (dentro de build/)
-build/**/*.pkg
-build/**/*.toc
-build/**/*.pyz
-build/**/xref-*.html
-build/**/warn-*.txt
-build/**/Analysis-*.toc
-build/**/EXE-*.toc
-build/**/PKG-*.toc
-build/**/PYZ-*.toc
-build/**/PYZ-*.pyz
-build/**/Tree-*.toc
-build/**/localpycs/
-build/**/base_library.zip
+# Arquivos de build do PyInstaller (dentro de outros/build/)
+outros/build/**/*.pkg
+outros/build/**/*.toc
+outros/build/**/*.pyz
+outros/build/**/xref-*.html
+outros/build/**/warn-*.txt
+outros/build/**/Analysis-*.toc
+outros/build/**/EXE-*.toc
+outros/build/**/PKG-*.toc
+outros/build/**/PYZ-*.toc
+outros/build/**/PYZ-*.pyz
+outros/build/**/Tree-*.toc
+outros/build/**/localpycs/
+outros/build/**/base_library.zip

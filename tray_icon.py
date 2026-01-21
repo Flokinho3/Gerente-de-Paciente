@@ -10,6 +10,10 @@ import subprocess
 import signal
 import atexit
 from PIL import Image, ImageDraw
+from dotenv import load_dotenv
+
+# Carregar variáveis de ambiente do arquivo .env
+load_dotenv()
 
 try:
     import pystray
@@ -220,11 +224,22 @@ class TrayIconManager:
             try:
                 import logging
                 log = logging.getLogger('werkzeug')
-                log.setLevel(logging.ERROR)
+                
+                # Verificar modo debug do .env
+                debug_mode = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
+                
+                # Configurar nível de log baseado no debug
+                if debug_mode:
+                    log.setLevel(logging.DEBUG)
+                    print(f"Modo DEBUG ativado (via .env)")
+                else:
+                    log.setLevel(logging.ERROR)
                 
                 self.is_running = True
                 from werkzeug.serving import make_server
-                self._server = make_server('127.0.0.1', self.port, self.flask_app)
+                host = os.getenv('FLASK_HOST', '127.0.0.1')
+                self._server = make_server(host, self.port, self.flask_app)
+                print(f"Servidor Flask iniciado em http://{host}:{self.port} (Debug: {debug_mode})")
                 self._server.serve_forever()
             except Exception as e:
                 print(f"Erro ao iniciar Flask: {e}")

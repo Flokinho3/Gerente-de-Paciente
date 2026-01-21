@@ -1,657 +1,305 @@
+"""
+Sistema de Gestão de Pacientes - Inicialização
+Gerencia a inicialização do sistema (tray icon, modo executável, etc.)
+"""
 import threading
 import webbrowser
-import json
 import os
-import io
-import subprocess
 import signal
 import atexit
 import sys
-from flask import Flask, jsonify, render_template, request, send_file, make_response
+import subprocess
+import socket
 from datetime import datetime
 import tkinter as tk
 from tkinter import messagebox
-from database import db
+from dotenv import load_dotenv
 
-# Versão do sistema
-VERSION = "1.0.2"
-BUILD_DATE = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+# Carregar variáveis de ambiente do arquivo .env
+load_dotenv()
 
-app = Flask(__name__)
+# Importar Flask app e funções relacionadas
+from flask_app import app, VERSION, BUILD_DATE, run_flask, cleanup_flask
 
-# Injetar versão em todos os templates
-@app.context_processor
-def inject_version():
-    return dict(version=VERSION, build_date=BUILD_DATE)
-
-@app.route('/')
-def home():
-    return render_template('Home.html')
-
-@app.route('/novo_paciente')
-def novo_paciente():
-    return render_template('novo_paciente.html')
-
-@app.route('/pacientes')
-def pacientes():
-    return render_template('pacientes.html')
-
-@app.route('/exportar')
-def exportar():
-    return render_template('exportar.html')
-
-@app.route('/bd')
-def bd():
-    return render_template('bd.html')
-
-@app.route('/api/version', methods=['GET'])
-def get_version():
-    """Retorna a versão atual do sistema"""
-    return jsonify({
-        'success': True,
-        'version': VERSION,
-        'build_date': BUILD_DATE
-    })
-
-@app.route('/api/abrir_ajuda', methods=['GET'])
-def abrir_ajuda():
-    """Abre o arquivo de ajuda no Bloco de Notas do Windows"""
+# #region agent log
+def _log_debug(location, message, data=None, hypothesis_id=None):
+    """Log de debug para análise"""
     try:
-        import sys
-        
-        caminho_ajuda = None
-        
-        # Detectar se está rodando como executável ou em desenvolvimento
-        if getattr(sys, 'frozen', False):
-            # Modo executável: procurar em vários locais possíveis
-            # 1. No diretório temporário do PyInstaller (sys._MEIPASS)
-            if hasattr(sys, '_MEIPASS'):
-                caminho_temp = os.path.join(sys._MEIPASS, 'COMO_USAR.txt')
-                if os.path.exists(caminho_temp):
-                    caminho_ajuda = caminho_temp
-            
-            # 2. No diretório do executável
-            if not caminho_ajuda:
-                caminho_exe = os.path.join(os.path.dirname(sys.executable), 'COMO_USAR.txt')
-                if os.path.exists(caminho_exe):
-                    caminho_ajuda = caminho_exe
-        else:
-            # Modo desenvolvimento: usar o diretório do script
-            caminho_ajuda = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'COMO_USAR.txt')
-        
-        # Verificar se o arquivo existe
-        if not caminho_ajuda or not os.path.exists(caminho_ajuda):
-            return jsonify({'success': False, 'message': 'Arquivo de ajuda não encontrado'}), 404
-        
-        # Abrir no Bloco de Notas do Windows
-        subprocess.Popen(['notepad.exe', caminho_ajuda])
-        
-        return jsonify({'success': True, 'message': 'Arquivo de ajuda aberto no Bloco de Notas'})
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'Erro ao abrir ajuda: {str(e)}'}), 500
-
-@app.route('/api/salvar_paciente', methods=['POST'])
-def salvar_paciente():
-    """Salva os dados do paciente usando o banco de dados"""
-    try:
-        data = request.get_json()
-        
-        # Validar dados obrigatórios
-        if not data or 'identificacao' not in data or 'avaliacao' not in data:
-            return jsonify({'success': False, 'message': 'Dados inválidos'}), 400
-        
-        nome = data['identificacao'].get('nome_gestante', '').strip()
-        if not nome:
-            return jsonify({'success': False, 'message': 'Nome da gestante é obrigatório'}), 400
-        
-        # Salvar usando o banco de dados
-        resultado = db.adicionar_paciente(data)
-        
-        return jsonify(resultado)
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'Erro ao salvar: {str(e)}'}), 500
-
-@app.route('/api/pacientes', methods=['GET'])
-def listar_pacientes():
-    """Lista todos os pacientes ou filtra por parâmetros"""
-    try:
-        filtro = {}
-        
-        # Filtros opcionais via query parameters
-        nome = request.args.get('nome')
-        unidade = request.args.get('unidade_saude')
-        
-        if nome:
-            filtro['nome'] = nome
-        if unidade:
-            filtro['unidade_saude'] = unidade
-        
-        pacientes = db.buscar_pacientes(filtro if filtro else None)
-        
-        return jsonify({
-            'success': True,
-            'total': len(pacientes),
-            'pacientes': pacientes
-        })
-    except Exception as e:
-        import traceback
-        error_details = traceback.format_exc()
-        print(f"Erro ao buscar pacientes: {error_details}")
-        return jsonify({
-            'success': False, 
-            'message': f'Erro ao buscar pacientes: {str(e)}',
-            'error': str(e)
-        }), 500
-
-@app.route('/api/atualizar_paciente/<paciente_id>', methods=['PUT'])
-def atualizar_paciente(paciente_id):
-    """Atualiza os dados de um paciente existente"""
-    try:
-        data = request.get_json()
-        
-        # Validar dados obrigatórios
-        if not data or 'identificacao' not in data or 'avaliacao' not in data:
-            return jsonify({'success': False, 'message': 'Dados inválidos'}), 400
-        
-        # Atualizar usando o banco de dados
-        resultado = db.atualizar_paciente(paciente_id, data)
-        
-        if resultado['success']:
-            return jsonify(resultado)
-        else:
-            return jsonify(resultado), 404
-        
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'Erro ao atualizar: {str(e)}'}), 500
-
-@app.route('/api/deletar_paciente/<paciente_id>', methods=['DELETE'])
-def deletar_paciente(paciente_id):
-    """Deleta um paciente do banco de dados"""
-    try:
-        resultado = db.deletar_paciente(paciente_id)
-        
-        if resultado['success']:
-            return jsonify(resultado)
-        else:
-            return jsonify(resultado), 404
-            
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'Erro ao deletar: {str(e)}'}), 500
-
-@app.route('/api/backup/criar', methods=['GET'])
-def criar_backup():
-    """Cria um backup completo do banco de dados"""
-    try:
-        resultado = db.criar_backup()
-        return jsonify(resultado)
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'Erro ao criar backup: {str(e)}'}), 500
-
-@app.route('/api/backup/download', methods=['GET'])
-def download_backup():
-    """Permite baixar o último backup como arquivo JSON"""
-    try:
-        resultado = db.criar_backup()
-        buffer = io.BytesIO(json.dumps(resultado['backup'], ensure_ascii=False, indent=2).encode('utf-8'))
-        buffer.seek(0)
-        filename = f"backup_pacientes_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        response = make_response(send_file(
-            buffer,
-            mimetype='application/json',
-            as_attachment=True,
-            download_name=filename
-        ))
-        return response
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'Erro ao gerar arquivo de backup: {str(e)}'}), 500
-
-@app.route('/api/backup/restaurar', methods=['POST'])
-def restaurar_backup():
-    """Restaura o banco de dados a partir de um backup"""
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'success': False, 'message': 'Dados do backup não fornecidos'}), 400
-
-        backup = data.get('backup') if isinstance(data, dict) else data
-        if not isinstance(backup, list):
-            return jsonify({'success': False, 'message': 'Backup deve ser uma lista de registros'}), 400
-
-        resultado = db.restaurar_backup(backup)
-        
-        if resultado['success']:
-            return jsonify(resultado)
-        else:
-            return jsonify(resultado), 400
-            
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'Erro ao restaurar backup: {str(e)}'}), 500
-
-@app.route('/api/backup/validar', methods=['POST'])
-def validar_backup():
-    """Valida a estrutura do backup antes de restaurar"""
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'success': False, 'message': 'Backup não fornecido'}), 400
-        backup = data.get('backup') if isinstance(data, dict) else data
-        if not isinstance(backup, list):
-            return jsonify({'success': False, 'message': 'Backup deve ser uma lista de pacientes'}), 400
-        erros = []
-        for idx, registro in enumerate(backup):
-            if not isinstance(registro, dict):
-                erros.append(f'Item {idx + 1} não é um objeto válido')
-                continue
-            identificacao = registro.get('identificacao', {})
-            avaliacao = registro.get('avaliacao', {})
-            if not identificacao.get('nome_gestante'):
-                erros.append(f'Item {idx + 1} não possui nome da gestante')
-            if not isinstance(avaliacao, dict) or 'consultas_pre_natal' not in avaliacao:
-                erros.append(f'Item {idx + 1} com avaliação incompleta')
-        if erros:
-            return jsonify({'success': False, 'message': 'Backup inválido', 'errors': erros}), 400
-        return jsonify({'success': True, 'message': 'Backup válido', 'total': len(backup)})
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'Erro ao validar backup: {str(e)}'}), 500
-
-@app.route('/api/backup/limpar', methods=['DELETE'])
-def limpar_banco_dados():
-    """Remove todos os dados do banco de dados"""
-    try:
-        resultado = db.limpar_todos_dados()
-        return jsonify(resultado)
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'Erro ao limpar banco de dados: {str(e)}'}), 500
-
-@app.route('/api/indicadores')
-def indicadores():
-    """Calcula os indicadores agregados dos pacientes usando o banco de dados"""
-    try:
-        unidade_saude = request.args.get('unidade_saude')
-        stats = db.obter_estatisticas(unidade_saude=unidade_saude)
-        return jsonify({
-            'total': stats['total_pacientes'],
-            'inicio_pre_natal_antes_12s': stats['inicio_pre_natal_antes_12s'],
-            'consultas_pre_natal': stats['consultas_pre_natal'],
-            'vacinas_completas': stats['vacinas_completas'],
-            'plano_parto': stats['plano_parto'],
-            'participou_grupos': stats['participou_grupos']
-        })
-    except Exception as e:
-        return jsonify({
-            'total': 0,
-            'inicio_pre_natal_antes_12s': {'sim': 0, 'nao': 0},
-            'consultas_pre_natal': {'ate_6': 0, 'mais_6': 0},
-            'vacinas_completas': {'completa': 0, 'incompleta': 0, 'nao_avaliado': 0},
-            'plano_parto': {'sim': 0, 'nao': 0},
-            'participou_grupos': {'sim': 0, 'nao': 0}
-        }), 500
-
-@app.route('/api/unidades_saude')
-def listar_unidades_saude():
-    """Lista todas as unidades de saúde únicas"""
-    try:
-        unidades = db.obter_unidades_saude_unicas()
-        return jsonify({
-            'success': True,
-            'unidades': unidades
-        })
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'message': f'Erro ao buscar unidades: {str(e)}',
-            'unidades': []
-        }), 500
-
-@app.route('/api/indicadores/temporais/<filtro>', methods=['GET'])
-def indicadores_temporais(filtro):
-    """Retorna estatísticas temporais agrupadas por data para um indicador específico"""
-    try:
-        # Validar filtro
-        filtros_validos = ['inicio_pre_natal_antes_12s', 'consultas_pre_natal', 
-                          'vacinas_completas', 'plano_parto', 'participou_grupos']
-        if filtro not in filtros_validos:
-            return jsonify({'error': 'Filtro inválido'}), 400
-        
-        stats_temporais = db.obter_estatisticas_temporais(filtro)
-        return jsonify(stats_temporais)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/exportar/<formato>', methods=['GET'])
-def exportar_pacientes(formato):
-    """Exporta os dados dos pacientes no formato especificado"""
-    try:
-        pacientes = db.obter_todos_pacientes()
-        filtros = {
-            'inicio_pre_natal': request.args.get('inicio_pre_natal'),
-            'plano_parto': request.args.get('plano_parto'),
-            'participou_grupos': request.args.get('participou_grupos'),
-            'vacinas': request.args.get('vacinas')
+        import json
+        # Usar caminho do .env ou padrão
+        log_path = os.getenv('DEBUG_LOG_PATH', os.path.join(os.path.dirname(__file__), '.cursor', 'debug.log'))
+        log_entry = {
+            "sessionId": "debug-session",
+            "runId": "run1",
+            "hypothesisId": hypothesis_id or "A",
+            "location": location,
+            "message": message,
+            "data": data or {},
+            "timestamp": int(datetime.now().timestamp() * 1000)
         }
-        pacientes_filtrados = aplicar_filtros_exportacao(pacientes, filtros)
-        colunas_personalizadas = request.args.getlist('colunas')
-        colunas_personalizadas = colunas_personalizadas if colunas_personalizadas else None
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(log_entry, ensure_ascii=False) + '\n')
+    except Exception:
+        pass
+# #endregion agent log
 
-        if formato == 'excel':
-            return exportar_excel(pacientes_filtrados, colunas_personalizadas)
-        elif formato == 'word':
-            return exportar_word(pacientes_filtrados, colunas_personalizadas)
-        elif formato == 'txt':
-            return exportar_txt(pacientes_filtrados, colunas_personalizadas)
-        else:
-            return jsonify({'success': False, 'message': 'Formato não suportado'}), 400
+def obter_pid_por_porta(porta):
+    """
+    Obtém o PID do processo que está usando a porta especificada.
+    Retorna None se a porta não estiver em uso ou se não conseguir obter o PID.
+    """
+    # #region agent log
+    _log_debug("main.py:obter_pid_por_porta", "Verificando porta", {"porta": porta}, "A")
+    # #endregion agent log
+    
+    try:
+        if sys.platform == 'win32':
+            # Windows: usar netstat -ano para encontrar processos usando a porta
+            # #region agent log
+            _log_debug("main.py:obter_pid_por_porta", "Windows detectado", {"platform": sys.platform}, "A")
+            # #endregion agent log
             
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'Erro ao exportar: {str(e)}'}), 500
-
-def exportar_excel(pacientes, colunas_personalizadas=None):
-    """Exporta dados para Excel (.xlsx)"""
-    try:
-        try:
-            from openpyxl import Workbook
-            from openpyxl.styles import Font, PatternFill, Alignment
-        except ImportError:
-            return jsonify({
-                'success': False,
-                'message': 'Biblioteca openpyxl não encontrada. Instale com: pip install openpyxl'
-            }), 500
-
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Pacientes"
-
-        colunas = obter_colunas_config(colunas_personalizadas)
-        headers = [coluna['label'] for coluna in colunas]
-
-        header_fill = PatternFill(start_color="667eea", end_color="764ba2", fill_type="solid")
-        header_font = Font(bold=True, color="FFFFFF", size=12)
-        header_alignment = Alignment(horizontal="center", vertical="center")
-
-        for col_idx, header in enumerate(headers, start=1):
-            cell = ws.cell(row=1, column=col_idx, value=header)
-            cell.fill = header_fill
-            cell.font = header_font
-            cell.alignment = header_alignment
-
-        for row_idx, paciente in enumerate(pacientes, start=2):
-            for col_idx, coluna in enumerate(colunas, start=1):
-                ws.cell(row=row_idx, column=col_idx, value=obter_valor_coluna(paciente, coluna))
-
-        for col_idx in range(1, len(headers) + 1):
-            ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = 22
-
-        output = io.BytesIO()
-        wb.save(output)
-        output.seek(0)
-
-        filename = f"pacientes_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-        response = make_response(send_file(
-            output,
-            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            as_attachment=True,
-            download_name=filename
-        ))
-        return response
-
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'Erro ao exportar Excel: {str(e)}'}), 500
-
-def exportar_word(pacientes, colunas_personalizadas=None):
-    """Exporta dados para Word (.docx)"""
-    try:
-        try:
-            from docx import Document
-            from docx.enum.text import WD_ALIGN_PARAGRAPH
-        except ImportError:
-            return jsonify({
-                'success': False,
-                'message': 'Biblioteca python-docx não encontrada. Instale com: pip install python-docx'
-            }), 500
-
-        doc = Document()
-        colunas = obter_colunas_config(colunas_personalizadas)
-
-        title = doc.add_heading('Relatório de Pacientes', 0)
-        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-
-        doc.add_paragraph(f'Total de pacientes: {len(pacientes)}')
-        doc.add_paragraph(f'Data de exportação: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
-        doc.add_paragraph('')
-
-        for paciente in pacientes:
-            ident = paciente.get('identificacao', {})
-            nome = ident.get('nome_gestante', 'Nome não informado')
-            doc.add_heading(nome, level=2)
-
-            table = doc.add_table(rows=1, cols=2)
-            table.style = 'Table Grid'
-            header_cells = table.rows[0].cells
-            header_cells[0].text = 'Campo'
-            header_cells[1].text = 'Valor'
-
-            for coluna in colunas:
-                row_cells = table.add_row().cells
-                row_cells[0].text = coluna['label']
-                row_cells[1].text = str(obter_valor_coluna(paciente, coluna))
-
-            doc.add_paragraph('')
-
-        output = io.BytesIO()
-        doc.save(output)
-        output.seek(0)
-
-        filename = f"pacientes_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
-        response = make_response(send_file(
-            output,
-            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            as_attachment=True,
-            download_name=filename
-        ))
-        return response
-
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'Erro ao exportar Word: {str(e)}'}), 500
-
-def exportar_txt(pacientes, colunas_personalizadas=None):
-    """Exporta dados para arquivo de texto (.txt)"""
-    try:
-        output = io.StringIO()
-        colunas = obter_colunas_config(colunas_personalizadas)
-
-        output.write("=" * 80 + "\n")
-        output.write("RELATÓRIO DE PACIENTES\n")
-        output.write("=" * 80 + "\n")
-        output.write(f"Total de pacientes: {len(pacientes)}\n")
-        output.write(f"Data de exportação: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n")
-        output.write("=" * 80 + "\n\n")
-
-        for idx, paciente in enumerate(pacientes, start=1):
-            output.write(f"\n{'=' * 80}\n")
-            output.write(f"PACIENTE {idx}\n")
-            output.write(f"{'=' * 80}\n\n")
-
-            for coluna in colunas:
-                output.write(f"  {coluna['label']}: {obter_valor_coluna(paciente, coluna)}\n")
-            output.write("\n")
-
-        content = output.getvalue()
-        output.close()
-        output_bytes = io.BytesIO(content.encode('utf-8'))
-
-        filename = f"pacientes_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-        response = make_response(send_file(
-            output_bytes,
-            mimetype='text/plain; charset=utf-8',
-            as_attachment=True,
-            download_name=filename
-        ))
-        return response
-
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'Erro ao exportar TXT: {str(e)}'}), 500
-
-def aplicar_filtros_exportacao(pacientes, filtros):
-    """Aplica os filtros selecionados antes da exportação"""
-    if not any(filtros.values()):
-        return pacientes
-
-    resultados = []
-    for paciente in pacientes:
-        avaliacao = paciente.get('avaliacao', {})
-
-        if filtros.get('inicio_pre_natal') and not avaliacao.get('inicio_pre_natal_antes_12s'):
-            continue
-        if filtros.get('plano_parto') and not avaliacao.get('plano_parto'):
-            continue
-        if filtros.get('participou_grupos') and not avaliacao.get('participou_grupos'):
-            continue
-
-        if filtros.get('vacinas'):
-            status_vacina = (avaliacao.get('vacinas_completas', '') or '').lower()
-            if not verificar_status_vacinas(status_vacina, filtros['vacinas']):
-                continue
-
-        resultados.append(paciente)
-
-    return resultados
-
-
-def verificar_status_vacinas(status, filtro):
-    if filtro == 'completa':
-        return 'complet' in status and 'incomplet' not in status
-    if filtro == 'incompleta':
-        return 'incomplet' in status
-    if filtro == 'nao_avaliado':
-        return status == '' or 'nao' in status or 'não' in status
-    return True
-
-
-def formatar_boolean(valor):
-    """Formata valores booleanos para exibição"""
-    if valor is True:
-        return 'Sim'
-    elif valor is False:
-        return 'Não'
-    return 'Não informado'
-
-
-def formatar_vacinas(valor):
-    if valor:
-        return valor
-    return 'Não avaliado'
-
-
-COLUNAS_CONFIG = [
-    {'key': 'identificacao.nome_gestante', 'label': 'Nome da Gestante'},
-    {'key': 'identificacao.unidade_saude', 'label': 'Unidade de Saúde'},
-    {'key': 'data_salvamento', 'label': 'Data de Cadastro'},
-    {
-        'key': 'avaliacao.inicio_pre_natal_antes_12s',
-        'label': 'Início pré-natal antes de 12 semanas',
-        'formatter': formatar_boolean
-    },
-    {'key': 'avaliacao.consultas_pre_natal', 'label': 'Consultas de pré-natal'},
-    {
-        'key': 'avaliacao.vacinas_completas',
-        'label': 'Vacinas completas',
-        'formatter': formatar_vacinas
-    },
-    {
-        'key': 'avaliacao.plano_parto',
-        'label': 'Plano de parto',
-        'formatter': formatar_boolean
-    },
-    {
-        'key': 'avaliacao.participou_grupos',
-        'label': 'Participou de grupos',
-        'formatter': formatar_boolean
-    },
-    {
-        'key': 'avaliacao.avaliacao_odontologica',
-        'label': 'Avaliação odontológica',
-        'formatter': formatar_boolean
-    },
-    {
-        'key': 'avaliacao.estratificacao',
-        'label': 'Estratificação',
-        'formatter': formatar_boolean
-    },
-    {
-        'key': 'avaliacao.cartao_pre_natal_completo',
-        'label': 'Cartão pré-natal completo',
-        'formatter': formatar_boolean
-    }
-]
-
-
-def obter_colunas_config(colunas_personalizadas):
-    if colunas_personalizadas:
-        selecionadas = [
-            coluna for coluna in COLUNAS_CONFIG if coluna['key'] in colunas_personalizadas
-        ]
-        if selecionadas:
-            return selecionadas
-    return COLUNAS_CONFIG
-
-
-def obter_valor_coluna(paciente, coluna):
-    valor = paciente
-    for parte in coluna['key'].split('.'):
-        if isinstance(valor, dict):
-            valor = valor.get(parte, '')
+            cmd = f'netstat -ano | findstr ":{porta}"'
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=5)
+            
+            # #region agent log
+            _log_debug("main.py:obter_pid_por_porta", "Resultado netstat", {"stdout": result.stdout, "returncode": result.returncode}, "A")
+            # #endregion agent log
+            
+            if result.returncode == 0 and result.stdout:
+                # Parse da saída do netstat
+                # Formato: TCP    0.0.0.0:5000    0.0.0.0:0    LISTENING    12345
+                for line in result.stdout.strip().split('\n'):
+                    if 'LISTENING' in line:
+                        parts = line.split()
+                        if len(parts) >= 5:
+                            pid = parts[-1]
+                            try:
+                                pid_int = int(pid)
+                                # #region agent log
+                                _log_debug("main.py:obter_pid_por_porta", "PID encontrado", {"pid": pid_int}, "A")
+                                # #endregion agent log
+                                return pid_int
+                            except ValueError:
+                                continue
         else:
-            valor = ''
-    formatter = coluna.get('formatter')
-    if callable(formatter):
-        return formatter(valor)
-    if valor is None:
-        return ''
-    return valor
+            # Linux/Unix: usar lsof ou ss para encontrar processos usando a porta
+            # #region agent log
+            _log_debug("main.py:obter_pid_por_porta", "Linux/Unix detectado", {"platform": sys.platform}, "A")
+            # #endregion agent log
+            
+            # Tentar lsof primeiro
+            try:
+                cmd = f'lsof -ti:{porta}'
+                result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=5)
+                if result.returncode == 0 and result.stdout.strip():
+                    pid = int(result.stdout.strip().split()[0])
+                    # #region agent log
+                    _log_debug("main.py:obter_pid_por_porta", "PID encontrado via lsof", {"pid": pid}, "A")
+                    # #endregion agent log
+                    return pid
+            except:
+                pass
+            
+            # Fallback: usar ss
+            try:
+                cmd = f'ss -lptn "sport = :{porta}"'
+                result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=5)
+                if result.returncode == 0 and result.stdout:
+                    # Parse da saída do ss
+                    for line in result.stdout.split('\n'):
+                        if f':{porta}' in line and 'pid=' in line:
+                            # Extrair PID da linha
+                            import re
+                            match = re.search(r'pid=(\d+)', line)
+                            if match:
+                                pid = int(match.group(1))
+                                # #region agent log
+                                _log_debug("main.py:obter_pid_por_porta", "PID encontrado via ss", {"pid": pid}, "A")
+                                # #endregion agent log
+                                return pid
+            except:
+                pass
+        
+        # #region agent log
+        _log_debug("main.py:obter_pid_por_porta", "Nenhum PID encontrado", {}, "A")
+        # #endregion agent log
+        return None
+        
+    except Exception as e:
+        # #region agent log
+        _log_debug("main.py:obter_pid_por_porta", "Erro ao obter PID", {"erro": str(e)}, "A")
+        # #endregion agent log
+        return None
 
-# Variável global para armazenar o servidor Flask
-_flask_server = None
-
-def run_flask(debug=False, use_reloader=False, silent=False):
-    """Inicia o servidor Flask"""
-    global _flask_server
+def matar_processo_por_pid(pid):
+    """
+    Mata um processo pelo seu PID.
+    Retorna True se conseguiu matar o processo, False caso contrário.
+    """
+    # #region agent log
+    _log_debug("main.py:matar_processo_por_pid", "Tentando matar processo", {"pid": pid}, "B")
+    # #endregion agent log
     
-    if silent:
-        # Modo silencioso: desabilitar logging do Werkzeug
-        import logging
-        log = logging.getLogger('werkzeug')
-        log.setLevel(logging.ERROR)
+    try:
+        if sys.platform == 'win32':
+            # Windows: usar taskkill
+            cmd = f'taskkill /PID {pid} /F'
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=10)
+            
+            # #region agent log
+            _log_debug("main.py:matar_processo_por_pid", "Resultado taskkill", {"stdout": result.stdout, "stderr": result.stderr, "returncode": result.returncode}, "B")
+            # #endregion agent log
+            
+            if result.returncode == 0:
+                # #region agent log
+                _log_debug("main.py:matar_processo_por_pid", "Processo morto com sucesso", {"pid": pid}, "B")
+                # #endregion agent log
+                return True
+            else:
+                # Verificar se o processo já não existe
+                if 'não foi encontrado' in result.stdout or 'not found' in result.stderr.lower():
+                    # #region agent log
+                    _log_debug("main.py:matar_processo_por_pid", "Processo já não existe", {"pid": pid}, "B")
+                    # #endregion agent log
+                    return True  # Considera sucesso se já não existe
+                # #region agent log
+                _log_debug("main.py:matar_processo_por_pid", "Falha ao matar processo", {"pid": pid, "erro": result.stderr}, "B")
+                # #endregion agent log
+                return False
+        else:
+            # Linux/Unix: usar kill
+            try:
+                os.kill(pid, signal.SIGTERM)
+                # Aguardar um pouco para verificar se o processo foi morto
+                import time
+                time.sleep(0.5)
+                # Tentar SIGKILL se ainda estiver vivo
+                try:
+                    os.kill(pid, 0)  # Verifica se processo ainda existe
+                    os.kill(pid, signal.SIGKILL)  # Força encerramento
+                except ProcessLookupError:
+                    pass  # Processo já foi morto
+                
+                # #region agent log
+                _log_debug("main.py:matar_processo_por_pid", "Processo morto com sucesso (Unix)", {"pid": pid}, "B")
+                # #endregion agent log
+                return True
+            except ProcessLookupError:
+                # #region agent log
+                _log_debug("main.py:matar_processo_por_pid", "Processo já não existe (Unix)", {"pid": pid}, "B")
+                # #endregion agent log
+                return True  # Processo já não existe
+            except PermissionError:
+                # #region agent log
+                _log_debug("main.py:matar_processo_por_pid", "Sem permissão para matar processo", {"pid": pid}, "B")
+                # #endregion agent log
+                return False
+        
+    except Exception as e:
+        # #region agent log
+        _log_debug("main.py:matar_processo_por_pid", "Erro ao matar processo", {"pid": pid, "erro": str(e)}, "B")
+        # #endregion agent log
+        return False
+
+def verificar_e_liberar_porta(porta):
+    """
+    Verifica se a porta está em uso e, se estiver, mata o processo que a está usando.
+    Retorna True se a porta está livre (ou foi liberada), False caso contrário.
+    """
+    # #region agent log
+    _log_debug("main.py:verificar_e_liberar_porta", "Iniciando verificação de porta", {"porta": porta}, "C")
+    # #endregion agent log
     
-    # Se não usar reloader, usar make_server para permitir shutdown
-    if not use_reloader:
-        try:
-            from werkzeug.serving import make_server
-            _flask_server = make_server('127.0.0.1', 5000, app)
-            print("Servidor Flask iniciado na porta 5000")
-            _flask_server.serve_forever()
-        except KeyboardInterrupt:
-            print("\nEncerrando servidor Flask...")
-            if _flask_server:
-                _flask_server.shutdown()
-            print("Servidor Flask encerrado")
-    else:
-        # Modo desenvolvimento com reloader
-        app.run(host='127.0.0.1', port=5000, debug=debug, use_reloader=use_reloader)
-
-def cleanup_flask():
-    """Limpeza ao encerrar aplicação"""
-    global _flask_server
-    if _flask_server:
-        try:
-            print("Encerrando servidor Flask...")
-            _flask_server.shutdown()
-            _flask_server = None
-            print("Servidor Flask encerrado")
-        except:
-            pass
-
-# Registrar cleanup
-atexit.register(cleanup_flask)
+    # Obter PID do processo atual para não matar a si mesmo
+    pid_atual = os.getpid()
+    # #region agent log
+    _log_debug("main.py:verificar_e_liberar_porta", "PID atual", {"pid_atual": pid_atual}, "C")
+    # #endregion agent log
+    
+    # Verificar se a porta está em uso usando socket (método mais confiável)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        result = sock.connect_ex(('127.0.0.1', porta))
+        sock.close()
+        
+        if result == 0:
+            # Porta está em uso
+            # #region agent log
+            _log_debug("main.py:verificar_e_liberar_porta", "Porta em uso detectada", {"porta": porta}, "C")
+            # #endregion agent log
+            
+            # Obter PID do processo usando a porta
+            pid_antigo = obter_pid_por_porta(porta)
+            
+            if pid_antigo:
+                # #region agent log
+                _log_debug("main.py:verificar_e_liberar_porta", "PID do processo antigo", {"pid_antigo": pid_antigo, "pid_atual": pid_atual}, "C")
+                # #endregion agent log
+                
+                # Não matar a si mesmo
+                if pid_antigo == pid_atual:
+                    # #region agent log
+                    _log_debug("main.py:verificar_e_liberar_porta", "PID é o mesmo do processo atual, ignorando", {}, "C")
+                    # #endregion agent log
+                    return True
+                
+                # Matar o processo antigo
+                print(f"Processo antigo encontrado na porta {porta} (PID: {pid_antigo}). Encerrando...")
+                sucesso = matar_processo_por_pid(pid_antigo)
+                
+                if sucesso:
+                    print(f"Processo antigo encerrado com sucesso.")
+                    # Aguardar um pouco para a porta ser liberada
+                    import time
+                    time.sleep(1)
+                    
+                    # Verificar novamente se a porta foi liberada
+                    sock2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    try:
+                        result2 = sock2.connect_ex(('127.0.0.1', porta))
+                        sock2.close()
+                        
+                        if result2 != 0:
+                            # #region agent log
+                            _log_debug("main.py:verificar_e_liberar_porta", "Porta liberada com sucesso", {"porta": porta}, "C")
+                            # #endregion agent log
+                            return True
+                        else:
+                            # #region agent log
+                            _log_debug("main.py:verificar_e_liberar_porta", "Porta ainda em uso após matar processo", {"porta": porta}, "C")
+                            # #endregion agent log
+                            print(f"AVISO: Porta {porta} ainda está em uso após tentar encerrar o processo.")
+                            return False
+                    except:
+                        # #region agent log
+                        _log_debug("main.py:verificar_e_liberar_porta", "Erro ao verificar porta após matar processo", {}, "C")
+                        # #endregion agent log
+                        return False
+                else:
+                    # #region agent log
+                    _log_debug("main.py:verificar_e_liberar_porta", "Falha ao matar processo antigo", {"pid_antigo": pid_antigo}, "C")
+                    # #endregion agent log
+                    print(f"ERRO: Não foi possível encerrar o processo antigo (PID: {pid_antigo}).")
+                    return False
+            else:
+                # #region agent log
+                _log_debug("main.py:verificar_e_liberar_porta", "Não foi possível obter PID do processo usando a porta", {"porta": porta}, "C")
+                # #endregion agent log
+                print(f"AVISO: Porta {porta} está em uso, mas não foi possível identificar o processo.")
+                return False
+        else:
+            # Porta está livre
+            # #region agent log
+            _log_debug("main.py:verificar_e_liberar_porta", "Porta livre", {"porta": porta}, "C")
+            # #endregion agent log
+            return True
+    except Exception as e:
+        # #region agent log
+        _log_debug("main.py:verificar_e_liberar_porta", "Erro ao verificar porta", {"porta": porta, "erro": str(e)}, "C")
+        # #endregion agent log
+        print(f"ERRO ao verificar porta {porta}: {e}")
+        return False
 
 def signal_handler(signum, frame):
     """Handler para sinais de encerramento"""
@@ -667,34 +315,48 @@ def main():
     
     # Mostrar versão do sistema
     print("=" * 60)
-    print(f"🏥 Sistema de Gestão de Pacientes")
-    print(f"📦 Versão: {VERSION}")
-    print(f"📅 Build: {BUILD_DATE}")
+    print(f"Sistema de Gestao de Pacientes")
+    print(f"Versao: {VERSION}")
+    print(f"Build: {BUILD_DATE}")
     print("=" * 60)
+    
+    # Obter porta a ser usada (do .env ou variável de ambiente)
+    porta = int(os.getenv('PORT', 5000))
+    
+    # #region agent log
+    _log_debug("main.py:main", "Iniciando main", {"porta": porta}, "D")
+    # #endregion agent log
+    
+    # Verificar e liberar porta antes de iniciar o servidor
+    print(f"Verificando porta {porta}...")
+    if not verificar_e_liberar_porta(porta):
+        print(f"ERRO: Não foi possível liberar a porta {porta}. Encerrando aplicação.")
+        sys.exit(1)
+    print(f"Porta {porta} está livre e pronta para uso.")
     
     # Detecta se está rodando como executável ou em modo silencioso
     is_executable = getattr(sys, 'frozen', False)
     
-    # Verificar se está sendo executado em modo silencioso (via script)
-    is_silent = '--silent' in sys.argv or os.environ.get('SILENT_MODE') == '1'
+    # Verificar se está sendo executado em modo silencioso (via script ou .env)
+    is_silent = '--silent' in sys.argv or os.getenv('SILENT_MODE', '0') == '1'
     
     # Verificar se deve usar tray icon
     # SEMPRE tentar usar tray icon quando possível (padrão)
     # Exceto se explicitamente desabilitado com --no-tray
     no_tray = '--no-tray' in sys.argv  # Flag para desabilitar tray
     force_tray = '--tray' in sys.argv  # Flag para forçar tray
-    use_tray = not no_tray and (force_tray or os.environ.get('USE_TRAY') == '1' or is_executable or is_silent)
+    use_tray_env = os.getenv('USE_TRAY', '1') == '1'  # Padrão é usar tray
+    use_tray = not no_tray and (force_tray or use_tray_env or is_executable or is_silent)
     
     if use_tray and not no_tray:
         # Modo com tray icon - TENTAR SEMPRE iniciar o tray icon
         try:
             from tray_icon import TrayIconManager
             
-            port = int(os.environ.get('PORT', 5000))
-            tray_manager = TrayIconManager(app, port=port)
+            tray_manager = TrayIconManager(app, port=porta)
             
             # Iniciar Flask em thread separada ANTES do tray
-            print(f"Iniciando servidor Flask na porta {port}...")
+            print(f"Iniciando servidor Flask na porta {porta}...")
             tray_manager.iniciar_flask()
             
             # Aguardar Flask iniciar
@@ -702,16 +364,16 @@ def main():
             
             # Verificar se Flask iniciou corretamente
             if tray_manager.verificar_porta():
-                print(f"✓ Servidor Flask iniciado na porta {port}")
+                print(f"SUCCESS: Servidor Flask iniciado na porta {porta}")
             else:
-                print("⚠ Aviso: Porta pode não estar disponível")
+                print("AVISO: Porta pode não estar disponível")
             
             # Iniciar tray icon (bloqueia até sair - thread principal)
             print("Iniciando tray icon...")
             tray_manager.iniciar_tray()
             
         except ImportError as e:
-            print(f"⚠ pystray não instalado: {e}")
+            print(f"AVISO: pystray não instalado: {e}")
             print("Instale com: pip install pystray pillow")
             print("Continuando sem tray icon...")
             # Fallback para modo sem tray
@@ -724,7 +386,8 @@ def main():
                 )
                 flask_thread = threading.Thread(target=run_flask, args=(False, False, True), daemon=False)
                 flask_thread.start()
-                webbrowser.open('http://localhost:5000')
+                host = os.getenv('FLASK_HOST', '127.0.0.1')
+                webbrowser.open(f'http://{host}:{porta}')
                 
                 def on_closing():
                     print("Janela fechada, encerrando aplicação...")
@@ -761,7 +424,8 @@ def main():
                 )
                 flask_thread = threading.Thread(target=run_flask, args=(False, False, True), daemon=False)
                 flask_thread.start()
-                webbrowser.open('http://localhost:5000')
+                host = os.getenv('FLASK_HOST', '127.0.0.1')
+                webbrowser.open(f'http://{host}:{porta}')
                 
                 def on_closing():
                     print("Janela fechada, encerrando aplicação...")
@@ -831,8 +495,7 @@ def main():
             try:
                 from tray_icon import TrayIconManager
                 
-                port = int(os.environ.get('PORT', 5000))
-                tray_manager = TrayIconManager(app, port=port)
+                tray_manager = TrayIconManager(app, port=porta)
                 
                 # Iniciar Flask em thread separada
                 tray_manager.iniciar_flask()
@@ -843,7 +506,7 @@ def main():
                 # Tentar iniciar tray icon
                 print("Modo desenvolvimento com tray icon...")
                 tray_manager.iniciar_tray()
-                
+            
             except (ImportError, Exception) as e:
                 print(f"Tray icon não disponível: {e}")
                 print("Continuando em modo desenvolvimento normal...")
@@ -853,11 +516,10 @@ def main():
             try:
                 from tray_icon import TrayIconManager
                 
-                port = int(os.environ.get('PORT', 5000))
-                tray_manager = TrayIconManager(app, port=port)
+                tray_manager = TrayIconManager(app, port=porta)
                 
                 # Iniciar Flask em thread separada
-                print(f"Iniciando servidor Flask na porta {port}...")
+                print(f"Iniciando servidor Flask na porta {porta}...")
                 tray_manager.iniciar_flask()
                 
                 # Aguardar Flask iniciar

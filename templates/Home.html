@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão de Pacientes - Indicadores</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='home/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='alerts/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='alerts_agendamentos/css/style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
 </head>
@@ -17,15 +19,81 @@
                 <h3>Gestão de Pacientes</h3>
             </div>
             <div class="topbar-links">
-                <a href="/" class="topbar-link active">Indicadores</a>
-                <a href="/novo_paciente" class="topbar-link">Novo Paciente</a>
-                <a href="/pacientes" class="topbar-link">Pacientes</a>
-                <a href="/exportar" class="topbar-link">Exportar</a>
-                <button onclick="abrirAjuda()" class="topbar-link" style="background: none; border: none; cursor: pointer; font-family: inherit;">❓ Ajuda</button>
-                <span id="version-info" class="topbar-version" style="margin-left: 15px; font-size: 0.85rem; color: var(--text-muted); opacity: 0.7;">v{{ version }}</span>
+                <!-- Gaveta: Pacientes -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👥 Pacientes
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/" class="topbar-dropdown-item active">📊 Indicadores</a>
+                        <a href="/novo_paciente" class="topbar-dropdown-item">➕ Novo Paciente</a>
+                        <a href="/pacientes" class="topbar-dropdown-item">📋 Lista de Pacientes</a>
+                        <a href="/exportar" class="topbar-dropdown-item">💾 Exportar</a>
+                    </div>
+                </div>
+
+                <!-- Gaveta: Profissionais -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👨‍⚕️ Profissionais
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/agendamentos" class="topbar-dropdown-item">📅 Agendamentos</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">👨‍⚕️ Lista de Profissionais</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">📊 Relatórios</a>
+                    </div>
+                </div>
+
+                <!-- Gaveta: Configurações -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        ⚙️ Configurações
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/bd" class="topbar-dropdown-item">🗄️ Banco de Dados</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">🔔 Notificações</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">🎨 Aparência</a>
+                    </div>
+                </div>
+
+                <!-- Ajuda (não é gaveta) -->
+                <button onclick="abrirAjuda()" class="topbar-link btn-ajuda">
+                    ❓ Ajuda
+                </button>
+
+                <span id="version-info" class="topbar-version">v{{ version }}</span>
             </div>
         </div>
     </nav>
+
+    <!-- Sistema de Alertas de Parto Próximo -->
+    <div id="alertas-parto-container" style="display: none;">
+        <div class="alertas-header">
+            <h3>
+                🚨 Alertas de Parto
+                <span class="badge-contador" id="alertas-contador">0</span>
+            </h3>
+        </div>
+        <div id="alertas-parto-list">
+            <!-- Alertas serão inseridos aqui via JavaScript -->
+        </div>
+    </div>
+
+    <!-- Sistema de Alertas de Agendamentos Próximos -->
+    <div id="alertas-agendamentos-container" style="display: none;">
+        <div class="alertas-header-agendamentos">
+            <h3>
+                📅 Agendamentos Próximos
+                <span class="badge-contador" id="alertas-agendamentos-contador">0</span>
+            </h3>
+        </div>
+        <div id="alertas-agendamentos-list">
+            <!-- Alertas serão inseridos aqui via JavaScript -->
+        </div>
+    </div>
 
     <div class="container">
         <div class="header">
@@ -35,23 +103,16 @@
 
         <!-- Seção de Comparação de Gráficos -->
         <div class="comparacao-section">
-            <h2 class="section-title">Comparar Indicadores</h2>
+            <h2 class="section-title">Comparar Indicadores entre Unidades</h2>
             <div class="comparacao-controls">
                 <div class="control-group">
-                    <label for="comparacao-filtro">Filtro do Gráfico:</label>
+                    <label for="comparacao-filtro">Indicador para Comparar:</label>
                     <select id="comparacao-filtro" class="control-select">
                         <option value="inicio_pre_natal_antes_12s">Início do pré-natal antes de 12 semanas</option>
                         <option value="consultas_pre_natal">Consultas de pré-natal</option>
                         <option value="vacinas_completas">Vacinas completas</option>
                         <option value="plano_parto">Plano de parto</option>
                         <option value="participou_grupos">Participação em grupos</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label for="comparacao-unidade">Unidade de Saúde:</label>
-                    <select id="comparacao-unidade" class="control-select">
-                        <option value="">📊 Geral (Todas)</option>
-                        <!-- Opções dinâmicas serão inseridas aqui -->
                     </select>
                 </div>
                 <div class="control-group">
@@ -63,7 +124,22 @@
                         <option value="doughnut">Rosca</option>
                     </select>
                 </div>
-                <button id="btn-adicionar-comparacao" class="btn btn-primary">Adicionar ao Comparativo</button>
+                <div class="control-group unidades-selecao-group">
+                    <label for="unidade-search">Buscar Unidade:</label>
+                    <input 
+                        type="text" 
+                        id="unidade-search" 
+                        class="control-select" 
+                        placeholder="Digite o nome da unidade..."
+                        autocomplete="off"
+                    >
+                    <div class="unidades-lista-container">
+                        <label>Unidades Selecionadas:</label>
+                        <div id="unidades-selecionadas" class="unidades-selecionadas-list"></div>
+                        <div id="unidades-lista" class="unidades-lista-dropdown"></div>
+                    </div>
+                </div>
+                <button id="btn-adicionar-comparacao" class="btn btn-primary">Comparar</button>
             </div>
             <div id="comparacao-charts-container" class="comparacao-charts-container"></div>
         </div>
@@ -165,6 +241,13 @@
             </div>
         </div>
     </div>
+    <!-- Módulos do sistema Home -->
+    <script src="{{ url_for('static', filename='home/js/utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='home/js/indicadores.js') }}"></script>
+    <script src="{{ url_for('static', filename='home/js/charts.js') }}"></script>
+    <script src="{{ url_for('static', filename='home/js/comparacao.js') }}"></script>
+    <script src="{{ url_for('static', filename='home/js/tabs.js') }}"></script>
+    <script src="{{ url_for('static', filename='home/js/pacientes-compare.js') }}"></script>
     <script src="{{ url_for('static', filename='home/js/home.js') }}"></script>
     <script>
         // Suprimir erros de extensões do navegador (Copilot, etc.)
@@ -228,5 +311,7 @@
         // Carregar versão ao carregar a página
         document.addEventListener('DOMContentLoaded', carregarVersao);
     </script>
+    <script src="{{ url_for('static', filename='alerts/js/alerts.js') }}"></script>
+    <script src="{{ url_for('static', filename='alerts_agendamentos/js/alerts.js') }}"></script>
 </body>
 </html>
