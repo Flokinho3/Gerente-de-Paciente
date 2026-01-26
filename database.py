@@ -18,8 +18,8 @@ def int_to_bool(value: Optional[int]) -> bool:
 class Database:
     def __init__(self, db_path: Optional[str] = None):
         # Verificar se há um caminho configurado via variável de ambiente
-        from dotenv import load_dotenv
-        load_dotenv()
+        from env_loader import load_env
+        load_env()
         env_db_path = os.getenv('DB_PATH')
         
         if db_path:
@@ -60,7 +60,14 @@ class Database:
         except sqlite3.OperationalError:
             # Se WAL não for suportado (ex: em alguns sistemas de arquivos de rede), continuar normalmente
             pass
+        
+        # Carregar PC_ID
+        from config import get_pc_id
+        self.pc_id = get_pc_id()
+        
         self._ensure_schema()
+        # Migrar dados existentes (preencher campos novos para registros antigos)
+        self._migrar_dados_existentes()
 
     def _ensure_schema(self) -> None:
         ddl = """
@@ -171,8 +178,41 @@ class Database:
             self.conn.commit()
         except sqlite3.OperationalError:
             pass  # Coluna já existe
+        # Adicionar novas colunas de sincronização se não existirem (migração)
+        try:
+            self.conn.execute("ALTER TABLE pacientes ADD COLUMN pc_id TEXT")
+            self.conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Coluna já existe
+        try:
+            self.conn.execute("ALTER TABLE pacientes ADD COLUMN ultima_modificacao TEXT")
+            self.conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Coluna já existe
+        try:
+            self.conn.execute("ALTER TABLE pacientes ADD COLUMN versao INTEGER DEFAULT 1")
+            self.conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Coluna já existe
+        try:
+            self.conn.execute("ALTER TABLE pacientes ADD COLUMN status TEXT DEFAULT 'ativo'")
+            self.conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Coluna já existe
+        try:
+            self.conn.execute("ALTER TABLE pacientes ADD COLUMN removido_em TEXT")
+            self.conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Coluna já existe
+        try:
+            self.conn.execute("ALTER TABLE pacientes ADD COLUMN removido_por TEXT")
+            self.conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Coluna já existe
         self.conn.execute("CREATE INDEX IF NOT EXISTS idx_nome ON pacientes(nome_gestante)")
         self.conn.execute("CREATE INDEX IF NOT EXISTS idx_unidade ON pacientes(unidade_saude)")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_pacientes_status ON pacientes(status)")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_pacientes_pc_id ON pacientes(pc_id)")
         
         # Criar tabela de agendamentos
         ddl_agendamentos = """
@@ -190,9 +230,72 @@ class Database:
         )
         """
         self.conn.execute(ddl_agendamentos)
+        # Adicionar novas colunas de sincronização para agendamentos se não existirem (migração)
+        try:
+            self.conn.execute("ALTER TABLE agendamentos ADD COLUMN pc_id TEXT")
+            self.conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Coluna já existe
+        try:
+            self.conn.execute("ALTER TABLE agendamentos ADD COLUMN ultima_modificacao TEXT")
+            self.conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Coluna já existe
+        try:
+            self.conn.execute("ALTER TABLE agendamentos ADD COLUMN versao INTEGER DEFAULT 1")
+            self.conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Coluna já existe
+        try:
+            self.conn.execute("ALTER TABLE agendamentos ADD COLUMN removido_em TEXT")
+            self.conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Coluna já existe
+        try:
+            self.conn.execute("ALTER TABLE agendamentos ADD COLUMN removido_por TEXT")
+            self.conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Coluna já existe
         self.conn.execute("CREATE INDEX IF NOT EXISTS idx_agendamento_paciente ON agendamentos(paciente_id)")
         self.conn.execute("CREATE INDEX IF NOT EXISTS idx_agendamento_data ON agendamentos(data_consulta)")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_agendamentos_status ON agendamentos(status)")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_agendamentos_pc_id ON agendamentos(pc_id)")
         self.conn.commit()
+
+    def _migrar_dados_existentes(self) -> None:
+        """
+        Migra dados existentes preenchendo campos novos para registros antigos.
+        Mantém compatibilidade com dados que não possuem os novos campos.
+        """
+        try:
+            # Migrar pacientes
+            cursor = self.conn.cursor()
+            
+            # Preencher pc_id, ultima_modificacao, versao, status para pacientes sem esses campos
+            cursor.execute("""
+                UPDATE pacientes 
+                SET 
+                    pc_id = ?,
+                    ultima_modificacao = COALESCE(ultima_modificacao, data_salvamento, ?),
+                    versao = COALESCE(versao, 1),
+                    status = COALESCE(status, 'ativo')
+                WHERE pc_id IS NULL OR ultima_modificacao IS NULL OR versao IS NULL OR status IS NULL
+            """, (self.pc_id, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+            
+            # Migrar agendamentos
+            cursor.execute("""
+                UPDATE agendamentos 
+                SET 
+                    pc_id = ?,
+                    ultima_modificacao = COALESCE(ultima_modificacao, data_atualizacao, data_criacao, ?),
+                    versao = COALESCE(versao, 1)
+                WHERE pc_id IS NULL OR ultima_modificacao IS NULL OR versao IS NULL
+            """, (self.pc_id, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+            
+            self.conn.commit()
+        except Exception:
+            # Se falhar a migração, continuar normalmente (compatibilidade)
+            pass
 
     def close(self) -> None:
         self.conn.close()
@@ -368,6 +471,25 @@ class Database:
             },
             'arquivo_origem': arquivo_origem
         }
+        
+        # Adicionar campos de sincronização se existirem
+        try:
+            if 'pc_id' in row.keys():
+                result['pc_id'] = row['pc_id']
+            if 'ultima_modificacao' in row.keys():
+                result['ultima_modificacao'] = row['ultima_modificacao']
+            if 'versao' in row.keys():
+                result['versao'] = row['versao']
+            if 'status' in row.keys():
+                result['status'] = row['status']
+            if 'removido_em' in row.keys():
+                result['removido_em'] = row['removido_em']
+            if 'removido_por' in row.keys():
+                result['removido_por'] = row['removido_por']
+        except (KeyError, IndexError):
+            pass
+        
+        return result
 
     def gerar_id(self, nome: str, data_salvamento: Optional[str] = None) -> str:
         if not data_salvamento:
@@ -382,10 +504,23 @@ class Database:
         paciente_id: str,
         paciente_data: Dict,
         arquivo_origem: Optional[str] = None,
-        data_salvamento: Optional[str] = None
+        data_salvamento: Optional[str] = None,
+        pc_id: Optional[str] = None,
+        ultima_modificacao: Optional[str] = None,
+        versao: Optional[int] = None,
+        status: Optional[str] = None
     ) -> Dict:
         if not data_salvamento:
             data_salvamento = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        if not ultima_modificacao:
+            ultima_modificacao = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        if not pc_id:
+            pc_id = self.pc_id
+        if versao is None:
+            versao = 1
+        if not status:
+            status = 'ativo'
+        
         identificacao = paciente_data.get('identificacao', {})
         avaliacao = paciente_data.get('avaliacao', {})
         cursor = self.conn.cursor()
@@ -399,8 +534,9 @@ class Database:
                 estratificacao, estratificacao_problema, cartao_pre_natal_completo, 
                 dum, dpp, ganhou_kit, kit_tipo, proxima_avaliacao, proxima_avaliacao_hora,
                 ja_ganhou_crianca, data_ganhou_crianca, quantidade_filhos, generos_filhos,
-                metodo_preventivo, metodo_preventivo_outros, arquivo_origem
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                metodo_preventivo, metodo_preventivo_outros, arquivo_origem,
+                pc_id, ultima_modificacao, versao, status
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
             (
                 paciente_id,
@@ -409,28 +545,32 @@ class Database:
                 data_salvamento,
                 bool_to_int(avaliacao.get('inicio_pre_natal_antes_12s')),
                 avaliacao.get('inicio_pre_natal_semanas') if avaliacao.get('inicio_pre_natal_semanas') else None,
-                avaliacao.get('inicio_pre_natal_observacao', '').strip() or None,
+                (avaliacao.get('inicio_pre_natal_observacao') or '').strip() or None,
                 avaliacao.get('consultas_pre_natal', 0),
-                avaliacao.get('vacinas_completas', ''),
+                avaliacao.get('vacinas_completas', '') or None,
                 bool_to_int(avaliacao.get('plano_parto')),
                 bool_to_int(avaliacao.get('participou_grupos')),
                 bool_to_int(avaliacao.get('avaliacao_odontologica')),
                 bool_to_int(avaliacao.get('estratificacao')),
-                avaliacao.get('estratificacao_problema', '').strip(),
+                (avaliacao.get('estratificacao_problema') or '').strip(),
                 bool_to_int(avaliacao.get('cartao_pre_natal_completo')),
-                avaliacao.get('dum', '').strip() or None,
-                avaliacao.get('dpp', '').strip() or None,
+                (avaliacao.get('dum') or '').strip() or None,
+                (avaliacao.get('dpp') or '').strip() or None,
                 bool_to_int(avaliacao.get('ganhou_kit')),
-                avaliacao.get('kit_tipo', '').strip() or None,
-                avaliacao.get('proxima_avaliacao', '').strip() or None,
-                avaliacao.get('proxima_avaliacao_hora', '').strip() or None,
+                (avaliacao.get('kit_tipo') or '').strip() or None,
+                (avaliacao.get('proxima_avaliacao') or '').strip() or None,
+                (avaliacao.get('proxima_avaliacao_hora') or '').strip() or None,
                 bool_to_int(avaliacao.get('ja_ganhou_crianca')),
-                avaliacao.get('data_ganhou_crianca', '').strip() or None,
+                (avaliacao.get('data_ganhou_crianca') or '').strip() or None,
                 avaliacao.get('quantidade_filhos') if avaliacao.get('quantidade_filhos') is not None else None,
-                avaliacao.get('generos_filhos', '').strip() or None,
-                avaliacao.get('metodo_preventivo', '').strip() or None,
-                avaliacao.get('metodo_preventivo_outros', '').strip() or None,
-                arquivo_origem
+                (avaliacao.get('generos_filhos') or '').strip() or None,
+                (avaliacao.get('metodo_preventivo') or '').strip() or None,
+                (avaliacao.get('metodo_preventivo_outros') or '').strip() or None,
+                arquivo_origem,
+                pc_id,
+                ultima_modificacao,
+                versao,
+                status
             )
         )
         self.conn.commit()
@@ -495,35 +635,61 @@ class Database:
         row = cursor.fetchone()
         return self._row_to_dict(row) if row else None
 
-    def buscar_pacientes(self, filtro: Optional[Dict] = None) -> List[Dict]:
+    def buscar_pacientes(self, filtro: Optional[Dict] = None, incluir_removidos: bool = False) -> List[Dict]:
         query = "SELECT * FROM pacientes"
         params: Tuple[str, ...] = ()
+        clauses = []
+        
+        # Filtrar removidos por padrão
+        if not incluir_removidos:
+            clauses.append("(status IS NULL OR status != 'removido')")
+        
         if filtro:
-            clauses = []
             if 'nome' in filtro:
                 clauses.append("LOWER(nome_gestante) LIKE ?")
                 params += (f"%{filtro['nome'].lower()}%",)
             if 'unidade_saude' in filtro:
                 clauses.append("LOWER(unidade_saude) LIKE ?")
                 params += (f"%{filtro['unidade_saude'].lower()}%",)
-            if clauses:
-                query += " WHERE " + " AND ".join(clauses)
+            if 'status' in filtro:
+                clauses.append("status = ?")
+                params += (filtro['status'],)
+        
+        if clauses:
+            query += " WHERE " + " AND ".join(clauses)
         cursor = self.conn.cursor()
         cursor.execute(query, params)
         return [self._row_to_dict(row) for row in cursor.fetchall()]
 
     def atualizar_paciente(self, paciente_id: str, paciente_data: Dict) -> Dict:
-        if not self.buscar_paciente(paciente_id):
+        paciente_existente = self.buscar_paciente(paciente_id)
+        if not paciente_existente:
             return {'success': False, 'message': 'Paciente não encontrado'}
 
-        # Buscar dados antigos para comparar
-        paciente_antigo = self.buscar_paciente(paciente_id)
+        # Obter versão atual e incrementar (a menos que seja conflito, manter status)
+        versao_atual = paciente_existente.get('versao', 1)
+        nova_versao = versao_atual + 1
+        status_atual = paciente_existente.get('status', 'ativo')
+        
+        # Se status for 'conflito', manter como conflito (não sobrescrever)
+        novo_status = status_atual if status_atual == 'conflito' else 'ativo'
+        
+        # Usar pc_id e ultima_modificacao do paciente_data se fornecido (sync), senão usar atual
+        pc_id = paciente_data.get('pc_id') or self.pc_id
+        ultima_modificacao = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        resultado = self.inserir_registro(paciente_id, paciente_data)
+        resultado = self.inserir_registro(
+            paciente_id, 
+            paciente_data,
+            pc_id=pc_id,
+            ultima_modificacao=ultima_modificacao,
+            versao=nova_versao,
+            status=novo_status
+        )
 
         # Se foi sucesso, gerenciar agendamento da próxima avaliação
         if resultado['success']:
-            self._gerenciar_agendamento_proxima_avaliacao(paciente_id, paciente_data, paciente_antigo)
+            self._gerenciar_agendamento_proxima_avaliacao(paciente_id, paciente_data, paciente_existente)
 
         return resultado
 
@@ -638,7 +804,76 @@ class Database:
             stats['participou_grupos']['nao'] += 1 if row['participou_grupos'] == 0 else 0
         return stats
 
+    def obter_estatisticas_coluna(self, nome_coluna: str, unidade_saude: Optional[str] = None) -> Dict:
+        """Obtém estatísticas genéricas de uma coluna específica do BD"""
+        try:
+            # Verificar se a coluna existe
+            cursor = self.conn.cursor()
+            cursor.execute("PRAGMA table_info(pacientes)")
+            colunas_info = cursor.fetchall()
+            colunas_existentes = {col['name'] for col in colunas_info}
+            
+            if nome_coluna not in colunas_existentes:
+                return {
+                    'success': False,
+                    'message': f'Coluna {nome_coluna} não encontrada',
+                    'data': {'sim': 0, 'nao': 0}
+                }
+            
+            # Obter tipo da coluna
+            coluna_info = next((col for col in colunas_info if col['name'] == nome_coluna), None)
+            tipo_coluna = coluna_info['type'].upper() if coluna_info else 'TEXT'
+            
+            # Buscar dados
+            if unidade_saude:
+                cursor.execute("SELECT {} FROM pacientes WHERE LOWER(unidade_saude) = LOWER(?)".format(nome_coluna), (unidade_saude,))
+            else:
+                cursor.execute("SELECT {} FROM pacientes".format(nome_coluna))
+            rows = cursor.fetchall()
+            
+            # Processar dados baseado no tipo
+            stats = {'sim': 0, 'nao': 0}
+            
+            if 'INTEGER' in tipo_coluna:
+                # Para campos INTEGER (booleanos): 1 = sim, 0/null = não
+                for row in rows:
+                    valor = row[nome_coluna] if row[nome_coluna] is not None else 0
+                    if valor == 1:
+                        stats['sim'] += 1
+                    else:
+                        stats['nao'] += 1
+            elif 'TEXT' in tipo_coluna:
+                # Para campos TEXT: não nulo/vazio = sim, nulo/vazio = não
+                for row in rows:
+                    valor = row[nome_coluna]
+                    if valor and str(valor).strip():
+                        stats['sim'] += 1
+                    else:
+                        stats['nao'] += 1
+            else:
+                # Para outros tipos, usar mesma lógica de TEXT
+                for row in rows:
+                    valor = row[nome_coluna]
+                    if valor is not None:
+                        stats['sim'] += 1
+                    else:
+                        stats['nao'] += 1
+            
+            return {
+                'success': True,
+                'data': stats
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'message': str(e),
+                'data': {'sim': 0, 'nao': 0}
+            }
+
     def limpar_todos_dados(self) -> None:
+        # Excluir agendamentos primeiro (devido à foreign key)
+        self.conn.execute("DELETE FROM agendamentos")
+        # Excluir pacientes
         self.conn.execute("DELETE FROM pacientes")
         self.conn.commit()
         return {'success': True, 'message': 'Todos os dados foram excluídos com sucesso'}
@@ -768,18 +1003,28 @@ class Database:
     # Métodos para agendamentos
     def criar_agendamento(self, agendamento_id: str, paciente_id: str, data_consulta: str, 
                           hora_consulta: str, tipo_consulta: str = None, observacoes: str = None, 
-                          status: str = 'agendado', data_criacao: str = None, data_atualizacao: str = None) -> Dict:
+                          status: str = 'agendado', data_criacao: str = None, data_atualizacao: str = None,
+                          pc_id: str = None, ultima_modificacao: str = None, versao: int = None) -> Dict:
         """Cria um novo agendamento"""
         try:
             if not data_criacao:
                 data_criacao = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             if not data_atualizacao:
                 data_atualizacao = data_criacao
+            if not ultima_modificacao:
+                ultima_modificacao = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            if not pc_id:
+                pc_id = self.pc_id
+            if versao is None:
+                versao = 1
+            
             self.conn.execute("""
                 INSERT INTO agendamentos 
-                (id, paciente_id, data_consulta, hora_consulta, tipo_consulta, observacoes, status, data_criacao, data_atualizacao)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (agendamento_id, paciente_id, data_consulta, hora_consulta, tipo_consulta, observacoes, status, data_criacao, data_atualizacao))
+                (id, paciente_id, data_consulta, hora_consulta, tipo_consulta, observacoes, status, data_criacao, data_atualizacao,
+                 pc_id, ultima_modificacao, versao)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (agendamento_id, paciente_id, data_consulta, hora_consulta, tipo_consulta, observacoes, status, data_criacao, data_atualizacao,
+                  pc_id, ultima_modificacao, versao))
             self.conn.commit()
             return {'success': True, 'message': 'Agendamento criado com sucesso'}
         except Exception as e:
@@ -813,6 +1058,10 @@ class Database:
                 query += " AND a.status = ?"
                 params.append(status)
             
+            # Filtrar removidos por padrão (se status não for explicitamente 'removido')
+            if status != 'removido':
+                query += " AND (a.status IS NULL OR a.status != 'removido')"
+            
             query += " ORDER BY a.data_consulta ASC, a.hora_consulta ASC"
             
             cursor = self.conn.execute(query, params)
@@ -833,6 +1082,20 @@ class Database:
                     'data_criacao': row['data_criacao'],
                     'data_atualizacao': row['data_atualizacao']
                 }
+                # Adicionar campos de sincronização se existirem
+                try:
+                    if 'pc_id' in row.keys():
+                        agendamento['pc_id'] = row['pc_id']
+                    if 'ultima_modificacao' in row.keys():
+                        agendamento['ultima_modificacao'] = row['ultima_modificacao']
+                    if 'versao' in row.keys():
+                        agendamento['versao'] = row['versao']
+                    if 'removido_em' in row.keys():
+                        agendamento['removido_em'] = row['removido_em']
+                    if 'removido_por' in row.keys():
+                        agendamento['removido_por'] = row['removido_por']
+                except (KeyError, IndexError):
+                    pass
                 agendamentos.append(agendamento)
             
             return agendamentos
@@ -851,7 +1114,7 @@ class Database:
             row = cursor.fetchone()
             
             if row:
-                return {
+                agendamento = {
                     'id': row['id'],
                     'paciente_id': row['paciente_id'],
                     'nome_gestante': row['nome_gestante'],
@@ -864,17 +1127,58 @@ class Database:
                     'data_criacao': row['data_criacao'],
                     'data_atualizacao': row['data_atualizacao']
                 }
+                # Adicionar campos de sincronização se existirem
+                try:
+                    if 'pc_id' in row.keys():
+                        agendamento['pc_id'] = row['pc_id']
+                    if 'ultima_modificacao' in row.keys():
+                        agendamento['ultima_modificacao'] = row['ultima_modificacao']
+                    if 'versao' in row.keys():
+                        agendamento['versao'] = row['versao']
+                    if 'removido_em' in row.keys():
+                        agendamento['removido_em'] = row['removido_em']
+                    if 'removido_por' in row.keys():
+                        agendamento['removido_por'] = row['removido_por']
+                except (KeyError, IndexError):
+                    pass
+                return agendamento
             return None
         except Exception as e:
             return None
 
     def atualizar_agendamento(self, agendamento_id: str, paciente_id: str = None, data_consulta: str = None,
                               hora_consulta: str = None, tipo_consulta: str = None,
-                              observacoes: str = None, status: str = None, data_atualizacao: str = None) -> Dict:
+                              observacoes: str = None, status: str = None, data_atualizacao: str = None,
+                              pc_id: str = None, ultima_modificacao: str = None) -> Dict:
         """Atualiza um agendamento existente"""
         try:
+            # Buscar agendamento existente para obter versão
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT versao, status FROM agendamentos WHERE id = ?", (agendamento_id,))
+            row = cursor.fetchone()
+            
+            if not row:
+                return {'success': False, 'message': 'Agendamento não encontrado'}
+            
+            versao_atual = row['versao'] if row['versao'] else 1
+            nova_versao = versao_atual + 1
+            status_atual = row['status'] if row['status'] else 'agendado'
+            
+            # Se status for 'conflito', manter como conflito (não sobrescrever)
+            if status is not None and status_atual != 'conflito':
+                novo_status = status
+            elif status_atual == 'conflito':
+                novo_status = status_atual
+            else:
+                novo_status = status_atual
+            
             if not data_atualizacao:
                 data_atualizacao = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            if not ultima_modificacao:
+                ultima_modificacao = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            if not pc_id:
+                pc_id = self.pc_id
+            
             updates = []
             params = []
             
@@ -898,15 +1202,20 @@ class Database:
                 updates.append("observacoes = ?")
                 params.append(observacoes)
             
-            if status is not None:
-                updates.append("status = ?")
-                params.append(status)
+            # Atualizar status sempre (pode ser removido, conflito, etc)
+            updates.append("status = ?")
+            params.append(novo_status)
             
-            if not updates:
-                return {'success': False, 'message': 'Nenhum campo para atualizar'}
-            
+            # Atualizar campos de sincronização
             updates.append("data_atualizacao = ?")
             params.append(data_atualizacao)
+            updates.append("pc_id = ?")
+            params.append(pc_id)
+            updates.append("ultima_modificacao = ?")
+            params.append(ultima_modificacao)
+            updates.append("versao = ?")
+            params.append(nova_versao)
+            
             params.append(agendamento_id)
             
             query = f"UPDATE agendamentos SET {', '.join(updates)} WHERE id = ?"
@@ -918,14 +1227,180 @@ class Database:
             return {'success': False, 'message': f'Erro ao atualizar agendamento: {str(e)}'}
 
     def excluir_agendamento(self, agendamento_id: str) -> Dict:
-        """Exclui um agendamento"""
+        """Exclui um agendamento (hard delete - mantido para compatibilidade)"""
         try:
             self.conn.execute("DELETE FROM agendamentos WHERE id = ?", (agendamento_id,))
             self.conn.commit()
             return {'success': True, 'message': 'Agendamento excluído com sucesso'}
         except Exception as e:
             return {'success': False, 'message': f'Erro ao excluir agendamento: {str(e)}'}
+    
+    def remover_paciente_soft(self, paciente_id: str) -> Dict:
+        """Remove um paciente usando soft delete (marca como removido)"""
+        try:
+            paciente_existente = self.buscar_paciente(paciente_id)
+            if not paciente_existente:
+                return {'success': False, 'message': 'Paciente não encontrado'}
+            
+            removido_em = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                UPDATE pacientes 
+                SET status = 'removido', removido_em = ?, removido_por = ?,
+                    ultima_modificacao = ?, versao = versao + 1
+                WHERE id = ?
+            """, (removido_em, self.pc_id, removido_em, paciente_id))
+            self.conn.commit()
+            
+            return {'success': True, 'message': 'Paciente marcado como removido'}
+        except Exception as e:
+            return {'success': False, 'message': f'Erro ao remover paciente: {str(e)}'}
+    
+    def remover_agendamento_soft(self, agendamento_id: str) -> Dict:
+        """Remove um agendamento usando soft delete (marca como removido)"""
+        try:
+            agendamento_existente = self.obter_agendamento(agendamento_id)
+            if not agendamento_existente:
+                return {'success': False, 'message': 'Agendamento não encontrado'}
+            
+            removido_em = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                UPDATE agendamentos 
+                SET status = 'removido', removido_em = ?, removido_por = ?,
+                    ultima_modificacao = ?, versao = versao + 1
+                WHERE id = ?
+            """, (removido_em, self.pc_id, removido_em, agendamento_id))
+            self.conn.commit()
+            
+            return {'success': True, 'message': 'Agendamento marcado como removido'}
+        except Exception as e:
+            return {'success': False, 'message': f'Erro ao remover agendamento: {str(e)}'}
 
+    def listar_conflitos(self) -> Dict:
+        """Lista todos os registros com status='conflito'"""
+        try:
+            cursor = self.conn.cursor()
+            
+            # Buscar pacientes em conflito
+            cursor.execute("SELECT * FROM pacientes WHERE status = 'conflito'")
+            pacientes_conflito = [self._row_to_dict(row) for row in cursor.fetchall()]
+            
+            # Buscar agendamentos em conflito
+            cursor.execute("SELECT * FROM agendamentos WHERE status = 'conflito'")
+            agendamentos_conflito = []
+            for row in cursor.fetchall():
+                agendamento = {
+                    'id': row['id'],
+                    'paciente_id': row['paciente_id'],
+                    'data_consulta': row['data_consulta'],
+                    'hora_consulta': row['hora_consulta'],
+                    'tipo_consulta': row['tipo_consulta'],
+                    'observacoes': row['observacoes'],
+                    'status': row['status'],
+                    'data_criacao': row['data_criacao'],
+                    'data_atualizacao': row['data_atualizacao'],
+                    'pc_id': row.get('pc_id'),
+                    'ultima_modificacao': row.get('ultima_modificacao'),
+                    'versao': row.get('versao')
+                }
+                agendamentos_conflito.append(agendamento)
+            
+            return {
+                'success': True,
+                'pacientes': pacientes_conflito,
+                'agendamentos': agendamentos_conflito,
+                'total': len(pacientes_conflito) + len(agendamentos_conflito)
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'message': f'Erro ao listar conflitos: {str(e)}',
+                'pacientes': [],
+                'agendamentos': [],
+                'total': 0
+            }
+    
+    def resolver_conflito(self, registro_id: str, tipo: str, acao: str, dados_remotos: Optional[Dict] = None) -> Dict:
+        """
+        Resolve um conflito escolhendo qual versão manter.
+        
+        Args:
+            registro_id: ID do registro em conflito
+            tipo: 'paciente' ou 'agendamento'
+            acao: 'manter_local', 'aceitar_remoto', ou 'mesclar'
+            dados_remotos: Dados remotos se acao for 'aceitar_remoto' ou 'mesclar'
+        """
+        try:
+            if tipo == 'paciente':
+                registro_existente = self.buscar_paciente(registro_id)
+                if not registro_existente:
+                    return {'success': False, 'message': 'Paciente não encontrado'}
+                
+                if acao == 'manter_local':
+                    # Apenas mudar status de conflito para ativo
+                    cursor = self.conn.cursor()
+                    cursor.execute("""
+                        UPDATE pacientes 
+                        SET status = 'ativo', 
+                            ultima_modificacao = ?,
+                            versao = versao + 1
+                        WHERE id = ?
+                    """, (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), registro_id))
+                    self.conn.commit()
+                    return {'success': True, 'message': 'Conflito resolvido mantendo versão local'}
+                
+                elif acao == 'aceitar_remoto' and dados_remotos:
+                    # Atualizar com dados remotos e marcar como resolvido
+                    resultado = self.inserir_registro(
+                        registro_id,
+                        dados_remotos,
+                        pc_id=dados_remotos.get('pc_id'),
+                        ultima_modificacao=dados_remotos.get('ultima_modificacao'),
+                        versao=dados_remotos.get('versao', registro_existente.get('versao', 1) + 1),
+                        status='ativo'
+                    )
+                    return resultado
+                
+            elif tipo == 'agendamento':
+                registro_existente = self.obter_agendamento(registro_id)
+                if not registro_existente:
+                    return {'success': False, 'message': 'Agendamento não encontrado'}
+                
+                if acao == 'manter_local':
+                    cursor = self.conn.cursor()
+                    cursor.execute("""
+                        UPDATE agendamentos 
+                        SET status = CASE 
+                            WHEN status = 'conflito' THEN 'agendado'
+                            ELSE status
+                        END,
+                        ultima_modificacao = ?,
+                        versao = versao + 1
+                        WHERE id = ?
+                    """, (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), registro_id))
+                    self.conn.commit()
+                    return {'success': True, 'message': 'Conflito resolvido mantendo versão local'}
+                
+                elif acao == 'aceitar_remoto' and dados_remotos:
+                    # Atualizar com dados remotos
+                    resultado = self.atualizar_agendamento(
+                        registro_id,
+                        paciente_id=dados_remotos.get('paciente_id'),
+                        data_consulta=dados_remotos.get('data_consulta'),
+                        hora_consulta=dados_remotos.get('hora_consulta'),
+                        tipo_consulta=dados_remotos.get('tipo_consulta'),
+                        observacoes=dados_remotos.get('observacoes'),
+                        status=dados_remotos.get('status', 'agendado'),
+                        pc_id=dados_remotos.get('pc_id'),
+                        ultima_modificacao=dados_remotos.get('ultima_modificacao')
+                    )
+                    return resultado
+            
+            return {'success': False, 'message': 'Ação inválida ou dados insuficientes'}
+        except Exception as e:
+            return {'success': False, 'message': f'Erro ao resolver conflito: {str(e)}'}
+    
     def comparar_com_banco_remoto(self, pacientes_remotos: List[Dict]) -> Dict:
         """
         Compara o banco local com um banco remoto e detecta:

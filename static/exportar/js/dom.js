@@ -1,0 +1,28 @@
+// Referências aos elementos DOM
+export const dom = {
+    formatCards: document.querySelectorAll('.format-card'),
+    exportBtn: document.getElementById('exportBtn'),
+    totalPacientesSpan: document.getElementById('totalPacientes'),
+    statusMessage: document.getElementById('statusMessage'),
+    filtroUpasBtn: document.getElementById('filterUpasBtn'),
+    filterUpasText: document.getElementById('filterUpasText'),
+    filterUpasDropdown: document.getElementById('filterUpasDropdown'),
+    filterUpasSearch: document.getElementById('filterUpasSearch'),
+    filterUpasOptions: document.getElementById('filterUpasOptions'),
+    filterUpasTodas: document.getElementById('filterUpasTodas'),
+    filtroCamposBtn: document.getElementById('filterCamposBtn'),
+    filterCamposText: document.getElementById('filterCamposText'),
+    filterCamposDropdown: document.getElementById('filterCamposDropdown'),
+    filterCamposSearch: document.getElementById('filterCamposSearch'),
+    filterCamposOptions: document.getElementById('filterCamposOptions'),
+    filterCamposTodos: document.getElementById('filterCamposTodos'),
+    filtrosResumo: document.getElementById('filtrosResumo'),
+    selectedUpasTags: document.getElementById('selectedUpasTags'),
+    selectedCamposTags: document.getElementById('selectedCamposTags'),
+    togglePersonalizar: document.getElementById('togglePersonalizar'),
+    customPanel: document.getElementById('customPanel'),
+    customColumnSelect: document.getElementById('customColumnSelect'),
+    customAddBtn: document.getElementById('customAddBtn'),
+    customList: document.getElementById('customList'),
+    previewContagem: document.getElementById('previewContagem')
+};

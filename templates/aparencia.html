@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personalizar Aparência - Sistema de Gestão de Pacientes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='alerts/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='alerts_agendamentos/css/style.css') }}">
+    <style id="custom-theme" type="text/css"></style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+</head>
+<body>
+    <!-- Top Bar Fixa -->
+    <nav class="topbar">
+        <div class="topbar-content">
+            <div class="topbar-logo">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo Sistema Gestão Gestante">
+                <h3>Gestão de Pacientes</h3>
+            </div>
+            <div class="topbar-links">
+                <!-- Gaveta: Pacientes -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👥 Pacientes
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/" class="topbar-dropdown-item">📊 Indicadores</a>
+                        <a href="/novo_paciente" class="topbar-dropdown-item">➕ Novo Paciente</a>
+                        <a href="/pacientes" class="topbar-dropdown-item">📋 Lista de Pacientes</a>
+                        <a href="/exportar" class="topbar-dropdown-item">💾 Exportar</a>
+                    </div>
+                </div>
+
+                <!-- Gaveta: Profissionais -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👨‍⚕️ Profissionais
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/agendamentos" class="topbar-dropdown-item">📅 Agendamentos</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">👨‍⚕️ Lista de Profissionais</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">📊 Relatórios</a>
+                    </div>
+                </div>
+
+                <!-- Gaveta: Configurações -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        ⚙️ Configurações
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/bd" class="topbar-dropdown-item">🗄️ Banco de Dados</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">🔔 Notificações</a>
+                        <a href="/aparencia" class="topbar-dropdown-item active">🎨 Aparência</a>
+                    </div>
+                </div>
+
+                <!-- Ajuda (não é gaveta) -->
+                <a href="/ajuda" class="topbar-link btn-ajuda">
+                    ❓ Ajuda
+                </a>
+
+                <span id="version-info" class="topbar-version">v{{ version }}</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sistema de Alertas de Parto Próximo -->
+    <div id="alertas-parto-container" style="display: none;">
+        <div class="alertas-header">
+            <h3>
+                🚨 Alertas de Parto
+                <span class="badge-contador" id="alertas-contador">0</span>
+            </h3>
+        </div>
+        <div id="alertas-parto-list">
+            <!-- Alertas serão inseridos aqui via JavaScript -->
+        </div>
+    </div>
+
+    <!-- Sistema de Alertas de Agendamentos Próximos -->
+    <div id="alertas-agendamentos-container" style="display: none;">
+        <div class="alertas-header-agendamentos">
+            <h3>
+                📅 Agendamentos Próximos
+                <span class="badge-contador" id="alertas-agendamentos-contador">0</span>
+            </h3>
+        </div>
+        <div id="alertas-agendamentos-list">
+            <!-- Alertas serão inseridos aqui via JavaScript -->
+        </div>
+    </div>
+
+    <!-- Container Principal da Página de Aparência -->
+    <div class="container">
+        <div class="header">
+            <h1>🎨 Personalizar Aparência</h1>
+            <p>Customize as cores do sistema de gestão de pacientes</p>
+        </div>
+
+        <!-- Seção Principal do Editor de Cores -->
+        <div class="aparencia-editor-section">
+            <div class="aparencia-theme-info">
+                <div class="aparencia-theme-name">
+                    <label for="theme-name">Nome do Tema:</label>
+                    <input type="text" id="theme-name" placeholder="Meu Tema Personalizado" maxlength="50">
+                </div>
+                <div class="aparencia-theme-status">
+                    <span id="theme-status">Tema atual: Padrão</span>
+                </div>
+            </div>
+            
+            <!-- Lista de Temas Salvos -->
+            <div class="aparencia-themes-list-section">
+                <h3>Temas Salvos</h3>
+                <div id="temas-salvos-lista" class="temas-salvos-lista">
+                    <!-- Temas serão inseridos aqui via JavaScript -->
+                </div>
+            </div>
+
+            <div class="aparencia-editor-grid">
+                <!-- Painel de Edição de Cores -->
+                <div class="aparencia-color-panel">
+                    <h2>Editar Cores</h2>
+
+                    <div class="aparencia-color-groups">
+                        <div class="aparencia-color-group">
+                            <h3>🎨 Cores Principais</h3>
+                            <div class="aparencia-color-grid" id="primary-colors">
+                                <div class="aparencia-color-item">
+                                    <label for="bg">Fundo Geral</label>
+                                    <div class="aparencia-color-input-wrapper">
+                                        <input type="color" id="bg" name="--bg" value="#f2f5f4" class="aparencia-color-input">
+                                        <span class="aparencia-color-value">#f2f5f4</span>
+                                    </div>
+                                </div>
+                                <div class="aparencia-color-item">
+                                    <label for="card">Cartões</label>
+                                    <div class="aparencia-color-input-wrapper">
+                                        <input type="color" id="card" name="--card" value="#ffffff" class="aparencia-color-input">
+                                        <span class="aparencia-color-value">#ffffff</span>
+                                    </div>
+                                </div>
+                                <div class="aparencia-color-item">
+                                    <label for="primary">Cor Primária</label>
+                                    <div class="aparencia-color-input-wrapper">
+                                        <input type="color" id="primary" name="--primary" value="#2f7d6d" class="aparencia-color-input">
+                                        <span class="aparencia-color-value">#2f7d6d</span>
+                                    </div>
+                                </div>
+                                <div class="aparencia-color-item">
+                                    <label for="primary-hover">Primária (Hover)</label>
+                                    <div class="aparencia-color-input-wrapper">
+                                        <input type="color" id="primary-hover" name="--primary-hover" value="#266758" class="aparencia-color-input">
+                                        <span class="aparencia-color-value">#266758</span>
+                                    </div>
+                                </div>
+                                <div class="aparencia-color-item">
+                                    <label for="secondary">Cor Secundária</label>
+                                    <div class="aparencia-color-input-wrapper">
+                                        <input type="color" id="secondary" name="--secondary" value="#4a90a4" class="aparencia-color-input">
+                                        <span class="aparencia-color-value">#4a90a4</span>
+                                    </div>
+                                </div>
+                                <div class="aparencia-color-item">
+                                    <label for="secondary-hover">Secundária (Hover)</label>
+                                    <div class="aparencia-color-input-wrapper">
+                                        <input type="color" id="secondary-hover" name="--secondary-hover" value="#3d7a8a" class="aparencia-color-input">
+                                        <span class="aparencia-color-value">#3d7a8a</span>
+                                    </div>
+                                </div>
+                                <div class="aparencia-color-item">
+                                    <label for="accent">Destaque</label>
+                                    <div class="aparencia-color-input-wrapper">
+                                        <input type="color" id="accent" name="--accent" value="#e6f2ef" class="aparencia-color-input">
+                                        <span class="aparencia-color-value">#e6f2ef</span>
+                                    </div>
+                                </div>
+                                <div class="aparencia-color-item">
+                                    <label for="text">Texto Principal</label>
+                                    <div class="aparencia-color-input-wrapper">
+                                        <input type="color" id="text" name="--text" value="#263238" class="aparencia-color-input">
+                                        <span class="aparencia-color-value">#263238</span>
+                                    </div>
+                                </div>
+                                <div class="aparencia-color-item">
+                                    <label for="text-muted">Texto Secundário</label>
+                                    <div class="aparencia-color-input-wrapper">
+                                        <input type="color" id="text-muted" name="--text-muted" value="#607d8b" class="aparencia-color-input">
+                                        <span class="aparencia-color-value">#607d8b</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="aparencia-color-group">
+                            <h3>⚠️ Estados e Feedback</h3>
+                            <div class="aparencia-color-grid" id="states-colors">
+                                <div class="aparencia-color-item">
+                                    <label for="success">Sucesso</label>
+                                    <div class="aparencia-color-input-wrapper">
+                                        <input type="color" id="success" name="--success" value="#2e7d32" class="aparencia-color-input">
+                                        <span class="aparencia-color-value">#2e7d32</span>
+                                    </div>
+                                </div>
+                                <div class="aparencia-color-item">
+                                    <label for="success-light">Sucesso (Claro)</label>
+                                    <div class="aparencia-color-input-wrapper">
+                                        <input type="color" id="success-light" name="--success-light" value="#c8e6c9" class="aparencia-color-input">
+                                        <span class="aparencia-color-value">#c8e6c9</span>
+                                    </div>
+                                </div>
+                                <div class="aparencia-color-item">
+                                    <label for="warning">Aviso</label>
+                                    <div class="aparencia-color-input-wrapper">
+                                        <input type="color" id="warning" name="--warning" value="#f57c00" class="aparencia-color-input">
+                                        <span class="aparencia-color-value">#f57c00</span>
+                                    </div>
+                                </div>
+                                <div class="aparencia-color-item">
+                                    <label for="warning-light">Aviso (Claro)</label>
+                                    <div class="aparencia-color-input-wrapper">
+                                        <input type="color" id="warning-light" name="--warning-light" value="#ffe0b2" class="aparencia-color-input">
+                                        <span class="aparencia-color-value">#ffe0b2</span>
+                                    </div>
+                                </div>
+                                <div class="aparencia-color-item">
+                                    <label for="danger">Erro</label>
+                                    <div class="aparencia-color-input-wrapper">
+                                        <input type="color" id="danger" name="--danger" value="#c62828" class="aparencia-color-input">
+                                        <span class="aparencia-color-value">#c62828</span>
+                                    </div>
+                                </div>
+                                <div class="aparencia-color-item">
+                                    <label for="danger-light">Erro (Claro)</label>
+                                    <div class="aparencia-color-input-wrapper">
+                                        <input type="color" id="danger-light" name="--danger-light" value="#ffcdd2" class="aparencia-color-input">
+                                        <span class="aparencia-color-value">#ffcdd2</span>
+                                    </div>
+                                </div>
+                                <div class="aparencia-color-item">
+                                    <label for="info">Informação</label>
+                                    <div class="aparencia-color-input-wrapper">
+                                        <input type="color" id="info" name="--info" value="#0277bd" class="aparencia-color-input">
+                                        <span class="aparencia-color-value">#0277bd</span>
+                                    </div>
+                                </div>
+                                <div class="aparencia-color-item">
+                                    <label for="info-light">Informação (Claro)</label>
+                                    <div class="aparencia-color-input-wrapper">
+                                        <input type="color" id="info-light" name="--info-light" value="#b3e5fc" class="aparencia-color-input">
+                                        <span class="aparencia-color-value">#b3e5fc</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="aparencia-color-group">
+                            <h3>🔲 Bordas e Elementos</h3>
+                            <div class="aparencia-color-grid" id="borders-colors">
+                                <div class="aparencia-color-item">
+                                    <label for="border">Borda</label>
+                                    <div class="aparencia-color-input-wrapper">
+                                        <input type="color" id="border" name="--border" value="#d0d7d5" class="aparencia-color-input">
+                                        <span class="aparencia-color-value">#d0d7d5</span>
+                                    </div>
+                                </div>
+                                <div class="aparencia-color-item">
+                                    <label for="border-light">Borda (Clara)</label>
+                                    <div class="aparencia-color-input-wrapper">
+                                        <input type="color" id="border-light" name="--border-light" value="#e8edec" class="aparencia-color-input">
+                                        <span class="aparencia-color-value">#e8edec</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botões de Ação -->
+                    <div class="aparencia-actions">
+                        <button class="aparencia-btn aparencia-btn-secondary" onclick="aparenciaPage.resetToDefault()">
+                            🔄 Resetar para Padrão
+                        </button>
+                        <div class="aparencia-actions-main">
+                            <button class="aparencia-btn aparencia-btn-cancel" onclick="window.history.back()">
+                                ← Voltar
+                            </button>
+                            <button class="aparencia-btn aparencia-btn-primary" onclick="aparenciaPage.saveTheme()">
+                                💾 Salvar Tema
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Painel de Preview -->
+                <div class="aparencia-preview-panel">
+                    <h2>Preview do Tema</h2>
+                    <div class="aparencia-preview-content">
+                        <div class="preview-card">
+                            <h4>Exemplo de Cartão</h4>
+                            <p>Este é um exemplo de como ficará a aparência com as cores selecionadas.</p>
+                            <button class="preview-btn-primary">Botão Primário</button>
+                            <button class="preview-btn-secondary">Botão Secundário</button>
+                        </div>
+                        <div class="preview-alerts">
+                            <div class="preview-alert preview-alert-success">Mensagem de sucesso</div>
+                            <div class="preview-alert preview-alert-warning">Mensagem de aviso</div>
+                            <div class="preview-alert preview-alert-danger">Mensagem de erro</div>
+                        </div>
+
+                        <!-- Preview da Topbar -->
+                        <div class="preview-topbar">
+                            <div class="preview-topbar-content">
+                                <div class="preview-topbar-logo">
+                                    <span>👥 Pacientes</span>
+                                    <span>👨‍⚕️ Profissionais</span>
+                                    <span>⚙️ Configurações</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Seção Prompt para IA -->
+        <div class="aparencia-ai-section">
+            <div class="aparencia-section-header">
+                <h2>🤖 Gerar Tema com IA</h2>
+                <p>Use este prompt em qualquer modelo de IA (ChatGPT, Claude, Gemini, etc.) para gerar um tema personalizado</p>
+            </div>
+            <div class="aparencia-prompt-container">
+                <div class="aparencia-prompt-instructions">
+                    <h3>📋 Como usar:</h3>
+                    <ol>
+                        <li>Clique no botão <strong>"Copiar Prompt"</strong> abaixo</li>
+                        <li>Cole o prompt em qualquer modelo de IA (ChatGPT, Claude, Gemini, etc.)</li>
+                        <li>Responda as perguntas do modelo sobre suas preferências de cores</li>
+                        <li>O modelo retornará um CSS personalizado com as variáveis de cores</li>
+                        <li>Use o campo <strong>"Importar CSS"</strong> abaixo para aplicar o tema gerado</li>
+                    </ol>
+                </div>
+                <div class="aparencia-prompt-wrapper">
+                    <textarea id="ai-prompt-text" class="aparencia-prompt-textarea" readonly></textarea>
+                    <button class="aparencia-btn aparencia-btn-primary" onclick="aparenciaPage.copyPrompt()">
+                        📋 Copiar Prompt
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Seção Import CSS -->
+        <div class="aparencia-import-section">
+            <div class="aparencia-section-header">
+                <h2>📥 Importar CSS</h2>
+                <p>Importe um arquivo CSS ou cole o CSS diretamente para aplicar um tema personalizado</p>
+            </div>
+            <div class="aparencia-import-container">
+                <div class="aparencia-import-tabs">
+                    <button class="aparencia-tab-btn active" onclick="aparenciaPage.switchImportTab('file')">
+                        📁 Importar Arquivo
+                    </button>
+                    <button class="aparencia-tab-btn" onclick="aparenciaPage.switchImportTab('text')">
+                        📝 Colar CSS
+                    </button>
+                </div>
+
+                <!-- Tab: Importar Arquivo -->
+                <div id="import-file-tab" class="aparencia-import-tab-content active">
+                    <div class="aparencia-file-input-wrapper">
+                        <input type="file" id="css-file-input" accept=".css" class="aparencia-file-input">
+                        <label for="css-file-input" class="aparencia-file-label">
+                            <span>📁 Selecione um arquivo CSS</span>
+                            <small>Apenas arquivos .css são aceitos</small>
+                        </label>
+                    </div>
+                    <div id="file-error-message" class="aparencia-error-message" style="display: none;"></div>
+                </div>
+
+                <!-- Tab: Colar CSS -->
+                <div id="import-text-tab" class="aparencia-import-tab-content">
+                    <textarea id="css-text-input" class="aparencia-css-textarea" placeholder="Cole aqui o CSS com as variáveis :root { ... }"></textarea>
+                    <div id="text-error-message" class="aparencia-error-message" style="display: none;"></div>
+                </div>
+
+                <div class="aparencia-import-actions">
+                    <button class="aparencia-btn aparencia-btn-primary" onclick="aparenciaPage.importCSS()">
+                        ✅ Importar e Aplicar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='home/js/theme-manager.js') }}"></script>
+    <script src="{{ url_for('static', filename='home/js/aparencia-page.js') }}"></script>
+    <script src="{{ url_for('static', filename='home/js/home.js') }}"></script>
+    <script>
+        // Suprimir erros de extensões do navegador (Copilot, etc.)
+        window.addEventListener('error', function(e) {
+            if (e.message && (
+                e.message.includes('message channel closed') ||
+                e.message.includes('contentLogger') ||
+                e.message.includes('chrome.runtime') ||
+                e.message.includes('browser.runtime')
+            )) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        window.addEventListener('unhandledrejection', function(e) {
+            if (e.reason && (
+                e.reason.message && (
+                    e.reason.message.includes('message channel closed') ||
+                    e.reason.message.includes('contentLogger')
+                )
+            )) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        function abrirAjuda() {
+            fetch('/api/abrir_ajuda')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Arquivo de ajuda aberto no Bloco de Notas!');
+                    } else {
+                        alert('Erro ao abrir ajuda: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    alert('Erro ao abrir arquivo de ajuda.');
+                });
+        }
+
+        // Carregar versão do sistema
+        async function carregarVersao() {
+            try {
+                const response = await fetch('/api/version');
+                const data = await response.json();
+                if (data.success) {
+                    const versionElement = document.getElementById('version-info');
+                    if (versionElement) {
+                        versionElement.textContent = `v${data.version}`;
+                        versionElement.title = `Build: ${data.build_date}`;
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao carregar versão:', error);
+            }
+        }
+
+        // Carregar versão ao carregar a página
+        document.addEventListener('DOMContentLoaded', carregarVersao);
+        
+        // Garantir que os dropdowns sejam configurados
+        function initDropdowns() {
+            if (typeof configurarDropdownsTopbar === 'function') {
+                configurarDropdownsTopbar();
+            } else {
+                // Se a função ainda não estiver disponível, tentar novamente após um pequeno delay
+                setTimeout(initDropdowns, 100);
+            }
+        }
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initDropdowns);
+        } else {
+            initDropdowns();
+        }
+    </script>
+    <script src="{{ url_for('static', filename='alerts/js/alerts.js') }}"></script>
+    <script src="{{ url_for('static', filename='alerts_agendamentos/js/alerts.js') }}"></script>
+</body>
+</html>

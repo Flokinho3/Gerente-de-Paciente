@@ -392,6 +392,110 @@
     60%, 100% { content: '...'; }
 }
 
+/* Mini-dashboard: Melhores Unidades */
+.mini-dashboard-unidades {
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+    box-shadow: 0 4px 16px var(--shadow);
+    border: 2px solid var(--border-light);
+}
+
+.mini-dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.mini-dashboard-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text);
+}
+
+.mini-dashboard-select {
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--accent);
+    color: var(--text);
+    cursor: pointer;
+}
+
+.mini-dashboard-select:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.mini-dashboard-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mini-dashboard-loading {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.mini-dashboard-item {
+    display: grid;
+    grid-template-columns: 1fr minmax(80px, 180px) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: var(--accent);
+    border-radius: var(--radius-sm);
+    border-left: 4px solid var(--primary);
+}
+
+.mini-dashboard-item.rank-1 { border-left-color: #d4af37; }
+.mini-dashboard-item.rank-2 { border-left-color: #c0c0c0; }
+.mini-dashboard-item.rank-3 { border-left-color: #cd7f32; }
+
+.mini-dashboard-item-nome {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text);
+}
+
+.mini-dashboard-item-bar {
+    flex: 1;
+    height: 8px;
+    min-width: 80px;
+    background: var(--border-light);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.mini-dashboard-item-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--primary), var(--success));
+    transition: width 0.3s ease;
+}
+
+.mini-dashboard-item-pct {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--primary);
+    min-width: 48px;
+    text-align: right;
+}
+
+.mini-dashboard-empty {
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 12px 0;
+}
+
 /* Responsividade */
 @media (max-width: 768px) {
     .search-container {

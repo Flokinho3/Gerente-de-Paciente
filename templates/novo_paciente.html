@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='novo_paciente/css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='alerts/css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='alerts_agendamentos/css/style.css') }}">
+    <style id="custom-theme" type="text/css"></style>
     <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
 </head>
 <body>
@@ -55,14 +56,14 @@
                     <div class="topbar-dropdown-content">
                         <a href="/bd" class="topbar-dropdown-item">🗄️ Banco de Dados</a>
                         <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">🔔 Notificações</a>
-                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">🎨 Aparência</a>
+                        <a href="/aparencia" class="topbar-dropdown-item">🎨 Aparência</a>
                     </div>
                 </div>
 
                 <!-- Ajuda (não é gaveta) -->
-                <button onclick="abrirAjuda()" class="topbar-link btn-ajuda">
+                <a href="/ajuda" class="topbar-link btn-ajuda">
                     ❓ Ajuda
-                </button>
+                </a>
 
                 <span id="version-info" class="topbar-version">v{{ version }}</span>
             </div>
@@ -570,11 +571,11 @@
                         <div class="radio-group">
                             <label class="radio-label">
                                 <input type="checkbox" name="kit_tipo" value="MP" id="kit_tipo_mp">
-                                <span>MP (Mãe Presente)</span>
+                                <span>MP (Mae piraporence)</span>
                             </label>
                             <label class="radio-label">
                                 <input type="checkbox" name="kit_tipo" value="FM" id="kit_tipo_fm">
-                                <span>FM (Família Mineira)</span>
+                                <span>FM (Filhos de Minas)</span>
                             </label>
                         </div>
                         <small class="form-help">Selecione o(s) tipo(s) de kit recebido(s)</small>
@@ -638,6 +639,7 @@
             <div id="message" class="message" style="display: none;"></div>
         </form>
     </div>
+    <script src="{{ url_for('static', filename='home/js/theme-manager.js') }}"></script>
     <script type="module" src="{{ url_for('static', filename='novo_paciente/js/main.js') }}"></script>
     <script>
         // Suprimir erros de extensões do navegador (Copilot, Edge, etc.)

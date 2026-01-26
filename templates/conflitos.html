@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Pacientes - Conflitos de Sincronização</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='conflitos/css/style.css') }}">
+    <style id="custom-theme" type="text/css"></style>
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+</head>
+<body>
+    <!-- Top Bar Fixa -->
+    <nav class="topbar">
+        <div class="topbar-content">
+            <div class="topbar-logo">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo Sistema Gestão Gestante">
+                <h3>Gestão de Pacientes</h3>
+            </div>
+            <div class="topbar-links">
+                <!-- Gaveta: Pacientes -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👥 Pacientes
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/" class="topbar-dropdown-item">📊 Indicadores</a>
+                        <a href="/novo_paciente" class="topbar-dropdown-item">➕ Novo Paciente</a>
+                        <a href="/pacientes" class="topbar-dropdown-item">📋 Lista de Pacientes</a>
+                        <a href="/exportar" class="topbar-dropdown-item">💾 Exportar</a>
+                    </div>
+                </div>
+
+                <!-- Gaveta: Profissionais -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👨‍⚕️ Profissionais
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/agendamentos" class="topbar-dropdown-item">📅 Agendamentos</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">👨‍⚕️ Lista de Profissionais</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">📊 Relatórios</a>
+                    </div>
+                </div>
+
+                <!-- Gaveta: Configurações -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        ⚙️ Configurações
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/bd" class="topbar-dropdown-item">🗄️ Banco de Dados</a>
+                        <a href="/conflitos" class="topbar-dropdown-item active">⚠️ Conflitos <span id="conflitos-badge" class="badge-contador" style="display: none;">0</span></a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">🔔 Notificações</a>
+                        <a href="/aparencia" class="topbar-dropdown-item">🎨 Aparência</a>
+                    </div>
+                </div>
+
+                <!-- Ajuda (não é gaveta) -->
+                <a href="/ajuda" class="topbar-link btn-ajuda">
+                    ❓ Ajuda
+                </a>
+                <span id="version-info" class="topbar-version">v{{ version }}</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>⚠️ Conflitos de Sincronização</h1>
+            <p>Registros que foram modificados simultaneamente em diferentes PCs precisam de sua atenção.</p>
+        </div>
+
+        <!-- Servidores na rede (porta 5000) -->
+        <div class="conflitos-container">
+            <h2>Servidores Detectados (mesma porta)</h2>
+            <div id="servidoresDetectados" class="conflitos-list">
+                <p style="color: #666; padding: 20px; text-align: center;">Carregando servidores...</p>
+            </div>
+        </div>
+
+        <!-- Loading -->
+        <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <p id="loadingMessage">Carregando conflitos...</p>
+            </div>
+        </div>
+
+        <!-- Mensagem de Status -->
+        <div id="statusMessage" class="status-message" style="display: none;"></div>
+
+        <!-- Estatísticas -->
+        <div class="conflitos-stats">
+            <div class="stat-card">
+                <div class="stat-value" id="totalConflitos">0</div>
+                <div class="stat-label">Total de Conflitos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="pacientesConflito">0</div>
+                <div class="stat-label">Pacientes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="agendamentosConflito">0</div>
+                <div class="stat-label">Agendamentos</div>
+            </div>
+        </div>
+
+        <!-- Lista de Conflitos -->
+        <div class="conflitos-container">
+            <h2>Pacientes com Conflito</h2>
+            <div id="pacientesConflitoList" class="conflitos-list">
+                <!-- Conflitos serão inseridos aqui -->
+            </div>
+
+            <h2>Agendamentos com Conflito</h2>
+            <div id="agendamentosConflitoList" class="conflitos-list">
+                <!-- Conflitos serão inseridos aqui -->
+            </div>
+
+            <div id="semConflitos" class="sem-conflitos" style="display: none;">
+                <p>✅ Nenhum conflito pendente! Todos os registros estão sincronizados.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Comparação -->
+    <div id="comparacaoModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🔍 Comparar Versões</h2>
+                <button class="modal-close" onclick="fecharModalComparacao()">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="comparacaoContent">
+                    <!-- Conteúdo de comparação será inserido aqui -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='home/js/theme-manager.js') }}"></script>
+    <script src="{{ url_for('static', filename='conflitos/js/main.js') }}"></script>
+    <script>
+        // Suprimir erros de extensões do navegador (Copilot, etc.)
+        window.addEventListener('error', function(e) {
+            if (e.message && (
+                e.message.includes('message channel closed') ||
+                e.message.includes('contentLogger') ||
+                e.message.includes('chrome.runtime') ||
+                e.message.includes('browser.runtime')
+            )) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        window.addEventListener('unhandledrejection', function(e) {
+            if (e.reason && (
+                e.reason.message && (
+                    e.reason.message.includes('message channel closed') ||
+                    e.reason.message.includes('contentLogger')
+                )
+            )) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // Carregar versão do sistema
+        async function carregarVersao() {
+            try {
+                const response = await fetch('/api/version');
+                const data = await response.json();
+                if (data.success) {
+                    const versionElement = document.getElementById('version-info');
+                    if (versionElement) {
+                        versionElement.textContent = `v${data.version}`;
+                        versionElement.title = `Build: ${data.build_date}`;
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao carregar versão:', error);
+            }
+        }
+
+        // Carregar contador de conflitos (badge no menu)
+        async function carregarContadorConflitos() {
+            try {
+                const response = await fetch('/api/sync/conflitos');
+                const data = await response.json();
+                if (data.success) {
+                    const total = (data.pacientes?.length || 0) + (data.agendamentos?.length || 0);
+                    const badge = document.getElementById('conflitos-badge');
+                    if (badge) {
+                        if (total > 0) {
+                            badge.textContent = total;
+                            badge.style.display = 'inline-block';
+                        } else {
+                            badge.style.display = 'none';
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao carregar contador de conflitos:', error);
+            }
+        }
+
+        // Carregar servidores detectados na porta do app
+        async function carregarServidoresDetectados() {
+            const container = document.getElementById('servidoresDetectados');
+            if (!container) return;
+
+            try {
+                const response = await fetch('/api/sync/discover');
+                const data = await response.json();
+
+                if (!data.success) {
+                    container.innerHTML = `<p style="color: #c62828; padding: 20px; text-align: center;">${data.message || 'Erro ao descobrir servidores.'}</p>`;
+                    return;
+                }
+
+                let html = '';
+                if (data.host_warning) {
+                    html += `<div class="host-warning" style="margin-bottom: 12px; padding: 12px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; color: #856404; font-size: 0.95em;">⚠️ ${data.host_warning}</div>`;
+                }
+                const servers = data.servers || [];
+                if (servers.length === 0) {
+                    container.innerHTML = html + '<p style="color: #666; padding: 20px; text-align: center;">Nenhum servidor encontrado na rede.</p>';
+                    return;
+                }
+
+                container.innerHTML = html;
+                servers.forEach(server => {
+                    const item = document.createElement('div');
+                    item.className = 'conflito-item';
+                    item.innerHTML = `
+                        <div class="conflito-header">
+                            <div class="conflito-title">🖥️ ${server.hostname || 'Servidor'}</div>
+                        </div>
+                        <div class="conflito-info">
+                            <div><strong>IP:</strong> ${server.ip}</div>
+                            <div><strong>Porta:</strong> ${server.port}</div>
+                        </div>
+                    `;
+                    container.appendChild(item);
+                });
+            } catch (error) {
+                container.innerHTML = '<p style="color: #c62828; padding: 20px; text-align: center;">Erro ao descobrir servidores na rede.</p>';
+            }
+        }
+
+        // Função para configurar os dropdowns do topbar
+        function configurarDropdownsTopbar() {
+            const dropdowns = document.querySelectorAll('.topbar-dropdown');
+
+            dropdowns.forEach(dropdown => {
+                const btn = dropdown.querySelector('.topbar-dropdown-btn');
+                const content = dropdown.querySelector('.topbar-dropdown-content');
+
+                if (!btn || !content) return;
+
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dropdowns.forEach(other => {
+                        if (other !== dropdown) other.classList.remove('active');
+                    });
+                    dropdown.classList.toggle('active');
+                });
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.topbar-dropdown')) {
+                    dropdowns.forEach(d => d.classList.remove('active'));
+                }
+            });
+
+            document.querySelectorAll('.topbar-dropdown-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    dropdowns.forEach(d => d.classList.remove('active'));
+                });
+            });
+
+            marcarItemAtivoTopbar();
+        }
+
+        function marcarItemAtivoTopbar() {
+            const currentPath = window.location.pathname;
+            document.querySelectorAll('.topbar-dropdown-item').forEach(item => {
+                item.classList.remove('active');
+                const href = item.getAttribute('href');
+                if (href === currentPath || (currentPath === '/' && href === '/')) {
+                    item.classList.add('active');
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            carregarVersao();
+            configurarDropdownsTopbar();
+            carregarContadorConflitos();
+            carregarServidoresDetectados();
+        });
+    </script>
+</body>
+</html>

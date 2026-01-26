@@ -2,7 +2,7 @@
 
 > Sistema web profissional para gerenciamento completo de pacientes, desenvolvido em Python com Flask. Interface moderna e intuitiva para cadastro, acompanhamento e análise de dados de pacientes.
 
-[![Versão](https://img.shields.io/badge/Versão-1.0.2-blue.svg)](https://github.com/seu-usuario/gerente-paciente)
+[![Versão](https://img.shields.io/badge/Versão-1.0.3-blue.svg)](https://github.com/seu-usuario/gerente-paciente)
 [![Python](https://img.shields.io/badge/Python-3.8+-green.svg)](https://python.org)
 [![Flask](https://img.shields.io/badge/Flask-2.3.3-lightgrey.svg)](https://flask.palletsprojects.com/)
 [![SQLite](https://img.shields.io/badge/SQLite-3-blue.svg)](https://sqlite.org)
@@ -138,7 +138,7 @@ gerente-paciente/
 │   └── README.md              # Documentação adicional
 │
 ├── 🐍 main.py                  # Ponto de entrada principal
-├── 🐍 flask_app.py            # Aplicação Flask (v1.0.2)
+├── 🐍 flask_app.py            # Aplicação Flask (v1.0.3)
 ├── 🐍 database.py             # Camada de banco de dados
 ├── 🐍 tray_icon.py            # Gerenciador do tray icon
 ├── 📋 requirements.txt        # Dependências Python
@@ -193,6 +193,7 @@ python outros/testar_antes_build.py
 PORT=5000
 
 # Host do Flask (padrão: 127.0.0.1)
+# Use 0.0.0.0 para aceitar conexões de outros PCs (Descobrir Servidores na rede)
 FLASK_HOST=127.0.0.1
 
 # Modo silencioso (0/1)
@@ -241,6 +242,7 @@ DEBUG_LOG_PATH=./Debug/debug.log
 - **Antivírus bloqueia**: Adicione exceção para o executável
 - **PyInstaller falha**: Execute `pip install --upgrade pyinstaller`
 - **Tray icon não funciona**: Instale `pip install pystray pillow`
+- **Não encontra outros servidores na rede**: Em cada PC, defina `FLASK_HOST=0.0.0.0` no `.env` e reinicie. Permita o Gerente no Firewall do Windows (redes privadas).
 
 ## 🔧 Tecnologias Utilizadas
 
@@ -323,7 +325,7 @@ Este projeto é de **uso privado**. Todos os direitos reservados.
 
 ---
 
-**🏥 Sistema de Gestão de Pacientes v1.0.2**
+**🏥 Sistema de Gestão de Pacientes v1.0.3**
 *Desenvolvido com ❤️ usando Python + Flask + SQLite*
 
 **Última atualização:** Janeiro 2026

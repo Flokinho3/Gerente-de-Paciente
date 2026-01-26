@@ -267,6 +267,20 @@ window.compararPacientesSelecionados = function() {
 
 // Limpar seleção de pacientes
 window.limparSelecaoPacientes = function() {
+    pacientesSelecionados = [];
+    atualizarListaPacientesSelecionados();
+    atualizarBotaoComparar();
+    
+    // Limpar todos os gráficos
+    comparacaoPacientesCharts.forEach(chart => chart.destroy());
+    comparacaoPacientesCharts.clear();
+    
+    // Limpar container de comparação
+    const container = document.getElementById('comparacao-pacientes-container');
+    if (container) {
+        container.innerHTML = '';
+    }
+};
 
 // Função para remover gráfico de paciente
 window.removerGraficoPaciente = function(chartId) {
@@ -280,20 +294,7 @@ window.removerGraficoPaciente = function(chartId) {
     if (card) {
         card.remove();
     }
-}
-
-    pacientesSelecionados = [];
-    atualizarListaPacientesSelecionados();
-    atualizarBotaoComparar();
-    
-    comparacaoPacientesCharts.forEach(chart => chart.destroy());
-    comparacaoPacientesCharts.clear();
-    
-    const container = document.getElementById('comparacao-pacientes-container');
-    if (container) {
-        container.innerHTML = '';
-    }
-}
+};
 
 // Configurar eventos de comparação de pacientes
 function configurarComparacaoPacientes() {

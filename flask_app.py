@@ -8,19 +8,97 @@ import io
 import subprocess
 import sys
 import atexit
+import threading
+from typing import Dict
 from flask import Flask, jsonify, render_template, request, send_file, make_response
 from datetime import datetime
-from dotenv import load_dotenv
-from database import db
+from database import Database
 
-# Carregar variáveis de ambiente do arquivo .env
-load_dotenv()
+# Instância global do banco de dados (padrão)
+_db_default = Database()
+
+# Dicionário para armazenar instâncias de banco de dados por porta
+_db_instances = {}
+
+# Thread-local storage para armazenar a instância do banco de dados por thread
+_thread_local = threading.local()
+
+# Classe proxy para redirecionar chamadas para a instância correta do banco de dados
+class DatabaseProxy:
+    """Proxy que redireciona chamadas para a instância correta do banco de dados"""
+    def __getattr__(self, name):
+        db_instance = get_db()
+        return getattr(db_instance, name)
+    
+    def __call__(self, *args, **kwargs):
+        db_instance = get_db()
+        return db_instance(*args, **kwargs)
+
+# Instância proxy do banco de dados
+db = DatabaseProxy()
+
+# Carregar .env (pasta do .exe ou raiz do projeto)
+from env_loader import load_env
+load_env()
 
 # Versão do sistema
-VERSION = "1.0.2"
+VERSION = "1.0.3"
 BUILD_DATE = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 app = Flask(__name__)
+
+# Função helper para obter o banco de dados correto baseado na porta do request
+def get_db():
+    """Retorna a instância do banco de dados correta baseado na porta do request atual"""
+    global db, _db_instances, _thread_local
+    
+    # Verificar se há uma instância configurada para esta thread
+    if hasattr(_thread_local, 'db_instance'):
+        return _thread_local.db_instance
+    
+    # Tentar obter a porta do servidor do request atual
+    try:
+        server_port = request.environ.get('SERVER_PORT')
+        if server_port:
+            port = int(server_port)
+            if port in _db_instances:
+                _thread_local.db_instance = _db_instances[port]
+                return _db_instances[port]
+    except:
+        pass
+    
+    # Fallback: usar instância global padrão
+    _thread_local.db_instance = _db_default
+    return _db_default
+
+# --- DISCOVERY=scan: estado em memória (peers + /register no líder) ---
+_leader_lock = threading.Lock()
+_discovery_peers = []   # [{"ip", "port", "ts"}, ...] atualizado pelo scan em leader.run_one_cycle
+_registered_peers = []  # [{"ip", "port", "ts"}, ...] atualizado por POST /register (apenas no líder)
+
+
+def _get_local_ip():
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(('8.8.8.8', 80))
+            return s.getsockname()[0]
+        finally:
+            s.close()
+    except Exception:
+        try:
+            return socket.gethostbyname(socket.gethostname())
+        except Exception:
+            return '127.0.0.1'
+
+
+def atualizar_discovery_peers(peers):
+    """Atualiza a lista de peers (chamado por leader.run_one_cycle quando DISCOVERY=scan). peers: [{"ip", "port", "ts"}, ...]"""
+    global _discovery_peers, _leader_lock
+    with _leader_lock:
+        _discovery_peers[:] = peers
+
 
 # Injetar versão em todos os templates
 @app.context_processor
@@ -47,9 +125,21 @@ def exportar():
 def bd():
     return render_template('bd.html')
 
+@app.route('/conflitos')
+def conflitos():
+    return render_template('conflitos.html', version=VERSION)
+
 @app.route('/agendamentos')
 def agendamentos():
     return render_template('agendamentos.html')
+
+@app.route('/aparencia')
+def aparencia():
+    return render_template('aparencia.html')
+
+@app.route('/ajuda')
+def ajuda():
+    return render_template('ajuda.html')
 
 @app.route('/api/version', methods=['GET'])
 def get_version():
@@ -59,6 +149,59 @@ def get_version():
         'version': VERSION,
         'build_date': BUILD_DATE
     })
+
+
+@app.route('/health', methods=['GET'])
+def health():
+    """Health check para descoberta e liderança. Retorna ip, porta e status."""
+    try:
+        port = int(request.environ.get('SERVER_PORT') or os.getenv('PORT', 5000))
+    except (ValueError, TypeError):
+        port = int(os.getenv('PORT', 5000))
+    ip = _get_local_ip()
+    return jsonify({'ok': True, 'ip': ip, 'port': port, 'status': 'ok'})
+
+
+def _ip_sort_key(ip_str, port=5000):
+    """Chave de ordenação para menor IP (numérico). Usado por /register quando DISCOVERY=scan."""
+    try:
+        import ipaddress
+        a = ipaddress.ip_address(ip_str)
+        return (tuple(int(x) for x in str(a).split('.')), port)
+    except Exception:
+        return ((255, 255, 255, 255), port)
+
+
+@app.route('/register', methods=['POST'])
+def register():
+    """Registro de peer no líder (usado por DISCOVERY=scan). Só o líder persiste; não-líder responde 200 sem efeito."""
+    global _discovery_peers, _registered_peers, _leader_lock
+    try:
+        data = request.get_json() or {}
+        ip = (data.get('ip') or '').strip()
+        port = int(data.get('port', 5000))
+    except (ValueError, TypeError):
+        return jsonify({'ok': False, 'message': 'Payload inválido: {ip, port}'}), 400
+    if not ip:
+        return jsonify({'ok': False, 'message': 'ip obrigatório'}), 400
+    my_ip = _get_local_ip()
+    with _leader_lock:
+        peers = list(_discovery_peers)
+    if not peers:
+        return jsonify({'ok': True, 'registered': False, 'message': 'Nenhum peer ainda'})
+    min_peer = min(peers, key=lambda p: _ip_sort_key(p['ip'], p.get('port', 5000)))
+    if min_peer['ip'] != my_ip:
+        return jsonify({'ok': True, 'registered': False, 'message': 'Não sou o líder'})
+    # Sou o líder: adicionar/atualizar em _registered_peers
+    now = datetime.now().timestamp()
+    with _leader_lock:
+        for p in _registered_peers:
+            if p.get('ip') == ip and p.get('port') == port:
+                p['ts'] = now
+                return jsonify({'ok': True, 'registered': True})
+        _registered_peers.append({'ip': ip, 'port': port, 'ts': now})
+    return jsonify({'ok': True, 'registered': True})
+
 
 @app.route('/api/abrir_ajuda', methods=['GET'])
 def abrir_ajuda():
@@ -309,74 +452,144 @@ def deletar_agendamento(agendamento_id):
 
 @app.route('/api/sync/discover', methods=['GET'])
 def discover_servers():
-    """Descobre outros servidores na rede local"""
+    """Descobre outros servidores: Zeroconf (padrão) ou scan /24/SYNC_TARGETS (DISCOVERY=scan)"""
     try:
         import socket
-        import threading
-        import time
-        
-        # Obter IP local
+
+        # Obter IP local e porta do servidor que atendeu o request
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
             s.connect(('8.8.8.8', 80))
             local_ip = s.getsockname()[0]
-        except:
-            local_ip = '127.0.0.1'
+        except Exception:
+            try:
+                local_ip = socket.gethostbyname(socket.gethostname())
+            except Exception:
+                local_ip = '127.0.0.1'
         finally:
             s.close()
-        
-        # Obter porta atual
-        port = int(os.getenv('PORT', 5000))
-        
-        # Descobrir outros servidores na rede
+        try:
+            sp = request.environ.get('SERVER_PORT')
+            port = int(sp) if sp else int(os.getenv('PORT', 5000))
+        except (ValueError, TypeError):
+            port = int(os.getenv('PORT', 5000))
+
+        flask_host = (os.getenv('FLASK_HOST') or '127.0.0.1').strip()
+        host_warning = None
+        if flask_host == '127.0.0.1':
+            host_warning = (
+                'Este servidor está escutando apenas em 127.0.0.1. Para outros PCs na rede '
+                'serem encontrados e conectarem, defina FLASK_HOST=0.0.0.0 no .env e reinicie o Gerente. '
+                'Em cada PC que rodar o Gerente, faça o mesmo. Verifique também se o Firewall do Windows '
+                'permite o Gerente nas redes privadas.'
+            )
+
+        discovery = (os.getenv('DISCOVERY') or 'zeroconf').strip().lower()
+        if discovery != 'scan':
+            # Zeroconf: usar lista em memória do ServiceBrowser
+            try:
+                from inicio.rede.zeroconf_discovery import get_discovered_servers
+                raw = get_discovered_servers()
+                discovered_servers = [
+                    s for s in raw
+                    if not (str(s.get('ip')) == local_ip and int(s.get('port', 0)) == port)
+                ]
+            except Exception:
+                discovered_servers = []
+            resp = {'success': True, 'local_ip': local_ip, 'port': port, 'servers': discovered_servers}
+            if host_warning:
+                resp['host_warning'] = host_warning
+            return jsonify(resp)
+
+        # DISCOVERY=scan: varredura /24, SYNC_TARGETS ou SYNC_SCAN_CIDRS
+        import ipaddress
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
         discovered_servers = []
-        ip_parts = local_ip.split('.')
-        base_ip = '.'.join(ip_parts[:-1])
-        
+        targets = []
+        targets_env = os.getenv('SYNC_TARGETS', '').strip()
+        cidrs_env = os.getenv('SYNC_SCAN_CIDRS', '').strip()
+        max_targets = int(os.getenv('SYNC_MAX_TARGETS', '1024'))
+
+        def normalize_target(value):
+            value = value.strip()
+            if not value:
+                return None
+            try:
+                ipaddress.ip_address(value)
+                return value
+            except ValueError:
+                try:
+                    return socket.gethostbyname(value)
+                except Exception:
+                    return None
+
+        if targets_env:
+            for raw in targets_env.replace(';', ',').split(','):
+                ip = normalize_target(raw)
+                if ip and ip != local_ip:
+                    targets.append(ip)
+        elif cidrs_env:
+            for raw in cidrs_env.replace(';', ',').split(','):
+                raw = raw.strip()
+                if not raw:
+                    continue
+                try:
+                    network = ipaddress.ip_network(raw, strict=False)
+                except ValueError:
+                    continue
+                for host in network.hosts():
+                    if len(targets) >= max_targets:
+                        break
+                    ip = str(host)
+                    if ip != local_ip:
+                        targets.append(ip)
+        else:
+            ip_parts = local_ip.split('.')
+            base_ip = '.'.join(ip_parts[:-1])
+            for i in range(1, 255):
+                ip = f'{base_ip}.{i}'
+                if ip != local_ip:
+                    targets.append(ip)
+
+        if len(targets) > max_targets:
+            targets = targets[:max_targets]
+
         def check_server(ip):
             try:
                 test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 test_socket.settimeout(0.5)
                 result = test_socket.connect_ex((ip, port))
                 test_socket.close()
-                
                 if result == 0:
-                    # Tentar fazer requisição HTTP
                     import urllib.request
                     try:
                         url = f'http://{ip}:{port}/api/version'
                         req = urllib.request.Request(url, timeout=1)
                         response = urllib.request.urlopen(req)
                         if response.status == 200:
-                            discovered_servers.append({
-                                'ip': ip,
-                                'port': port,
-                                'hostname': socket.gethostbyaddr(ip)[0] if ip != local_ip else socket.gethostname()
-                            })
-                    except:
+                            try:
+                                hostname = socket.gethostbyaddr(ip)[0]
+                            except Exception:
+                                hostname = ip
+                            return {'ip': ip, 'port': port, 'hostname': hostname}
+                    except Exception:
                         pass
-            except:
+            except Exception:
                 pass
-        
-        # Verificar IPs na mesma rede (último octeto de 1 a 254)
-        threads = []
-        for i in range(1, 255):
-            ip = f'{base_ip}.{i}'
-            if ip != local_ip:  # Não verificar o próprio IP
-                thread = threading.Thread(target=check_server, args=(ip,))
-                thread.daemon = True
-                thread.start()
-                threads.append(thread)
-        
-        # Aguardar um pouco para as threads terminarem
-        time.sleep(2)
-        
-        return jsonify({
-            'success': True,
-            'local_ip': local_ip,
-            'port': port,
-            'servers': discovered_servers
-        })
+
+        workers = min(100, max(1, len(targets)))
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = [executor.submit(check_server, ip) for ip in targets]
+            for future in as_completed(futures):
+                server = future.result()
+                if server:
+                    discovered_servers.append(server)
+
+        resp = {'success': True, 'local_ip': local_ip, 'port': port, 'servers': discovered_servers}
+        if host_warning:
+            resp['host_warning'] = host_warning
+        return jsonify(resp)
     except Exception as e:
         return jsonify({
             'success': False,
@@ -387,11 +600,15 @@ def discover_servers():
 def get_sync_data():
     """Retorna dados para sincronização (pacientes e agendamentos)"""
     try:
-        pacientes = db.buscar_pacientes()
+        from config import get_pc_id
+        incluir_removidos = request.args.get('incluir_removidos', 'false').lower() == 'true'
+        
+        pacientes = db.buscar_pacientes(incluir_removidos=incluir_removidos)
         agendamentos = db.listar_agendamentos()
         
         return jsonify({
             'success': True,
+            'pc_id': get_pc_id(),
             'pacientes': pacientes,
             'agendamentos': agendamentos,
             'timestamp': datetime.now().isoformat()
@@ -402,9 +619,62 @@ def get_sync_data():
             'message': f'Erro ao obter dados para sincronização: {str(e)}'
         }), 500
 
+def _registros_identicos(reg1: Dict, reg2: Dict, campos_ignorados: set = None) -> bool:
+    """Verifica se dois registros são idênticos (ignorando campos de sincronização)"""
+    if campos_ignorados is None:
+        campos_ignorados = {'ultima_modificacao', 'versao', 'pc_id'}
+    
+    campos_ignorados = campos_ignorados | {'id'}
+    
+    # Comparar todos os campos exceto os ignorados
+    todos_campos = set(reg1.keys()) | set(reg2.keys())
+    for campo in todos_campos:
+        if campo in campos_ignorados:
+            continue
+        if reg1.get(campo) != reg2.get(campo):
+            return False
+    return True
+
+def _marcar_conflito_paciente(paciente_id: str):
+    """Marca um paciente como em conflito"""
+    try:
+        paciente = db.buscar_paciente(paciente_id)
+        if paciente and paciente.get('status') != 'conflito':
+            # Usar método do database para atualizar
+            db_instance = get_db()
+            cursor = db_instance.conn.cursor()
+            cursor.execute("""
+                UPDATE pacientes 
+                SET status = 'conflito',
+                    ultima_modificacao = ?,
+                    versao = versao + 1
+                WHERE id = ?
+            """, (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), paciente_id))
+            db_instance.conn.commit()
+    except Exception:
+        pass
+
+def _marcar_conflito_agendamento(agendamento_id: str):
+    """Marca um agendamento como em conflito"""
+    try:
+        agendamento = db.obter_agendamento(agendamento_id)
+        if agendamento and agendamento.get('status') != 'conflito':
+            db_instance = get_db()
+            cursor = db_instance.conn.cursor()
+            cursor.execute("""
+                UPDATE agendamentos 
+                SET status = 'conflito',
+                    ultima_modificacao = ?,
+                    versao = versao + 1
+                WHERE id = ?
+            """, (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), agendamento_id))
+            db_instance.conn.commit()
+    except Exception:
+        pass
+
 @app.route('/api/sync/merge', methods=['POST'])
 def merge_sync_data():
-    """Recebe dados de sincronização e faz merge inteligente (adiciona, atualiza e detecta remoções)"""
+    """Recebe dados de sincronização e faz merge inteligente com detecção de conflitos"""
     try:
         data = request.get_json()
         if not data:
@@ -412,88 +682,102 @@ def merge_sync_data():
         
         pacientes_remotos = data.get('pacientes', [])
         agendamentos_remotos = data.get('agendamentos', [])
+        pc_id_remoto = data.get('pc_id')  # PC_ID do servidor remoto
         
-        # Comparar bancos para detectar pacientes removidos no remoto
-        comparacao = db.comparar_com_banco_remoto(pacientes_remotos)
+        # Obter pacientes locais e seus IDs (incluindo removidos para comparação)
+        pacientes_locais = db.buscar_pacientes(incluir_removidos=True)
+        pacientes_locais_dict = {p['id']: p for p in pacientes_locais}
         
-        # Obter pacientes locais e seus IDs
-        pacientes_locais = db.buscar_pacientes()
-        pacientes_locais_ids = {p['id'] for p in pacientes_locais}
-        
-        # Obter agendamentos locais
+        # Obter agendamentos locais (incluindo removidos para comparação)
         agendamentos_locais = db.listar_agendamentos()
-        agendamentos_locais_ids = {a['id'] for a in agendamentos_locais}
+        agendamentos_locais_dict = {a['id']: a for a in agendamentos_locais}
         
         # Estatísticas
         pacientes_adicionados = 0
         pacientes_atualizados = 0
+        pacientes_conflito = 0
         agendamentos_adicionados = 0
         agendamentos_atualizados = 0
+        agendamentos_conflito = 0
         
-        # Sincronizar pacientes (adicionar novos e atualizar existentes)
+        # Sincronizar pacientes (registro por registro)
         for paciente_remoto in pacientes_remotos:
             paciente_id = paciente_remoto['id']
+            paciente_local = pacientes_locais_dict.get(paciente_id)
             
-            if paciente_id in pacientes_locais_ids:
-                # Paciente já existe localmente - atualizar se dados remotos forem mais recentes
-                paciente_local = next((p for p in pacientes_locais if p['id'] == paciente_id), None)
-                if paciente_local:
-                    data_local = paciente_local.get('data_salvamento', '')
-                    data_remota = paciente_remoto.get('data_salvamento', '')
-                    
-                    # Se dados remotos são mais recentes ou iguais, atualizar
-                    if data_remota >= data_local:
-                        try:
-                            db.atualizar_paciente(paciente_id, paciente_remoto)
-                            pacientes_atualizados += 1
-                        except:
-                            pass
-            else:
-                # Paciente novo - adicionar
+            if not paciente_local:
+                # 1. Registro não existe localmente → Adicionar
                 try:
-                    # Usar inserir_registro diretamente para manter o ID original
                     db.inserir_registro(
                         paciente_id,
                         paciente_remoto,
                         arquivo_origem='sync',
-                        data_salvamento=paciente_remoto.get('data_salvamento')
+                        data_salvamento=paciente_remoto.get('data_salvamento'),
+                        pc_id=paciente_remoto.get('pc_id', pc_id_remoto),
+                        ultima_modificacao=paciente_remoto.get('ultima_modificacao'),
+                        versao=paciente_remoto.get('versao', 1),
+                        status=paciente_remoto.get('status', 'ativo')
                     )
                     pacientes_adicionados += 1
-                except Exception as e:
-                    # Se falhar, tentar adicionar normalmente
+                except Exception:
+                    pass
+            else:
+                # 2. Registro existe localmente
+                status_local = paciente_local.get('status', 'ativo')
+                status_remoto = paciente_remoto.get('status', 'ativo')
+                
+                # 2a. Verificar se um foi removido e outro editado → CONFLITO
+                if (status_local == 'removido' and status_remoto != 'removido') or \
+                   (status_local != 'removido' and status_remoto == 'removido'):
+                    _marcar_conflito_paciente(paciente_id)
+                    pacientes_conflito += 1
+                    continue
+                
+                # 2b. Se ambos removidos → ignorar
+                if status_local == 'removido' and status_remoto == 'removido':
+                    continue
+                
+                # 2c. Verificar se são idênticos → Ignorar
+                if _registros_identicos(paciente_local, paciente_remoto):
+                    continue
+                
+                # 2d. São diferentes → Comparar ultima_modificacao
+                ultima_mod_local = paciente_local.get('ultima_modificacao') or paciente_local.get('data_salvamento', '')
+                ultima_mod_remota = paciente_remoto.get('ultima_modificacao') or paciente_remoto.get('data_salvamento', '')
+                
+                if ultima_mod_remota > ultima_mod_local:
+                    # Remoto mais recente → Atualizar local
                     try:
-                        db.adicionar_paciente(paciente_remoto)
-                        pacientes_adicionados += 1
-                    except:
+                        paciente_remoto['pc_id'] = paciente_remoto.get('pc_id', pc_id_remoto)
+                        db.atualizar_paciente(paciente_id, paciente_remoto)
+                        pacientes_atualizados += 1
+                    except Exception:
                         pass
+                elif ultima_mod_local > ultima_mod_remota:
+                    # Local mais recente → Manter local
+                    pass
+                else:
+                    # Iguais (ou ambos vazios) → CONFLITO
+                    # Desempate por pc_id se possível
+                    pc_id_local = paciente_local.get('pc_id', '')
+                    pc_id_remota = paciente_remoto.get('pc_id', pc_id_remoto or '')
+                    
+                    if pc_id_local != pc_id_remota:
+                        # Se pc_ids diferentes, ainda pode ser conflito se dados diferentes
+                        _marcar_conflito_paciente(paciente_id)
+                        pacientes_conflito += 1
+                    else:
+                        # Mesmo pc_id, mesmo timestamp, mas dados diferentes → CONFLITO suspeito
+                        _marcar_conflito_paciente(paciente_id)
+                        pacientes_conflito += 1
         
-        # Sincronizar agendamentos (só adicionar/atualizar, nunca remover)
+        # Sincronizar agendamentos (registro por registro)
         for agendamento_remoto in agendamentos_remotos:
             agendamento_id = agendamento_remoto['id']
+            agendamento_local = agendamentos_locais_dict.get(agendamento_id)
             
-            if agendamento_id in agendamentos_locais_ids:
-                # Agendamento já existe - atualizar se dados remotos forem mais recentes
-                agendamento_local = next((a for a in agendamentos_locais if a['id'] == agendamento_id), None)
-                if agendamento_local:
-                    data_atualizacao_local = agendamento_local.get('data_atualizacao', '')
-                    data_atualizacao_remota = agendamento_remoto.get('data_atualizacao', '')
-                    
-                    if data_atualizacao_remota >= data_atualizacao_local:
-                        try:
-                            db.atualizar_agendamento(
-                                agendamento_id,
-                                agendamento_remoto['paciente_id'],
-                                agendamento_remoto['data_consulta'],
-                                agendamento_remoto['hora_consulta'],
-                                agendamento_remoto.get('tipo_consulta'),
-                                agendamento_remoto.get('status', 'agendado'),
-                                agendamento_remoto.get('observacoes')
-                            )
-                            agendamentos_atualizados += 1
-                        except:
-                            pass
-            else:
-                # Agendamento novo - adicionar
+            if not agendamento_local:
+                # 1. Registro não existe localmente → Adicionar
                 try:
                     db.criar_agendamento(
                         agendamento_id,
@@ -501,26 +785,65 @@ def merge_sync_data():
                         agendamento_remoto['data_consulta'],
                         agendamento_remoto['hora_consulta'],
                         agendamento_remoto.get('tipo_consulta'),
-                        agendamento_remoto.get('status', 'agendado'),
                         agendamento_remoto.get('observacoes'),
+                        agendamento_remoto.get('status', 'agendado'),
                         agendamento_remoto.get('data_criacao'),
-                        agendamento_remoto.get('data_atualizacao')
+                        agendamento_remoto.get('data_atualizacao'),
+                        pc_id=agendamento_remoto.get('pc_id', pc_id_remoto),
+                        ultima_modificacao=agendamento_remoto.get('ultima_modificacao'),
+                        versao=agendamento_remoto.get('versao', 1)
                     )
                     agendamentos_adicionados += 1
-                except Exception as e:
+                except Exception:
                     pass
-        
-        # Preparar informações dos pacientes removidos no servidor remoto
-        # (para o cliente decidir se quer remover também localmente)
-        pacientes_removidos_info = [
-            {
-                'id': p['id'],
-                'nome_gestante': p.get('identificacao', {}).get('nome_gestante') or p.get('nome_gestante', 'Sem nome'),
-                'unidade_saude': p.get('identificacao', {}).get('unidade_saude') or p.get('unidade_saude', ''),
-                'data_salvamento': p.get('data_salvamento', '')
-            }
-            for p in comparacao['pacientes_removidos_no_remoto']
-        ]
+            else:
+                # 2. Registro existe localmente
+                status_local = agendamento_local.get('status', 'agendado')
+                status_remoto = agendamento_remoto.get('status', 'agendado')
+                
+                # 2a. Verificar se um foi removido e outro editado → CONFLITO
+                if (status_local == 'removido' and status_remoto != 'removido') or \
+                   (status_local != 'removido' and status_remoto == 'removido'):
+                    _marcar_conflito_agendamento(agendamento_id)
+                    agendamentos_conflito += 1
+                    continue
+                
+                # 2b. Se ambos removidos → ignorar
+                if status_local == 'removido' and status_remoto == 'removido':
+                    continue
+                
+                # 2c. Verificar se são idênticos → Ignorar
+                if _registros_identicos(agendamento_local, agendamento_remoto, {'nome_gestante', 'unidade_saude'}):
+                    continue
+                
+                # 2d. São diferentes → Comparar ultima_modificacao
+                ultima_mod_local = agendamento_local.get('ultima_modificacao') or agendamento_local.get('data_atualizacao', '')
+                ultima_mod_remota = agendamento_remoto.get('ultima_modificacao') or agendamento_remoto.get('data_atualizacao', '')
+                
+                if ultima_mod_remota > ultima_mod_local:
+                    # Remoto mais recente → Atualizar local
+                    try:
+                        db.atualizar_agendamento(
+                            agendamento_id,
+                            agendamento_remoto['paciente_id'],
+                            agendamento_remoto['data_consulta'],
+                            agendamento_remoto['hora_consulta'],
+                            agendamento_remoto.get('tipo_consulta'),
+                            agendamento_remoto.get('observacoes'),
+                            agendamento_remoto.get('status', 'agendado'),
+                            pc_id=agendamento_remoto.get('pc_id', pc_id_remoto),
+                            ultima_modificacao=agendamento_remoto.get('ultima_modificacao')
+                        )
+                        agendamentos_atualizados += 1
+                    except Exception:
+                        pass
+                elif ultima_mod_local > ultima_mod_remota:
+                    # Local mais recente → Manter local
+                    pass
+                else:
+                    # Iguais (ou ambos vazios) → CONFLITO
+                    _marcar_conflito_agendamento(agendamento_id)
+                    agendamentos_conflito += 1
         
         return jsonify({
             'success': True,
@@ -528,10 +851,11 @@ def merge_sync_data():
             'stats': {
                 'pacientes_adicionados': pacientes_adicionados,
                 'pacientes_atualizados': pacientes_atualizados,
+                'pacientes_conflito': pacientes_conflito,
                 'agendamentos_adicionados': agendamentos_adicionados,
-                'agendamentos_atualizados': agendamentos_atualizados
-            },
-            'pacientes_removidos': pacientes_removidos_info  # Para o cliente decidir se quer remover também
+                'agendamentos_atualizados': agendamentos_atualizados,
+                'agendamentos_conflito': agendamentos_conflito
+            }
         })
     except Exception as e:
         import traceback
@@ -539,6 +863,42 @@ def merge_sync_data():
             'success': False,
             'message': f'Erro ao sincronizar: {str(e)}',
             'traceback': traceback.format_exc()
+        }), 500
+
+@app.route('/api/sync/conflitos', methods=['GET'])
+def listar_conflitos():
+    """Lista todos os conflitos pendentes"""
+    try:
+        resultado = db.listar_conflitos()
+        return jsonify(resultado)
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao listar conflitos: {str(e)}'
+        }), 500
+
+@app.route('/api/sync/conflitos/resolver', methods=['POST'])
+def resolver_conflito():
+    """Resolve um conflito específico"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'Dados não fornecidos'}), 400
+        
+        registro_id = data.get('registro_id')
+        tipo = data.get('tipo')  # 'paciente' ou 'agendamento'
+        acao = data.get('acao')  # 'manter_local', 'aceitar_remoto', 'mesclar'
+        dados_remotos = data.get('dados_remotos')
+        
+        if not registro_id or not tipo or not acao:
+            return jsonify({'success': False, 'message': 'Dados incompletos'}), 400
+        
+        resultado = db.resolver_conflito(registro_id, tipo, acao, dados_remotos)
+        return jsonify(resultado)
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao resolver conflito: {str(e)}'
         }), 500
 
 @app.route('/api/sync/remover_pacientes', methods=['POST'])
@@ -681,10 +1041,183 @@ def listar_unidades_saude():
             'unidades': unidades
         })
     except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/ranking_unidades')
+def ranking_unidades():
+    """Retorna ranking das unidades por indicador (percentual positivo), para mini-dashboard"""
+    try:
+        criterio = request.args.get('criterio', 'inicio_pre_natal_antes_12s')
+        limite_raw = int(request.args.get('limite', 10))
+        limite = 0 if limite_raw <= 0 else min(limite_raw, 50)
+        unidades_param = (request.args.get('unidades') or '').strip()
+        criterios_validos = {
+            'inicio_pre_natal_antes_12s': ('sim', 'nao', 'Início pré-natal antes de 12 sem.'),
+            'consultas_pre_natal': ('mais_6', 'ate_6', '≥ 6 consultas'),
+            'vacinas_completas': ('completa', ('incompleta', 'nao_avaliado'), 'Vacinas completas'),
+            'plano_parto': ('sim', 'nao', 'Plano de parto'),
+            'participou_grupos': ('sim', 'nao', 'Participou de grupos')
+        }
+        criterio_hardcoded = criterio in criterios_validos
+        if criterio_hardcoded:
+            cfg = criterios_validos[criterio]
+            pos_key = cfg[0]
+            neg_keys = cfg[1] if isinstance(cfg[1], (list, tuple)) else (cfg[1],)
+            label = cfg[2]
+        else:
+            # Validar coluna dinâmica antes de iterar
+            coluna_check = db.obter_estatisticas_coluna(criterio)
+            if not coluna_check.get('success'):
+                return jsonify({'success': False, 'message': coluna_check.get('message', 'Filtro inválido'), 'ranking': []}), 400
+            label = criterio
+
+        unidades = db.obter_unidades_saude_unicas()
+        if unidades_param:
+            req_list = [x.strip() for x in unidades_param.split(',') if x.strip()]
+            req_set = set((x or '').lower() for x in req_list)
+            unidades = [u for u in unidades if (u or '').strip().lower() in req_set]
+        ranking = []
+        for u in unidades:
+            if criterio_hardcoded:
+                s = db.obter_estatisticas(unidade_saude=u)
+                total = s['total_pacientes']
+                if criterio == 'vacinas_completas':
+                    d = s['vacinas_completas']
+                    pos = d.get('completa', 0)
+                    den = d.get('completa', 0) + d.get('incompleta', 0) + d.get('nao_avaliado', 0)
+                    pct = (pos / den * 100) if den else 0
+                elif criterio == 'consultas_pre_natal':
+                    d = s['consultas_pre_natal']
+                    pos = d.get('mais_6', 0)
+                    den = d.get('mais_6', 0) + d.get('ate_6', 0)
+                    pct = (pos / den * 100) if den else 0
+                else:
+                    d = s.get(criterio, {})
+                    pos = d.get(pos_key, 0)
+                    den = pos + sum(d.get(k, 0) for k in neg_keys)
+                    pct = (pos / den * 100) if den else 0
+            else:
+                stats = db.obter_estatisticas_coluna(criterio, unidade_saude=u)
+                pos = stats['data'].get('sim', 0)
+                den = pos + stats['data'].get('nao', 0)
+                total = den
+                pct = (pos / den * 100) if den else 0
+            ranking.append({
+                'unidade': u,
+                'total': total,
+                'percentual': round(pct, 1),
+                'criterio_label': label
+            })
+        ranking.sort(key=lambda x: (-x['percentual'], -x['total']))
+        if unidades_param or limite <= 0:
+            resultado_ranking = ranking
+        else:
+            resultado_ranking = ranking[:limite]
+        return jsonify({
+            'success': True,
+            'criterio': criterio,
+            'criterio_label': label,
+            'ranking': resultado_ranking
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e), 'ranking': []}), 500
+
+@app.route('/api/indicadores_coluna/<nome_coluna>', methods=['GET'])
+def obter_indicador_coluna(nome_coluna):
+    """Retorna estatísticas de uma coluna genérica do BD"""
+    try:
+        unidade_saude = request.args.get('unidade_saude')
+        resultado = db.obter_estatisticas_coluna(nome_coluna, unidade_saude)
+        if resultado['success']:
+            return jsonify({
+                'success': True,
+                'data': resultado['data']
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': resultado.get('message', 'Erro ao processar coluna'),
+                'data': resultado['data']
+            }), 400
+    except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Erro ao buscar unidades: {str(e)}',
-            'unidades': []
+            'message': str(e),
+            'data': {'sim': 0, 'nao': 0}
+        }), 500
+
+@app.route('/api/campos_disponiveis', methods=['GET'])
+def listar_campos_disponiveis():
+    """Lista todos os campos disponíveis no BD (exceto nome e unidade_saude)"""
+    try:
+        campos_excluidos = {'id', 'nome_gestante', 'unidade_saude', 'data_salvamento', 'arquivo_origem'}
+        
+        # Obter nomes das colunas da tabela pacientes
+        cursor = db.conn.cursor()
+        cursor.execute("PRAGMA table_info(pacientes)")
+        colunas = cursor.fetchall()
+        
+        # Se não houver colunas, retornar erro
+        if not colunas:
+            return jsonify({
+                'success': False,
+                'message': 'Nenhuma coluna encontrada na tabela pacientes',
+                'campos': []
+            }), 500
+        
+        # Mapear nomes técnicos para nomes amigáveis
+        nomes_amigaveis = {
+            'inicio_pre_natal_antes_12s': 'Início pré-natal antes de 12 semanas',
+            'inicio_pre_natal_semanas': 'Semanas do início do pré-natal',
+            'inicio_pre_natal_observacao': 'Observação do início do pré-natal',
+            'consultas_pre_natal': 'Consultas de pré-natal',
+            'vacinas_completas': 'Vacinas completas',
+            'plano_parto': 'Plano de parto',
+            'participou_grupos': 'Participou de grupos',
+            'avaliacao_odontologica': 'Avaliação odontológica',
+            'estratificacao': 'Estratificação',
+            'estratificacao_problema': 'Problema de estratificação',
+            'cartao_pre_natal_completo': 'Cartão pré-natal completo',
+            'dum': 'DUM (Data da Última Menstruação)',
+            'dpp': 'DPP (Data Provável do Parto)',
+            'ganhou_kit': 'Ganhou kit',
+            'kit_tipo': 'Tipo de kit',
+            'proxima_avaliacao': 'Próxima avaliação',
+            'proxima_avaliacao_hora': 'Hora da próxima avaliação',
+            'ja_ganhou_crianca': 'Já ganhou criança',
+            'data_ganhou_crianca': 'Data que ganhou criança',
+            'quantidade_filhos': 'Quantidade de filhos',
+            'generos_filhos': 'Gêneros dos filhos',
+            'metodo_preventivo': 'Método preventivo',
+            'metodo_preventivo_outros': 'Outro método preventivo'
+        }
+        
+        campos_disponiveis = []
+        # PRAGMA table_info retorna: cid, name, type, notnull, dflt_value, pk
+        for coluna in colunas:
+            # sqlite3.Row permite acesso como dicionário
+            nome_coluna = coluna['name']
+            tipo_coluna = coluna['type']
+            
+            if nome_coluna not in campos_excluidos:
+                campo_info = {
+                    'campo': nome_coluna,
+                    'label': nomes_amigaveis.get(nome_coluna, nome_coluna.replace('_', ' ').title()),
+                    'tipo': tipo_coluna
+                }
+                campos_disponiveis.append(campo_info)
+        
+        return jsonify({
+            'success': True,
+            'campos': campos_disponiveis
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao buscar campos: {str(e)}',
+            'campos': []
         }), 500
 
 @app.route('/api/indicadores/temporais/<filtro>', methods=['GET'])
@@ -692,28 +1225,200 @@ def indicadores_temporais(filtro):
     """Retorna estatísticas temporais agrupadas por data para um indicador específico"""
     try:
         # Validar filtro
-        filtros_validos = ['inicio_pre_natal_antes_12s', 'consultas_pre_natal', 
+        filtros_validos = ['inicio_pre_natal_antes_12s', 'consultas_pre_natal',
                           'vacinas_completas', 'plano_parto', 'participou_grupos']
         if filtro not in filtros_validos:
             return jsonify({'error': 'Filtro inválido'}), 400
-        
+
         stats_temporais = db.obter_estatisticas_temporais(filtro)
         return jsonify(stats_temporais)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# ========== ROTAS DE GERENCIAMENTO DE TEMAS ==========
+
+@app.route('/api/tema/obter', methods=['GET'])
+def obter_tema():
+    """Retorna o tema atual salvo no cookie do usuário"""
+    try:
+        # Como os cookies são gerenciados no frontend, retornamos apenas confirmação
+        # O tema real é obtido via JavaScript no navegador
+        return jsonify({
+            'success': True,
+            'message': 'Tema obtido via cookie do navegador'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao obter tema: {str(e)}'
+        }), 500
+
+@app.route('/api/tema/salvar', methods=['POST'])
+def salvar_tema():
+    """Endpoint para informações sobre salvamento de tema (o salvamento real é feito via cookie)"""
+    try:
+        data = request.get_json()
+
+        if not data:
+            return jsonify({'success': False, 'message': 'Dados do tema não fornecidos'}), 400
+
+        # Validação básica dos dados
+        if 'nome' not in data or 'cores' not in data:
+            return jsonify({'success': False, 'message': 'Estrutura do tema inválida'}), 400
+
+        # Validar que cores é um objeto
+        if not isinstance(data['cores'], dict):
+            return jsonify({'success': False, 'message': 'Campo cores deve ser um objeto'}), 400
+
+        # Validar formato das cores (hexadecimais)
+        import re
+        for key, color in data['cores'].items():
+            if not re.match(r'^#[0-9A-Fa-f]{6}$', color):
+                return jsonify({
+                    'success': False,
+                    'message': f'Cor inválida para {key}: {color}. Deve ser hexadecimal (#RRGGBB)'
+                }), 400
+
+        # Limitar tamanho do JSON (aproximadamente 4KB para cookie)
+        import json
+        theme_json = json.dumps(data)
+        if len(theme_json) > 4000:
+            return jsonify({'success': False, 'message': 'Tema muito grande para salvar'}), 400
+
+        return jsonify({
+            'success': True,
+            'message': 'Tema validado com sucesso. Salvamento feito via cookie no navegador.',
+            'tema': {
+                'nome': data['nome'],
+                'cores_count': len(data['cores'])
+            }
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao processar tema: {str(e)}'
+        }), 500
+
+@app.route('/api/tema/padrao', methods=['GET'])
+def obter_tema_padrao():
+    """Retorna os valores padrão de cores do variables.css"""
+    try:
+        tema_padrao = {
+            "nome": "Padrão Hospitalar",
+            "cores": {
+                "--bg": "#f2f5f4",
+                "--card": "#ffffff",
+                "--primary": "#2f7d6d",
+                "--primary-hover": "#266758",
+                "--secondary": "#4a90a4",
+                "--secondary-hover": "#3d7a8a",
+                "--accent": "#e6f2ef",
+                "--text": "#263238",
+                "--text-muted": "#607d8b",
+                "--success": "#2e7d32",
+                "--success-light": "#c8e6c9",
+                "--warning": "#f57c00",
+                "--warning-light": "#ffe0b2",
+                "--danger": "#c62828",
+                "--danger-light": "#ffcdd2",
+                "--info": "#0277bd",
+                "--info-light": "#b3e5fc",
+                "--border": "#d0d7d5",
+                "--border-light": "#e8edec"
+            }
+        }
+
+        return jsonify({
+            'success': True,
+            'tema': tema_padrao
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao obter tema padrão: {str(e)}'
+        }), 500
+
+@app.route('/api/tema/salvar_css', methods=['POST'])
+def salvar_css():
+    """Salva um arquivo CSS customizado na pasta static/css"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'css' not in data:
+            return jsonify({'success': False, 'message': 'CSS não fornecido'}), 400
+        
+        css_content = data['css']
+        
+        # Validar que é CSS válido
+        if not css_content.strip():
+            return jsonify({'success': False, 'message': 'CSS vazio'}), 400
+        
+        # Gerar nome aleatório para o arquivo
+        import uuid
+        import hashlib
+        css_hash = hashlib.md5(css_content.encode('utf-8')).hexdigest()[:8]
+        filename = f'custom_{css_hash}.css'
+        
+        # Caminho completo do arquivo
+        css_dir = os.path.join(os.path.dirname(__file__), 'static', 'css')
+        os.makedirs(css_dir, exist_ok=True)
+        file_path = os.path.join(css_dir, filename)
+        
+        # Salvar arquivo
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(css_content)
+        
+        return jsonify({
+            'success': True,
+            'filename': filename,
+            'message': f'CSS salvo como {filename}'
+        })
+        
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao salvar CSS: {str(e)}',
+            'traceback': traceback.format_exc()
+        }), 500
+
 @app.route('/api/exportar/<formato>', methods=['GET'])
 def exportar_pacientes(formato):
     """Exporta os dados dos pacientes no formato especificado"""
     try:
-        # Aplicar filtro por unidade de saúde se fornecido
-        filtro = {}
+        # Buscar todos os pacientes inicialmente
+        pacientes = db.obter_todos_pacientes()
+        
+        # Aplicar filtros de UPAs (múltiplas)
+        upas = request.args.getlist('upas')
+        if upas:
+            pacientes = [p for p in pacientes if p.get('identificacao', {}).get('unidade_saude') in upas]
+        
+        # Aplicar filtros de Campos (múltiplos) - funciona em conjunto com UPAs (AND)
+        campos = request.args.getlist('campos')
+        if campos:
+            pacientes = [p for p in pacientes if all(
+                # Verificar se o campo tem valor não-nulo e não-vazio
+                # Buscar em avaliacao primeiro (maioria dos campos)
+                (lambda campo=campo: (
+                    # Verificar em avaliacao
+                    (p.get('avaliacao', {}).get(campo) is not None and 
+                     p.get('avaliacao', {}).get(campo) != '') or
+                    # Verificar em identificacao
+                    (p.get('identificacao', {}).get(campo) is not None and 
+                     p.get('identificacao', {}).get(campo) != '') or
+                    # Verificar na raiz (casos especiais como id, data_salvamento)
+                    (p.get(campo) is not None and p.get(campo) != '')
+                ))() for campo in campos
+            )]
+        
+        # Manter compatibilidade com filtro único antigo (deprecated)
         unidade_saude = request.args.get('unidade_saude')
-        if unidade_saude:
-            filtro['unidade_saude'] = unidade_saude
+        if unidade_saude and not upas and not campos:
+            filtro = {'unidade_saude': unidade_saude}
             pacientes = db.buscar_pacientes(filtro)
-        else:
-            pacientes = db.obter_todos_pacientes()
         
         filtros = {
             'inicio_pre_natal': request.args.get('inicio_pre_natal'),
@@ -930,6 +1635,12 @@ def formatar_vacinas(valor):
         return valor
     return 'Não avaliado'
 
+def formatar_valor_opcional(valor):
+    """Formata valores opcionais (None, vazio, etc.)"""
+    if valor is None or valor == '':
+        return 'Não informado'
+    return str(valor)
+
 COLUNAS_CONFIG = [
     {'key': 'identificacao.nome_gestante', 'label': 'Nome da Gestante'},
     {'key': 'identificacao.unidade_saude', 'label': 'Unidade de Saúde'},
@@ -939,6 +1650,8 @@ COLUNAS_CONFIG = [
         'label': 'Início pré-natal antes de 12 semanas',
         'formatter': formatar_boolean
     },
+    {'key': 'avaliacao.inicio_pre_natal_semanas', 'label': 'Semanas de início do pré-natal'},
+    {'key': 'avaliacao.inicio_pre_natal_observacao', 'label': 'Observação do início pré-natal'},
     {'key': 'avaliacao.consultas_pre_natal', 'label': 'Consultas de pré-natal'},
     {
         'key': 'avaliacao.vacinas_completas',
@@ -965,11 +1678,32 @@ COLUNAS_CONFIG = [
         'label': 'Estratificação',
         'formatter': formatar_boolean
     },
+    {'key': 'avaliacao.estratificacao_problema', 'label': 'Problema de estratificação'},
     {
         'key': 'avaliacao.cartao_pre_natal_completo',
         'label': 'Cartão pré-natal completo',
         'formatter': formatar_boolean
-    }
+    },
+    {'key': 'avaliacao.dum', 'label': 'DUM (Data da Última Menstruação)'},
+    {'key': 'avaliacao.dpp', 'label': 'DPP (Data Provável do Parto)'},
+    {
+        'key': 'avaliacao.ganhou_kit',
+        'label': 'Ganhou kit',
+        'formatter': formatar_boolean
+    },
+    {'key': 'avaliacao.kit_tipo', 'label': 'Tipo de kit'},
+    {'key': 'avaliacao.proxima_avaliacao', 'label': 'Próxima avaliação (data)'},
+    {'key': 'avaliacao.proxima_avaliacao_hora', 'label': 'Próxima avaliação (hora)'},
+    {
+        'key': 'avaliacao.ja_ganhou_crianca',
+        'label': 'Já ganhou criança',
+        'formatter': formatar_boolean
+    },
+    {'key': 'avaliacao.data_ganhou_crianca', 'label': 'Data que ganhou criança'},
+    {'key': 'avaliacao.quantidade_filhos', 'label': 'Quantidade de filhos'},
+    {'key': 'avaliacao.generos_filhos', 'label': 'Gêneros dos filhos'},
+    {'key': 'avaliacao.metodo_preventivo', 'label': 'Método preventivo'},
+    {'key': 'avaliacao.metodo_preventivo_outros', 'label': 'Método preventivo (outros)'}
 ]
 
 def obter_colunas_config(colunas_personalizadas):
@@ -995,45 +1729,117 @@ def obter_valor_coluna(paciente, coluna):
         return ''
     return valor
 
-# Variável global para armazenar o servidor Flask
+# Variável global para armazenar os servidores Flask
 _flask_server = None
+_flask_servers = {}  # Dicionário para armazenar múltiplos servidores por porta
 
-def run_flask(debug=False, use_reloader=False, silent=False):
+def _get_db_for_port(port):
+    """Retorna a instância do banco de dados para uma porta específica"""
+    global db, _db_instances
+    
+    if port not in _db_instances:
+        # Configurar banco de dados baseado na porta
+        if port == 5001:
+            # Porta 5001: usar banco de dados copiado
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            db_path_porta5001 = os.path.join(base_dir, 'data', 'pacientes_porta5001.db')
+            _db_instances[port] = Database(db_path=db_path_porta5001)
+            print(f"Banco de dados configurado para porta {port}: {db_path_porta5001}")
+        else:
+            # Outras portas: usar banco de dados padrão
+            _db_instances[port] = Database()
+    
+    return _db_instances[port]
+
+def run_flask(debug=False, use_reloader=False, silent=False, port=None):
     """Inicia o servidor Flask"""
-    global _flask_server
+    global _flask_server, db, _thread_local
     
     # Obter configurações do .env ou usar padrões
     host = os.getenv('FLASK_HOST', '127.0.0.1')
-    port = int(os.getenv('PORT', 5000))
+    if port is None:
+        port = int(os.getenv('PORT', 5000))
+    
+    # Configurar banco de dados para esta porta e thread
+    db_instance = _get_db_for_port(port)
+    _thread_local.db_instance = db_instance
     # Se debug não foi passado explicitamente, verificar .env
     if debug is False:
         debug = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
     
-    if silent:
-        # Modo silencioso: desabilitar logging do Werkzeug
+    # Verificar se está em modo executável e debug
+    is_executable = getattr(sys, 'frozen', False)
+    
+    if silent or (is_executable and not debug):
         import logging
         log = logging.getLogger('werkzeug')
         log.setLevel(logging.ERROR)
     
-    # Se não usar reloader, usar make_server para permitir shutdown
-    if not use_reloader:
-        try:
-            from werkzeug.serving import make_server
-            _flask_server = make_server(host, port, app)
-            print(f"Servidor Flask iniciado em http://{host}:{port}")
-            _flask_server.serve_forever()
-        except KeyboardInterrupt:
-            print("\nEncerrando servidor Flask...")
-            if _flask_server:
-                _flask_server.shutdown()
-            print("Servidor Flask encerrado")
-    else:
-        # Modo desenvolvimento com reloader
+    threads = int(os.getenv('WAITRESS_THREADS', '8'))
+    
+    # Descoberta: Zeroconf (padrão) ou scan /24 (DISCOVERY=scan)
+    discovery = (os.getenv('DISCOVERY') or 'zeroconf').strip().lower()
+    try:
+        if discovery == 'scan':
+            from inicio.rede import run_scan_loop
+            run_scan_loop(port=port)
+        else:
+            from inicio.rede.zeroconf_discovery import start_zeroconf
+            start_zeroconf(port)
+    except Exception:
+        pass
+
+    if use_reloader:
+        # Apenas em desenvolvimento: Flask com reloader (ignora Waitress)
         app.run(host=host, port=port, debug=debug, use_reloader=use_reloader)
+    else:
+        # Produção: Waitress — funciona em .py, .exe e em qualquer PC.
+        # Ignora FLASK_RUN_HOST, flask run e defaults do Flask.
+        from waitress import serve
+        try:
+            if not is_executable or debug:
+                print(f"Servidor iniciado em http://{host}:{port} (Waitress, {threads} threads)")
+            serve(app, host=host, port=port, threads=threads)
+        except KeyboardInterrupt:
+            if not is_executable or debug:
+                print(f"\nServidor na porta {port} encerrado")
+        except Exception as e:
+            if is_executable and not debug:
+                try:
+                    import tkinter as tk
+                    from tkinter import messagebox
+                    root = tk.Tk()
+                    root.withdraw()
+                    messagebox.showerror(
+                        "Erro ao Iniciar Servidor",
+                        f"Não foi possível iniciar o servidor na porta {port}.\n\n"
+                        f"Erro: {str(e)}\n\n"
+                        f"Verifique se:\n"
+                        f"- A porta não está em uso\n"
+                        f"- Você tem permissões suficientes\n"
+                        f"- O firewall não está bloqueando"
+                    )
+                    root.destroy()
+                except Exception:
+                    pass
+            else:
+                print(f"Erro ao iniciar servidor: {e}")
+                import traceback
+                traceback.print_exc()
+            raise
 
 def cleanup_flask():
     """Limpeza ao encerrar aplicação"""
-    global _flask_server
+    global _flask_server, _flask_servers
+    # Encerrar todos os servidores
+    for port, server in list(_flask_servers.items()):
+        try:
+            print(f"Encerrando servidor Flask na porta {port}...")
+            server.shutdown()
+            print(f"Servidor Flask na porta {port} encerrado")
+        except:
+            pass
+    _flask_servers.clear()
     if _flask_server:
         try:
             print("Encerrando servidor Flask...")
@@ -1042,6 +1848,11 @@ def cleanup_flask():
             print("Servidor Flask encerrado")
         except:
             pass
+    try:
+        from inicio.rede.zeroconf_discovery import stop_zeroconf
+        stop_zeroconf()
+    except Exception:
+        pass
 
 # Registrar cleanup
 atexit.register(cleanup_flask)

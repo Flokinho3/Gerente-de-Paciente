@@ -5,8 +5,11 @@ let indicadoresData = null;
 
 // Função para obter os dados de um indicador específico
 function getIndicadorData(filtro, unidadeSaude = null) {
-    // Se não especificar unidade, usar dados gerais
-    if (!unidadeSaude && indicadoresData) {
+    // Indicadores hardcoded conhecidos
+    const indicadoresHardcoded = ['inicio_pre_natal_antes_12s', 'consultas_pre_natal', 'vacinas_completas', 'plano_parto', 'participou_grupos'];
+    
+    // Se não especificar unidade, usar dados gerais (apenas para hardcoded)
+    if (!unidadeSaude && indicadoresData && indicadoresHardcoded.includes(filtro)) {
         const indicadores = {
             'inicio_pre_natal_antes_12s': {
                 data: indicadoresData.inicio_pre_natal_antes_12s,
@@ -43,57 +46,98 @@ function getIndicadorData(filtro, unidadeSaude = null) {
         return indicadores[filtro] || null;
     }
     
-    // Retornar null se precisar buscar dados filtrados (será feito assincronamente)
+    // Para colunas dinâmicas ou quando precisa buscar filtrado, retornar null
+    // (será feito assincronamente via buscarIndicadorPorUnidade)
     return null;
 }
 
 // Função para buscar dados de indicador filtrado por unidade
 async function buscarIndicadorPorUnidade(filtro, unidadeSaude) {
-    const url = unidadeSaude 
-        ? `/api/indicadores?unidade_saude=${encodeURIComponent(unidadeSaude)}`
-        : '/api/indicadores';
+    // Indicadores hardcoded conhecidos
+    const indicadoresHardcoded = ['inicio_pre_natal_antes_12s', 'consultas_pre_natal', 'vacinas_completas', 'plano_parto', 'participou_grupos'];
     
-    try {
-        const response = await fetch(url);
-        const data = await response.json();
+    // Se for um indicador hardcoded, usar a API original
+    if (indicadoresHardcoded.includes(filtro)) {
+        const url = unidadeSaude 
+            ? `/api/indicadores?unidade_saude=${encodeURIComponent(unidadeSaude)}`
+            : '/api/indicadores';
         
-        const indicadores = {
-            'inicio_pre_natal_antes_12s': {
-                data: data.inicio_pre_natal_antes_12s,
-                labels: ['Sim', 'Não'],
-                backgroundColor: ['#4CAF50', '#f44336'],
-                title: 'Início do pré-natal antes de 12 semanas'
-            },
-            'consultas_pre_natal': {
-                data: data.consultas_pre_natal,
-                labels: ['≥ 6 consultas', '< 6 consultas'],
-                backgroundColor: ['#2196F3', '#FF9800'],
-                title: 'Consultas de pré-natal'
-            },
-            'vacinas_completas': {
-                data: data.vacinas_completas,
-                labels: ['Completo', 'Incompleto', 'Não avaliado'],
-                backgroundColor: ['#4CAF50', '#FF9800', '#9E9E9E'],
-                title: 'Vacinas completas'
-            },
-            'plano_parto': {
-                data: data.plano_parto,
-                labels: ['Sim', 'Não'],
-                backgroundColor: ['#2196F3', '#f44336'],
-                title: 'Plano de parto'
-            },
-            'participou_grupos': {
-                data: data.participou_grupos,
-                labels: ['Participou', 'Não participou'],
-                backgroundColor: ['#4CAF50', '#9E9E9E'],
-                title: 'Participação em grupos'
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            const indicadores = {
+                'inicio_pre_natal_antes_12s': {
+                    data: data.inicio_pre_natal_antes_12s,
+                    labels: ['Sim', 'Não'],
+                    backgroundColor: ['#4CAF50', '#f44336'],
+                    title: 'Início do pré-natal antes de 12 semanas'
+                },
+                'consultas_pre_natal': {
+                    data: data.consultas_pre_natal,
+                    labels: ['≥ 6 consultas', '< 6 consultas'],
+                    backgroundColor: ['#2196F3', '#FF9800'],
+                    title: 'Consultas de pré-natal'
+                },
+                'vacinas_completas': {
+                    data: data.vacinas_completas,
+                    labels: ['Completo', 'Incompleto', 'Não avaliado'],
+                    backgroundColor: ['#4CAF50', '#FF9800', '#9E9E9E'],
+                    title: 'Vacinas completas'
+                },
+                'plano_parto': {
+                    data: data.plano_parto,
+                    labels: ['Sim', 'Não'],
+                    backgroundColor: ['#2196F3', '#f44336'],
+                    title: 'Plano de parto'
+                },
+                'participou_grupos': {
+                    data: data.participou_grupos,
+                    labels: ['Participou', 'Não participou'],
+                    backgroundColor: ['#4CAF50', '#9E9E9E'],
+                    title: 'Participação em grupos'
+                }
+            };
+            
+            return indicadores[filtro] || null;
+        } catch (error) {
+            console.error('Erro ao buscar indicador por unidade:', error);
+            return null;
+        }
+    } else {
+        // Para colunas dinâmicas, usar a API genérica
+        try {
+            const url = unidadeSaude 
+                ? `/api/indicadores_coluna/${filtro}?unidade_saude=${encodeURIComponent(unidadeSaude)}`
+                : `/api/indicadores_coluna/${filtro}`;
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.success && data.data) {
+                // Obter título amigável do filtro
+                const filtroSelect = document.getElementById('comparacao-filtro');
+                let titulo = filtro.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+                if (filtroSelect) {
+                    const option = filtroSelect.querySelector(`option[value="${filtro}"]`);
+                    if (option) {
+                        titulo = option.text;
+                    }
+                }
+                
+                return {
+                    data: data.data,
+                    labels: ['Sim', 'Não'],
+                    backgroundColor: ['#4CAF50', '#f44336'],
+                    title: titulo
+                };
+            } else {
+                return null;
             }
-        };
-        
-        return indicadores[filtro] || null;
-    } catch (error) {
-        console.error('Erro ao buscar indicador por unidade:', error);
-        return null;
+        } catch (error) {
+            console.error('Erro ao buscar indicador genérico por unidade:', error);
+            return null;
+        }
     }
 }
 

@@ -10,10 +10,35 @@ import subprocess
 import signal
 import atexit
 from PIL import Image, ImageDraw
-from dotenv import load_dotenv
 
-# Carregar variáveis de ambiente do arquivo .env
-load_dotenv()
+from env_loader import load_env
+load_env()
+
+def _detectar_ip_local():
+    try:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(('8.8.8.8', 80))
+            ip = s.getsockname()[0]
+        finally:
+            s.close()
+        return ip
+    except Exception:
+        try:
+            import socket
+            return socket.gethostbyname(socket.gethostname())
+        except Exception:
+            return '127.0.0.1'
+
+def obter_host_navegador():
+    public_host = (os.getenv('FLASK_PUBLIC_HOST') or '').strip()
+    if public_host:
+        return public_host
+    host = (os.getenv('FLASK_HOST') or '127.0.0.1').strip()
+    if host in ('0.0.0.0', '::', '127.0.0.1', 'localhost'):
+        return _detectar_ip_local()
+    return host
 
 try:
     import pystray
@@ -123,7 +148,8 @@ class TrayIconManager:
     
     def abrir_navegador(self, icon=None, item=None):
         """Abre o navegador na porta configurada"""
-        url = f'http://localhost:{self.port}'
+        host = obter_host_navegador()
+        url = f'http://{host}:{self.port}'
         try:
             webbrowser.open(url)
         except Exception as e:
@@ -196,18 +222,19 @@ class TrayIconManager:
         self.abrir_navegador()
     
     def parar_flask(self):
-        """Para o servidor Flask"""
-        # Se já estiver parado, não fazer nada
+        """Para o servidor (Waitress)"""
         if not self.is_running:
             return
-        
         self.is_running = False
-        
-        # Usar shutdown do Werkzeug se disponível
+        try:
+            from inicio.rede.zeroconf_discovery import stop_zeroconf
+            stop_zeroconf()
+        except Exception:
+            pass
         try:
             if hasattr(self, '_server') and self._server:
-                print("Encerrando servidor Flask...")
-                self._server.shutdown()
+                print("Encerrando servidor...")
+                self._server.close()
                 self._server = None
         except Exception as e:
             print(f"Erro ao encerrar servidor: {e}")
@@ -219,11 +246,9 @@ class TrayIconManager:
                     break
                 threading.Event().wait(0.1)
             
-            # Se ainda estiver vivo, forçar encerramento
             if self.flask_thread.is_alive():
-                print("Aviso: Thread do Flask não finalizou normalmente")
-        
-        print("Servidor Flask encerrado")
+                print("Aviso: Thread do servidor não finalizou normalmente")
+        print("Servidor encerrado")
     
     def iniciar_flask(self):
         """Inicia o servidor Flask em thread separada"""
@@ -235,34 +260,57 @@ class TrayIconManager:
         def run():
             try:
                 import logging
-                log = logging.getLogger('werkzeug')
-                
-                # Verificar modo debug do .env
                 debug_mode = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
-                
-                # Configurar nível de log baseado no debug
-                if debug_mode:
-                    log.setLevel(logging.DEBUG)
-                    print(f"Modo DEBUG ativado (via .env)")
-                else:
-                    log.setLevel(logging.ERROR)
-                
-                # IMPORTANTE: Desabilitar reloader mesmo em modo debug
-                # pois o reloader causa problemas com threads e tray icon
+                is_executable = getattr(sys, 'frozen', False)
+                host = os.getenv('FLASK_HOST', '127.0.0.1')
+                threads = int(os.getenv('WAITRESS_THREADS', '8'))
+                if not debug_mode:
+                    logging.getLogger('werkzeug').setLevel(logging.ERROR)
+                    logging.getLogger('waitress').setLevel(logging.WARNING)
                 if hasattr(self.flask_app, 'config'):
                     self.flask_app.config['DEBUG'] = debug_mode
-                
                 self.is_running = True
-                from werkzeug.serving import make_server
-                host = os.getenv('FLASK_HOST', '127.0.0.1')
-                self._server = make_server(host, self.port, self.flask_app, threaded=True)
-                print(f"Servidor Flask iniciado em http://{host}:{self.port} (Debug: {debug_mode})")
-                self._server.serve_forever()
+                from waitress import create_server
+                self._server = create_server(
+                    self.flask_app, host=host, port=self.port, threads=threads
+                )
+                if not is_executable or debug_mode:
+                    print(f"Servidor iniciado em http://{host}:{self.port} (Waitress, {threads} threads)")
+                discovery = (os.getenv('DISCOVERY') or 'zeroconf').strip().lower()
+                try:
+                    if discovery == 'scan':
+                        from inicio.rede import run_scan_loop
+                        run_scan_loop(port=self.port)
+                    else:
+                        from inicio.rede.zeroconf_discovery import start_zeroconf
+                        start_zeroconf(self.port)
+                except Exception:
+                    pass
+                self._server.run()
             except Exception as e:
-                print(f"Erro ao iniciar Flask: {e}")
-                import traceback
-                traceback.print_exc()
                 self.is_running = False
+                if is_executable and not debug_mode:
+                    try:
+                        import tkinter as tk
+                        from tkinter import messagebox
+                        root = tk.Tk()
+                        root.withdraw()
+                        messagebox.showerror(
+                            "Erro ao Iniciar Servidor",
+                            f"Não foi possível iniciar o servidor na porta {self.port}.\n\n"
+                            f"Erro: {str(e)}\n\n"
+                            f"Verifique se:\n"
+                            f"- A porta não está em uso\n"
+                            f"- Você tem permissões suficientes\n"
+                            f"- O firewall não está bloqueando"
+                        )
+                        root.destroy()
+                    except Exception:
+                        pass
+                else:
+                    print(f"Erro ao iniciar servidor: {e}")
+                    import traceback
+                    traceback.print_exc()
         
         self.flask_thread = threading.Thread(target=run, daemon=True)
         self.flask_thread.start()
@@ -300,7 +348,8 @@ class TrayIconManager:
         else:
             status_text = "[X] Parado"
         porta_text = f"Porta: {self.port}"
-        url_text = f"http://localhost:{self.port}"
+        host = obter_host_navegador()
+        url_text = f"http://{host}:{self.port}"
         
         menu = pystray.Menu(
             item(f'{status_text} - {porta_text}', None, enabled=False),
@@ -392,6 +441,6 @@ class TrayIconManager:
             print("\nDicas para resolver:")
             print("1. Certifique-se de que pystray está instalado: pip install pystray pillow")
             print("2. No Windows, verifique se os ícones não estão ocultos na área de notificação")
-            print("3. Execute como administrador se necessário")
+            print("3. Verifique se o aplicativo tem permissões de rede")
             print("4. Verifique se não há antivírus bloqueando")
             return False

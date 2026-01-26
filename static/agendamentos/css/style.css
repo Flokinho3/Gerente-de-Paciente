@@ -380,6 +380,21 @@ body {
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
+/* Dias só com revisados (realizado/falta/cancelado) – visual discreto */
+.dia-calendario.dia-so-revisados {
+    background: #e5ebe9;
+    color: var(--text);
+    border: 1px solid #d0d7de;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.dia-calendario.dia-so-revisados:hover {
+    background: #dce2df;
+    border-color: #b8c2be;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px) scale(1.02);
+}
+
 .numero-dia {
     font-size: 1.4rem;
     font-weight: 700;
@@ -412,6 +427,14 @@ body {
     background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
     box-shadow: 0 2px 8px rgba(211, 47, 47, 0.5);
     animation: pulseBadgeAtrasado 1.5s infinite;
+}
+
+/* Badge para dias só com revisados – tom neutro, sem pulse */
+.badge-agendamentos.badge-dia-revisado {
+    background: #9e9e9e;
+    color: white;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+    animation: none;
 }
 
 @keyframes pulseBadge {
@@ -525,6 +548,28 @@ body {
     opacity: 0.05;
 }
 
+/* Cards com status discreto (realizado/falta/cancelado) na expansão do dia */
+.expansao-dia .agendamento-expandido.status-realizado,
+.expansao-dia .agendamento-expandido.status-falta,
+.expansao-dia .agendamento-expandido.status-cancelado {
+    border-left-color: #9e9e9e;
+    opacity: 0.88;
+    box-shadow: 0 2px 8px var(--shadow);
+}
+
+.expansao-dia .agendamento-expandido.status-realizado::before,
+.expansao-dia .agendamento-expandido.status-falta::before,
+.expansao-dia .agendamento-expandido.status-cancelado::before {
+    background: linear-gradient(180deg, #bdbdbd 0%, #9e9e9e 100%);
+}
+
+.expansao-dia .agendamento-expandido.status-realizado:hover,
+.expansao-dia .agendamento-expandido.status-falta:hover,
+.expansao-dia .agendamento-expandido.status-cancelado:hover {
+    transform: translateX(4px);
+    box-shadow: 0 4px 12px var(--shadow);
+}
+
 .agendamento-expandido-header {
     display: flex;
     justify-content: space-between;
@@ -613,6 +658,37 @@ body {
 
 .status-falta::before {
     content: "⚠️";
+}
+
+/* Badges de status mais discretos na expansão do dia (realizado/falta/cancelado) */
+.expansao-dia .status-agendamento.status-realizado {
+    background: #eaf0ea;
+    color: #5a6b5a;
+    border-color: #9e9e9e;
+}
+
+.expansao-dia .status-agendamento.status-realizado::before {
+    content: "";
+}
+
+.expansao-dia .status-agendamento.status-falta {
+    background: #f0e8eb;
+    color: #7a6570;
+    border-color: #a09098;
+}
+
+.expansao-dia .status-agendamento.status-falta::before {
+    content: "";
+}
+
+.expansao-dia .status-agendamento.status-cancelado {
+    background: #f0e8e8;
+    color: #8a7070;
+    border-color: #b0a0a0;
+}
+
+.expansao-dia .status-agendamento.status-cancelado::before {
+    content: "";
 }
 
 /* ========== PERFIL RESUMIDO DA PACIENTE ========== */

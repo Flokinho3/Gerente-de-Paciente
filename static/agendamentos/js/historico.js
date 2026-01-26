@@ -225,3 +225,5 @@ window.questionarSituacaoAtendimento = questionarSituacaoAtendimento;
 window.aplicarFiltrosHistorico = aplicarFiltrosHistorico;
 window.limparFiltrosHistorico = limparFiltrosHistorico;
 window.toggleFiltrosHistorico = toggleFiltrosHistorico;
+// Exportar variável para limpeza de cache
+window.historicoAgendamentos = historicoAgendamentos;

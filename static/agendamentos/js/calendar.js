@@ -7,6 +7,9 @@ let diaExpandido = null;
 
 // Carregar calendário completo
 async function carregarCalendario() {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'calendar.js:carregarCalendario',message:'Iniciando carregamento do calendário',data:{viewAtiva:document.querySelector('.view.ativa')?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion agent log
     try {
         const calendarioContainer = document.querySelector('.calendario-container');
         if (calendarioContainer) {
@@ -21,6 +24,9 @@ async function carregarCalendario() {
             calendarioContainer.style.opacity = '1';
         }
     } catch (error) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'calendar.js:carregarCalendario',message:'Erro ao carregar calendário',data:{error:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion agent log
         console.error('Erro ao carregar calendário:', error);
         mostrarErro('Erro ao carregar calendário');
     }
@@ -37,16 +43,30 @@ async function buscarAgendamentosPorPeriodo() {
     const dataInicio = primeiroDia.toISOString().split('T')[0];
     const dataFim = ultimoDia.toISOString().split('T')[0];
 
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'calendar.js:buscarAgendamentosPorPeriodo',message:'Buscando agendamentos do período',data:{ano:ano,mes:mes,dataInicio:dataInicio,dataFim:dataFim,agendamentosCalendarioAntes:agendamentosCalendario.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion agent log
+
     try {
         const response = await fetch(`/api/agendamentos?data_inicio=${dataInicio}&data_fim=${dataFim}`);
         const data = await response.json();
 
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'calendar.js:buscarAgendamentosPorPeriodo',message:'Dados recebidos da API',data:{success:data.success,agendamentosCount:data.agendamentos?.length||0,agendamentosIds:data.agendamentos?.map(a=>a.id)||[]},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion agent log
+
         if (data.success && data.agendamentos) {
             agendamentosCalendario = data.agendamentos;
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'calendar.js:buscarAgendamentosPorPeriodo',message:'Atualizado agendamentosCalendario',data:{agendamentosCalendarioDepois:agendamentosCalendario.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+            // #endregion agent log
         } else {
             agendamentosCalendario = [];
         }
     } catch (error) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'calendar.js:buscarAgendamentosPorPeriodo',message:'Erro ao buscar',data:{error:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion agent log
         console.error('Erro ao buscar agendamentos:', error);
         agendamentosCalendario = [];
     }
@@ -69,15 +89,21 @@ async function gerarCalendario() {
     await renderizarDiasCalendario();
 }
 
-// Verificar se um dia tem agendamentos atrasados
-function diaTemAgendamentosAtrasados(dataFormatada) {
+// Verificar se um dia tem pendentes atrasados (agendado/confirmado em data passada)
+function diaTemPendentesAtrasados(dataFormatada, agendamentosDia) {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
-    
     const dataComparar = new Date(dataFormatada + 'T00:00:00');
-    
-    // Qualquer data anterior a hoje está atrasada
-    return dataComparar < hoje;
+    if (dataComparar >= hoje) return false;
+    const STATUS_PENDENTES = ['agendado', 'confirmado'];
+    return agendamentosDia.some(ag => STATUS_PENDENTES.includes(ag.status));
+}
+
+// Verificar se todos os agendamentos do dia são revisados (realizado/falta/cancelado)
+function diaTodosRevisados(agendamentosDia) {
+    if (!agendamentosDia || agendamentosDia.length === 0) return false;
+    const STATUS_REVISADOS = ['realizado', 'falta', 'cancelado'];
+    return agendamentosDia.every(ag => STATUS_REVISADOS.includes(ag.status));
 }
 
 // Renderizar dias do calendário
@@ -94,6 +120,10 @@ async function renderizarDiasCalendario() {
     const ultimoDia = new Date(ano, mes + 1, 0);
     const ultimoDiaMes = ultimoDia.getDate();
 
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'calendar.js:renderizarDiasCalendario',message:'Iniciando renderização',data:{ano:ano,mes:mes,agendamentosCalendarioLength:agendamentosCalendario.length,agendamentosIds:agendamentosCalendario.map(a=>a.id)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+    // #endregion agent log
+
     const agendamentosPorDia = {};
     agendamentosCalendario.forEach(agendamento => {
         const data = agendamento.data_consulta;
@@ -102,6 +132,10 @@ async function renderizarDiasCalendario() {
         }
         agendamentosPorDia[data].push(agendamento);
     });
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'calendar.js:renderizarDiasCalendario',message:'Agendamentos por dia calculados',data:{agendamentosPorDia:Object.keys(agendamentosPorDia).map(data=>({data:data,count:agendamentosPorDia[data].length,ids:agendamentosPorDia[data].map(a=>a.id)}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+    // #endregion agent log
 
     let html = '';
 
@@ -115,11 +149,15 @@ async function renderizarDiasCalendario() {
         const agendamentosDia = agendamentosPorDia[dataFormatada] || [];
         const temAgendamentos = agendamentosDia.length > 0;
         
-        // Verificar se o dia está atrasado (qualquer data passada)
-        const temAtrasados = temAgendamentos && diaTemAgendamentosAtrasados(dataFormatada);
+        const temAtrasados = temAgendamentos && diaTemPendentesAtrasados(dataFormatada, agendamentosDia);
+        const todosRevisados = diaTodosRevisados(agendamentosDia);
+        const diaSoRevisados = temAgendamentos && todosRevisados && !temAtrasados;
         
-        const classes = `dia-calendario ${temAgendamentos ? 'dia-com-agendamentos' : ''} ${temAtrasados ? 'dia-com-atrasados' : ''}`;
-        const badge = temAgendamentos ? `<span class="badge-agendamentos ${temAtrasados ? 'badge-atrasado-calendario' : ''}">${agendamentosDia.length}</span>` : '';
+        const classes = `dia-calendario ${temAgendamentos ? 'dia-com-agendamentos' : ''} ${temAtrasados ? 'dia-com-atrasados' : ''} ${diaSoRevisados ? 'dia-so-revisados' : ''}`;
+        let badgeClasse = 'badge-agendamentos';
+        if (temAtrasados) badgeClasse += ' badge-atrasado-calendario';
+        else if (diaSoRevisados) badgeClasse += ' badge-dia-revisado';
+        const badge = temAgendamentos ? `<span class="${badgeClasse}">${agendamentosDia.length}</span>` : '';
 
         html += `
             <div class="${classes}" data-data="${dataFormatada}" data-tem-atrasados="${temAtrasados}">
@@ -250,7 +288,7 @@ async function expandirDia(data) {
             }
 
             html += `
-                <div class="agendamento-expandido" onclick="abrirPerfilCompleto('${agendamento.paciente_id}')" ${estiloVermelho}>
+                <div class="agendamento-expandido status-${agendamento.status}" onclick="abrirPerfilCompleto('${agendamento.paciente_id}')" ${estiloVermelho}>
                     <div class="agendamento-expandido-header">
                         <div class="hora-agendamento">${horaFormatada}</div>
                         <span class="status-agendamento ${statusClass}">${statusLabel}</span>
@@ -305,3 +343,5 @@ window.carregarCalendario = carregarCalendario;
 window.expandirDia = expandirDia;
 window.colapsarDiaExpandido = colapsarDiaExpandido;
 window.obterDiaExpandido = obterDiaExpandido;
+// Exportar variáveis para limpeza de cache
+window.agendamentosCalendario = agendamentosCalendario;

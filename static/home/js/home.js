@@ -2,8 +2,20 @@
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', async function() {
-    // Carregar dados dos indicadores
-    const data = await window.carregarIndicadores();
+    // Carregar tema personalizado (ou padrão) ao iniciar
+    try {
+        themeManager.loadAndApplyTheme();
+    } catch (error) {
+        console.error('Erro ao carregar tema:', error);
+    }
+
+    // Carregar dados dos indicadores (se disponível nesta página)
+    let data = null;
+    if (typeof window.carregarIndicadores === 'function') {
+        data = await window.carregarIndicadores();
+    } else {
+        console.warn('carregarIndicadores não disponível nesta página.');
+    }
     if (data) {
         // Calcular porcentagens e atualizar indicadores visuais
         
@@ -82,6 +94,11 @@ document.addEventListener('DOMContentLoaded', async function() {
                 window.configurarSelecaoUnidades();
             }
         });
+    }
+    
+    // Carregar colunas do BD dinamicamente para o filtro
+    if (window.carregarColunasParaFiltro) {
+        window.carregarColunasParaFiltro();
     }
     
     // Configurar evento de clique nas abas

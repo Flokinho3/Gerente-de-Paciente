@@ -109,6 +109,9 @@ async function exportarBD() {
 
 // Excluir BD
 async function excluirBD() {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'configuracoes.js:excluirBD',message:'Iniciando exclusão do BD',data:{agendamentosCalendarioLength:window.agendamentosCalendario?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion agent log
     const modalExcluirBD = document.getElementById('modalExcluirBD');
     const confirmTextExcluirBD = document.getElementById('confirmTextExcluirBD');
     
@@ -126,6 +129,10 @@ async function excluirBD() {
         
         const data = await response.json();
         
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'configuracoes.js:excluirBD',message:'Resposta da exclusão do BD',data:{success:data.success},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion agent log
+        
         if (data.success) {
             mostrarMensagem('Banco de dados excluído com sucesso!', false);
             
@@ -136,11 +143,17 @@ async function excluirBD() {
                 confirmTextExcluirBD.value = '';
             }
             
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'configuracoes.js:excluirBD',message:'Chamando atualizarBD após exclusão',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion agent log
             await atualizarBD();
         } else {
             mostrarMensagem(data.message || 'Erro ao excluir banco de dados', true);
         }
     } catch (error) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'configuracoes.js:excluirBD',message:'Erro ao excluir BD',data:{error:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion agent log
         console.error('Erro ao excluir BD:', error);
         mostrarMensagem('Erro ao excluir banco de dados', true);
     }
@@ -148,23 +161,124 @@ async function excluirBD() {
 
 // Atualizar BD (recarregar dados)
 async function atualizarBD() {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'configuracoes.js:atualizarBD',message:'Iniciando atualização do BD',data:{agendamentosCalendarioLength:window.agendamentosCalendario?.length||0,viewAtiva:document.querySelector('.view.ativa')?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion agent log
     try {
         mostrarMensagem('Atualizando dados do sistema...', false);
         
-        await window.carregarTodosPacientes();
-        
-        const viewAgenda = document.getElementById('agenda');
-        if (viewAgenda && viewAgenda.classList.contains('ativa')) {
-            await window.carregarAgendamentos();
+        // Limpar todos os arrays em cache de forma agressiva
+        // Limpar cache de agendamentos (lista principal)
+        if (window.obterAgendamentos) {
+            const agendamentos = window.obterAgendamentos();
+            if (Array.isArray(agendamentos)) {
+                agendamentos.length = 0;
+            }
+        }
+        if (window.agendamentosArray && Array.isArray(window.agendamentosArray)) {
+            window.agendamentosArray.length = 0;
         }
         
-        const viewCalendario = document.getElementById('calendario');
-        if (viewCalendario && viewCalendario.classList.contains('ativa')) {
+        // Limpar cache do calendário - forçar nova referência vazia
+        window.agendamentosCalendario = [];
+        
+        // Limpar cache do histórico - forçar nova referência vazia
+        window.historicoAgendamentos = [];
+        
+        // Limpar cache dos alertas de agendamentos - forçar nova referência vazia
+        window.agendamentosAlertas = [];
+        
+        // Limpar expansão do dia no calendário se estiver expandido
+        if (window.colapsarDiaExpandido) {
+            window.colapsarDiaExpandido();
+        }
+        
+        // Limpar HTML dos containers para garantir que não há dados visuais antigos
+        const containerAgendamentos = document.getElementById('agendamentosList');
+        if (containerAgendamentos) {
+            containerAgendamentos.innerHTML = '';
+        }
+        
+        const containerCalendario = document.getElementById('diasCalendario');
+        if (containerCalendario) {
+            containerCalendario.innerHTML = '';
+        }
+        
+        const containerHistorico = document.getElementById('historicoList');
+        if (containerHistorico) {
+            containerHistorico.innerHTML = '';
+        }
+        
+        const containerExpansao = document.getElementById('expansaoDia');
+        if (containerExpansao) {
+            containerExpansao.style.display = 'none';
+            const agendamentosDia = document.getElementById('agendamentosDia');
+            if (agendamentosDia) {
+                agendamentosDia.innerHTML = '';
+            }
+        }
+        
+        // Recarregar pacientes
+        await window.carregarTodosPacientes();
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'configuracoes.js:atualizarBD',message:'Antes de atualizar views',data:{temCarregarCalendario:typeof window.carregarCalendario==='function',temCarregarAgendamentos:typeof window.carregarAgendamentos==='function'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion agent log
+        
+        // Forçar atualização de todas as views, independentemente de estarem ativas
+        // Atualizar calendário
+        if (window.carregarCalendario) {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'configuracoes.js:atualizarBD',message:'Chamando carregarCalendario',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion agent log
             await window.carregarCalendario();
         }
         
+        // Atualizar lista de agendamentos
+        if (window.carregarAgendamentos) {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'configuracoes.js:atualizarBD',message:'Chamando carregarAgendamentos',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion agent log
+            await window.carregarAgendamentos();
+        }
+        
+        // Atualizar histórico
+        if (window.carregarHistorico) {
+            await window.carregarHistorico();
+        }
+        
+        // Atualizar alertas de agendamentos
+        if (window.carregarAlertasAgendamentos) {
+            await window.carregarAlertasAgendamentos();
+        }
+        
+        // Atualizar alertas de parto (se existir)
+        if (window.carregarAlertasParto) {
+            await window.carregarAlertasParto();
+        }
+        
+        // Garantir que as referências globais estejam sincronizadas após recarregar
+        // Isso é importante porque os módulos podem criar novas referências locais
+        if (window.obterAgendamentos) {
+            const agendamentosAtuais = window.obterAgendamentos();
+            if (Array.isArray(agendamentosAtuais) && window.agendamentosArray) {
+                window.agendamentosArray.length = 0;
+                window.agendamentosArray.push(...agendamentosAtuais);
+            }
+        }
+        
+        // Sincronizar referência do calendário (será atualizada quando carregarCalendario for chamado)
+        // A função buscarAgendamentosPorPeriodo já atualiza a referência global
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'configuracoes.js:atualizarBD',message:'Após atualizar views',data:{agendamentosCalendarioLength:window.agendamentosCalendario?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion agent log
+        
         mostrarMensagem('Dados atualizados com sucesso!', false);
     } catch (error) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'configuracoes.js:atualizarBD',message:'Erro ao atualizar BD',data:{error:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion agent log
         console.error('Erro ao atualizar BD:', error);
         mostrarMensagem('Erro ao atualizar dados', true);
     }

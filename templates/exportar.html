@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='exportar/css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='alerts/css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='alerts_agendamentos/css/style.css') }}">
+    <style id="custom-theme" type="text/css"></style>
     <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
 </head>
 <body>
@@ -55,14 +56,14 @@
                     <div class="topbar-dropdown-content">
                         <a href="/bd" class="topbar-dropdown-item">🗄️ Banco de Dados</a>
                         <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">🔔 Notificações</a>
-                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">🎨 Aparência</a>
+                        <a href="/aparencia" class="topbar-dropdown-item">🎨 Aparência</a>
                     </div>
                 </div>
 
                 <!-- Ajuda (não é gaveta) -->
-                <button onclick="abrirAjuda()" class="topbar-link btn-ajuda">
+                <a href="/ajuda" class="topbar-link btn-ajuda">
                     ❓ Ajuda
-                </button>
+                </a>
 
                 <span id="version-info" class="topbar-version">v{{ version }}</span>
             </div>
@@ -140,25 +141,92 @@
         <!-- Filtros por Unidade -->
         <div class="export-filters">
             <h3>Filtros por Unidade</h3>
-            <p class="filter-subtitle">Selecione uma unidade para filtrar os dados da exportação.</p>
+            <p class="filter-subtitle">Selecione as unidades para filtrar os dados da exportação. Os pacientes devem atender ambos os filtros.</p>
 
-            <div class="filter-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                <label class="filter-select">
-                    <span>UPAs</span>
-                    <select id="filterUpas">
-                        <option value="">Todas as UPAs</option>
-                    </select>
+            <!-- Primeiro Filtro: Unidades (Gaveta com Busca) -->
+            <div class="filter-group">
+                <label class="filter-group-label">
+                    <span class="filter-number">1º</span>
+                    <span class="filter-title">Filtro de Unidades</span>
                 </label>
+                <p class="filter-description">Selecione uma ou mais unidades (UBS, UPA, etc.). Apenas pacientes que atendem essas unidades serão incluídos.</p>
+                
+                <div class="filter-gaveta-container">
+                    <div class="filter-gaveta-header">
+                        <div class="filter-gaveta-select">
+                            <button type="button" id="filterUpasBtn" class="filter-gaveta-btn">
+                                <span id="filterUpasText">Todas</span>
+                                <span class="gaveta-arrow">▼</span>
+                            </button>
+                            <div id="filterUpasDropdown" class="filter-gaveta-dropdown">
+                                <div class="filter-search-container">
+                                    <input type="text" id="filterUpasSearch" class="filter-search-input" placeholder="🔍 Pesquisar UPAs..." autocomplete="off">
+                                </div>
+                                <div class="filter-options-container" id="filterUpasOptions">
+                                    <label class="filter-option">
+                                        <input type="checkbox" class="filter-checkbox" value="TODAS" checked id="filterUpasTodas">
+                                        <span class="filter-option-text">Todas</span>
+                                    </label>
+                                    <!-- Opções serão preenchidas via JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="selectedUpasTags" class="selected-tags">
+                    <!-- Tags das UPAs selecionadas serão exibidas aqui -->
+                </div>
+            </div>
 
-                <label class="filter-select">
-                    <span>Kitis</span>
-                    <select id="filterKitis">
-                        <option value="">Todos os Kitis</option>
-                    </select>
+            <!-- Segundo Filtro: Campos do BD (Gaveta com Busca) -->
+            <div class="filter-group" style="margin-top: 2rem;">
+                <label class="filter-group-label">
+                    <span class="filter-number">2º</span>
+                    <span class="filter-title">Filtro por Campos</span>
                 </label>
+                <p class="filter-description">Selecione um ou mais campos para refinar ainda mais os resultados. Apenas pacientes que atendem o 1º e 2º filtros serão incluídos.</p>
+                
+                <div class="filter-gaveta-container">
+                    <div class="filter-gaveta-header">
+                        <div class="filter-gaveta-select">
+                            <button type="button" id="filterCamposBtn" class="filter-gaveta-btn">
+                                <span id="filterCamposText">Todos os campos</span>
+                                <span class="gaveta-arrow">▼</span>
+                            </button>
+                            <div id="filterCamposDropdown" class="filter-gaveta-dropdown">
+                                <div class="filter-search-container">
+                                    <input type="text" id="filterCamposSearch" class="filter-search-input" placeholder="🔍 Pesquisar campos..." autocomplete="off">
+                                </div>
+                                <div class="filter-options-container" id="filterCamposOptions">
+                                    <label class="filter-option">
+                                        <input type="checkbox" class="filter-checkbox" value="TODOS" checked id="filterCamposTodos">
+                                        <span class="filter-option-text">Todos os campos</span>
+                                    </label>
+                                    <!-- Opções serão preenchidas via JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="selectedCamposTags" class="selected-tags">
+                    <!-- Tags dos campos selecionados serão exibidos aqui -->
+                </div>
             </div>
 
             <p id="filtrosResumo" class="filter-summary">Nenhum filtro ativo.</p>
+            
+            <!-- Preview de quantas pessoas estão sendo carregadas -->
+            <div class="filter-preview">
+                <div class="preview-card">
+                    <div class="preview-icon">👥</div>
+                    <div class="preview-content">
+                        <span class="preview-label">Pacientes na planilha:</span>
+                        <span id="previewContagem" class="preview-count">Carregando...</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="custom-toggle">
@@ -198,7 +266,8 @@
     </div>
     </div>
 
-    <script src="{{ url_for('static', filename='exportar/js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='home/js/theme-manager.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='exportar/js/main.js') }}"></script>
     <script>
         // Suprimir erros de extensões do navegador (Copilot, etc.)
         window.addEventListener('error', function(e) {

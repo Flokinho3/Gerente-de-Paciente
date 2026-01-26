@@ -8,6 +8,9 @@ const formAgendamento = document.getElementById('formAgendamento');
 
 // Carregar agendamentos
 async function carregarAgendamentos() {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'agendamentos.js:carregarAgendamentos',message:'Iniciando carregamento',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion agent log
     try {
         let container = document.getElementById('agendamentosList');
         if (!container) {
@@ -28,13 +31,23 @@ async function carregarAgendamentos() {
         const response = await fetch('/api/agendamentos');
         const data = await response.json();
         
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'agendamentos.js:carregarAgendamentos',message:'Dados recebidos da API',data:{success:data.success,agendamentosCount:data.agendamentos?.length||0,agendamentosIds:data.agendamentos?.map(a=>a.id)||[]},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion agent log
+        
         if (data.success && data.agendamentos) {
             agendamentos = data.agendamentos;
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'agendamentos.js:carregarAgendamentos',message:'Antes de renderizar',data:{agendamentosLength:agendamentos.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+            // #endregion agent log
             renderizarAgendamentos();
         } else {
             mostrarErro('Erro ao carregar agendamentos');
         }
     } catch (error) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'agendamentos.js:carregarAgendamentos',message:'Erro ao carregar',data:{error:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion agent log
         console.error('Erro ao carregar agendamentos:', error);
         mostrarErro('Erro ao carregar agendamentos');
     }
@@ -225,6 +238,9 @@ function confirmarExclusao(agendamentoId) {
 
 // Excluir agendamento
 async function excluirAgendamento(agendamentoId) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'agendamentos.js:excluirAgendamento',message:'Iniciando exclusão',data:{agendamentoId:agendamentoId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion agent log
     try {
         const response = await fetch(`/api/agendamentos/${agendamentoId}`, {
             method: 'DELETE'
@@ -232,13 +248,33 @@ async function excluirAgendamento(agendamentoId) {
         
         const resultado = await response.json();
         
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'agendamentos.js:excluirAgendamento',message:'Resposta da exclusão',data:{success:resultado.success,message:resultado.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion agent log
+        
         if (resultado.success) {
             mostrarMensagem(resultado.message);
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'agendamentos.js:excluirAgendamento',message:'Chamando carregarAgendamentos após exclusão',data:{viewAtiva:document.querySelector('.view.ativa')?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion agent log
             carregarAgendamentos();
+            // Atualizar calendário também após exclusão manual
+            if (window.carregarCalendario) {
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'agendamentos.js:excluirAgendamento',message:'Atualizando calendário após exclusão manual',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+                // #endregion agent log
+                window.carregarCalendario();
+            }
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'agendamentos.js:excluirAgendamento',message:'Após chamar carregarAgendamentos - verificando se calendário precisa atualizar',data:{temCarregarCalendario:typeof window.carregarCalendario==='function',agendamentosCalendarioLength:window.agendamentosCalendario?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion agent log
         } else {
             mostrarMensagem(resultado.message, true);
         }
     } catch (error) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'agendamentos.js:excluirAgendamento',message:'Erro ao excluir',data:{error:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion agent log
         console.error('Erro ao excluir agendamento:', error);
         mostrarMensagem('Erro ao excluir agendamento', true);
     }
@@ -413,3 +449,5 @@ window.limparFiltros = limparFiltros;
 window.toggleFiltros = toggleFiltros;
 window.configurarEventosAgendamentos = configurarEventosAgendamentos;
 window.obterAgendamentos = () => agendamentos;
+// Exportar variável para limpeza de cache
+window.agendamentosArray = agendamentos;

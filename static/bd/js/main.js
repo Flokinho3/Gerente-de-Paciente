@@ -818,10 +818,21 @@ async function descobrirServidores() {
         
         discoverBtn.disabled = false;
         discoverBtn.innerHTML = '<span>🔍</span> Descobrir Servidores';
-        
+
+        const hwEl = document.getElementById('syncHostWarning');
+        if (hwEl) {
+            if (data.host_warning) {
+                hwEl.textContent = '⚠️ ' + data.host_warning;
+                hwEl.style.display = 'block';
+            } else {
+                hwEl.style.display = 'none';
+                hwEl.textContent = '';
+            }
+        }
+
         if (data.success) {
             servidoresEncontrados = data.servers || [];
-            
+
             if (servidoresEncontrados.length === 0) {
                 mostrarStatus('Nenhum servidor encontrado na rede', 'info');
                 return;

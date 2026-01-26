@@ -3,6 +3,18 @@
 let comparacaoChartCounter = 0;
 const comparacaoCharts = new Map();
 
+// Função auxiliar para obter o título amigável de um filtro
+function obterTituloAmigavel(filtro) {
+    const filtroSelect = document.getElementById('comparacao-filtro');
+    if (filtroSelect) {
+        const option = filtroSelect.querySelector(`option[value="${filtro}"]`);
+        if (option) {
+            return option.text;
+        }
+    }
+    return filtro;
+}
+
 // Variáveis para gerenciar seleção de unidades
 let todasUnidades = [];
 let unidadesSelecionadas = new Set();
@@ -24,7 +36,7 @@ async function criarGraficoComparacao(filtro, estilo, unidadeSaude = null) {
     
     if (!indicadorInfo && estilo !== 'line') return null;
     
-    let title = indicadorInfo ? indicadorInfo.title : filtro;
+    let title = indicadorInfo ? indicadorInfo.title : obterTituloAmigavel(filtro);
     if (unidadeSaude) {
         title += ` - ${unidadeSaude}`;
     } else {
@@ -127,63 +139,151 @@ async function criarGraficoComparacao(filtro, estilo, unidadeSaude = null) {
     return { chartId, chart };
 }
 
-// Função para adicionar gráfico ao comparativo - Compara unidades selecionadas
+function escapeHtmlComparacao(s) {
+    if (s == null || s === '') return '';
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+// Função para adicionar gráfico ao comparativo - Usa /api/ranking_unidades e um único mini-dashboard
 async function adicionarGraficoComparacao() {
     const filtro = document.getElementById('comparacao-filtro').value;
-    const estilo = document.getElementById('comparacao-estilo').value;
-    
-    const indicadoresData = window.obterIndicadoresData();
-    if (!indicadoresData) {
-        alert('Aguarde o carregamento dos dados antes de adicionar gráficos.');
-        return;
-    }
-    
-    // Obter unidades selecionadas (ou todas se nenhuma selecionada)
-    const unidadesParaComparar = unidadesSelecionadas.size > 0 
-        ? Array.from(unidadesSelecionadas) 
-        : todasUnidades;
-    
-    if (unidadesParaComparar.length === 0) {
-        alert('Selecione pelo menos uma unidade de saúde para comparar.');
-        return;
-    }
-    
-    // Criar uma única seção comparativa para agrupar todos os gráficos
     const container = document.getElementById('comparacao-charts-container');
-    
-    // Criar div principal da comparação
-    const comparacaoId = `comparacao-${Date.now()}`;
-    const comparacaoSection = document.createElement('div');
-    comparacaoSection.className = 'comparacao-unidades-section';
-    comparacaoSection.id = comparacaoId;
-    
-    // Criar cabeçalho da seção com botão de remover toda a comparação
-    const indicadorInfo = window.getIndicadorData(filtro);
-    const tituloIndicador = indicadorInfo ? indicadorInfo.title : filtro;
-    
-    comparacaoSection.innerHTML = `
-        <div class="comparacao-section-header">
-            <h3 class="comparacao-section-title">${tituloIndicador}</h3>
-            <button class="btn-remover-comparacao" onclick="removerComparacaoCompleta('${comparacaoId}')">✕ Remover Comparação</button>
-        </div>
-        <div class="comparacao-unidades-grid" id="grid-${comparacaoId}"></div>
-    `;
-    container.appendChild(comparacaoSection);
-    
-    const gridContainer = document.getElementById(`grid-${comparacaoId}`);
-    
-    // Criar gráfico para dados gerais primeiro
-    const resultadoGeral = await criarGraficoComparacaoNoGrid(filtro, estilo, null, gridContainer, comparacaoId);
-    if (resultadoGeral) {
-        comparacaoCharts.set(resultadoGeral.chartId, resultadoGeral.chart);
-    }
-    
-    // Criar gráfico para cada unidade selecionada
-    for (const unidade of unidadesParaComparar) {
-        const resultado = await criarGraficoComparacaoNoGrid(filtro, estilo, unidade, gridContainer, comparacaoId);
-        if (resultado) {
-            comparacaoCharts.set(resultado.chartId, resultado.chart);
+    if (!container) return;
+
+    try {
+        let url = `/api/ranking_unidades?criterio=${encodeURIComponent(filtro)}&limite=0`;
+        if (unidadesSelecionadas.size > 0) {
+            url += '&unidades=' + encodeURIComponent([...unidadesSelecionadas].join(','));
         }
+        const res = await fetch(url);
+        const data = await res.json();
+        if (!data.success) {
+            alert(data.message || 'Erro ao carregar ranking.');
+            return;
+        }
+        const ranking = data.ranking || [];
+        let titulo = obterTituloAmigavel(filtro);
+        if (titulo === filtro && data.criterio_label) {
+            titulo = data.criterio_label;
+        }
+        const comparacaoId = `comparacao-${Date.now()}`;
+        const comparacaoSection = document.createElement('div');
+        comparacaoSection.className = 'comparacao-unidades-section';
+        comparacaoSection.id = comparacaoId;
+        const listaHtml = ranking.length === 0
+            ? '<p class="comparacao-ranking-empty">Nenhuma unidade com dados para este indicador.</p>'
+            : ranking.map((r, i) => {
+                const rank = i + 1;
+                const rankCl = rank <= 3 ? ` rank-${rank}` : '';
+                const pct = Math.min(100, Math.max(0, r.percentual));
+                return `<div class="mini-dashboard-item${rankCl}"><span class="mini-dashboard-item-nome">🏥 ${escapeHtmlComparacao(r.unidade)}</span><div class="mini-dashboard-item-bar"><div class="mini-dashboard-item-bar-fill" style="width:${pct}%"></div></div><span class="mini-dashboard-item-pct">${pct.toFixed(1)}%</span></div>`;
+            }).join('');
+        const chartId = `comparacao-chart-${comparacaoChartCounter++}`;
+        const estiloSelecionado = document.getElementById('comparacao-estilo')?.value || 'bar';
+        const chartCanvasId = `comparacao-ranking-canvas-${chartId}`;
+        comparacaoSection.innerHTML = `
+            <div class="comparacao-section-header">
+                <h3 class="comparacao-section-title">🏆 ${escapeHtmlComparacao(titulo)}</h3>
+                <button class="btn-remover-comparacao" onclick="removerComparacaoCompleta('${comparacaoId}')">✕ Remover Comparação</button>
+            </div>
+            <div class="comparacao-ranking-lista">${listaHtml}</div>
+            <div class="comparacao-ranking-chart" data-comparacao-id="${comparacaoId}" data-chart-id="${chartId}">
+                <div class="comparacao-ranking-chart-header">
+                    <h4 class="comparacao-ranking-chart-title">📊 Comparação entre unidades</h4>
+                </div>
+                <div class="comparacao-ranking-chart-canvas" id="comparacao-ranking-canvas-wrap-${chartId}">
+                    <canvas id="${chartCanvasId}"></canvas>
+                </div>
+            </div>
+        `;
+        container.appendChild(comparacaoSection);
+
+        if (ranking.length === 0) {
+            comparacaoSection.querySelector(`[data-chart-id="${chartId}"]`)?.remove();
+            return;
+        }
+
+        const canvasWrapper = document.getElementById(`comparacao-ranking-canvas-wrap-${chartId}`);
+        if (canvasWrapper) {
+            const chartHeight = Math.max(260, ranking.length * 28);
+            canvasWrapper.style.height = `${chartHeight}px`;
+        }
+        const labels = ranking.map(item => item.unidade);
+        const valores = ranking.map(item => item.percentual);
+        const baseColors = [
+            '#2f7d6d',
+            '#4f9f89',
+            '#7fc8b0',
+            '#f5a623',
+            '#f26d6d',
+            '#6c7bd1',
+            '#56b3b4',
+            '#d27ab2',
+            '#8bc34a',
+            '#ffb74d',
+            '#90a4ae',
+            '#ab47bc'
+        ];
+        const cores = labels.map((_, idx) => baseColors[idx % baseColors.length]);
+        const ctx = document.getElementById(chartCanvasId);
+        const tipoRanking = ['pie', 'doughnut'].includes(estiloSelecionado) ? estiloSelecionado : 'bar';
+        const chart = new Chart(ctx, {
+            type: tipoRanking,
+            data: {
+                labels,
+                datasets: [{
+                    label: titulo,
+                    data: valores,
+                    backgroundColor: tipoRanking === 'bar'
+                        ? cores.map(c => `${c}cc`)
+                        : cores,
+                    borderColor: cores,
+                    borderWidth: tipoRanking === 'bar' ? 1 : 2,
+                    borderRadius: tipoRanking === 'bar' ? 6 : 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: tipoRanking === 'bar' ? 'y' : 'x',
+                plugins: {
+                    legend: { display: tipoRanking !== 'bar' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const pct = tipoRanking === 'bar'
+                                    ? (context.parsed.x ?? 0)
+                                    : (context.parsed ?? 0);
+                                return `${pct.toFixed(1)}%`;
+                            }
+                        }
+                    }
+                },
+                scales: tipoRanking === 'bar'
+                    ? {
+                        x: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: value => `${value}%`
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                autoSkip: false,
+                                font: { size: 11 }
+                            }
+                        }
+                    }
+                    : {}
+            }
+        });
+        comparacaoCharts.set(chartId, chart);
+    } catch (e) {
+        console.error('Erro ao carregar ranking de unidades:', e);
+        alert('Erro ao carregar ranking. Tente novamente.');
     }
 }
 
@@ -198,9 +298,17 @@ async function criarGraficoComparacaoNoGrid(filtro, estilo, unidadeSaude, gridCo
         indicadorInfo = await window.buscarIndicadorPorUnidade(filtro, unidadeSaude);
     }
     
-    if (!indicadorInfo && estilo !== 'line') return null;
+    // Se não encontrou indicadorInfo e não é gráfico de linha, tentar buscar dados genéricos
+    if (!indicadorInfo && estilo !== 'line' && unidadeSaude === null) {
+        // Tentar buscar dados genéricos para o filtro
+        indicadorInfo = await window.buscarIndicadorPorUnidade(filtro, null);
+    }
     
-    let title = indicadorInfo ? indicadorInfo.title : filtro;
+    if (!indicadorInfo && estilo !== 'line') {
+        return null;
+    }
+    
+    let title = indicadorInfo ? indicadorInfo.title : obterTituloAmigavel(filtro);
     if (unidadeSaude) {
         title = `🏥 ${unidadeSaude}`;
     } else {
@@ -308,11 +416,13 @@ async function criarGraficoComparacaoNoGrid(filtro, estilo, unidadeSaude, gridCo
 window.removerComparacaoCompleta = function(comparacaoId) {
     const cards = document.querySelectorAll(`[data-comparacao-id="${comparacaoId}"]`);
     cards.forEach(card => {
-        const chartId = card.id.replace('card-', '');
-        const chart = comparacaoCharts.get(chartId);
-        if (chart) {
-            chart.destroy();
-            comparacaoCharts.delete(chartId);
+        const chartId = card.getAttribute('data-chart-id') || (card.id || '').replace('card-', '');
+        if (chartId) {
+            const chart = comparacaoCharts.get(chartId);
+            if (chart) {
+                chart.destroy();
+                comparacaoCharts.delete(chartId);
+            }
         }
     });
     

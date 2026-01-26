@@ -539,3 +539,6 @@ window.irParaAgendamento = irParaAgendamento;
 window.navegarAlertaAgendamentos = navegarAlertaAgendamentos;
 window.minimizarAlertaAgendamentos = minimizarAlertaAgendamentos;
 window.restaurarAlertaAgendamentos = restaurarAlertaAgendamentos;
+window.carregarAlertasAgendamentos = carregarAlertasAgendamentos;
+// Exportar variável para limpeza de cache
+window.agendamentosAlertas = agendamentosAlertas;
