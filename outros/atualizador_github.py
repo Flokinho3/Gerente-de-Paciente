@@ -8,7 +8,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence
 
 import requests
 from packaging.version import InvalidVersion, Version
@@ -150,7 +150,7 @@ def _derive_asset_name(metadata: Dict[str, str], version: Version) -> str:
         return f"GerenteApp_{version.public}.zip"
 
 
-def _parse_args() -> argparse.Namespace:
+def _create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Verifica e baixa releases públicas do GitHub.")
     parser.add_argument(
         "--repo",
@@ -188,11 +188,12 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Força o download independente da comparação de versões.",
     )
-    return parser.parse_args()
+    return parser
 
 
-def main() -> int:
-    args = _parse_args()
+def run_updater(argv: Sequence[str] | None = None) -> tuple[int, Optional[Path]]:
+    parser = _create_parser()
+    args = parser.parse_args(argv)
     metadata = _load_local_metadata(args.version_file)
     local_version = _parse_version(metadata["version"], "Versão local")
     release = _fetch_latest_release(args.repo, args.token)
@@ -202,12 +203,12 @@ def main() -> int:
     print(f"Versão remota: {remote_version} ({release.get('name') or release.get('tag_name')})")
 
     if args.check_only:
-        return 0
+        return 0, None
 
     needs_update = remote_version > local_version
     if not needs_update and not args.force:
         print("Nenhuma atualização disponível.")
-        return 0
+        return 0, None
 
     asset_name = args.asset_name or _derive_asset_name(metadata, remote_version)
     asset = _select_asset(release.get("assets", []), asset_name)
@@ -238,8 +239,8 @@ def main() -> int:
         "após parar o sistema em produção."
     )
 
-    return 0
+    return 0, target_path
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(run_updater()[0])

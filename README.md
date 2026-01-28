@@ -166,6 +166,28 @@ Crie o arquivo `launcher.py` (já presente no projeto) e o compile com PyInstall
 
 Assim você entrega dois artefatos: o Launcher, responsável por atualizações seguras, e o Gerente, que roda a aplicação. Nunca execute o Gerente diretamente no cliente sem passar pelo Launcher.
 
+### Compilar o Launcher
+
+Como o `launcher.py` importa `run_updater` de `outros/atualizador_github.py`, o PyInstaller embala o verificador junto com o Launcher. Para gerar o `.exe`, execute algo como:
+
+```
+pyinstaller --onefile --name Launcher --noconfirm launcher.py
+```
+
+Se preferir um build em modo console, mantenha `--console`; caso queira esconder o terminal, use `--windowed`. O executável resultante deve acompanhar o `Gerente.exe` e ser o único ponto de entrada no instalador/launcher do cliente.
+
+### Cópia na área de trabalho
+
+Após baixar um novo release, o `Launcher.exe`:
+
+1. Extrai o `.zip` em `updates/extracted/`.
+2. Copia os arquivos extraídos para a pasta `Desktop/Gerente` (sem apagar o restante, apenas substituindo o `Gerente.exe` e qualquer arquivo novo).
+3. Se o `Gerente.exe` estiver em execução, o launcher tenta encerrá-lo antes de substituir o binário.
+4. Cria um atalho (`Gerente.url` no Windows ou `Gerente.desktop` no Linux) apontando para `Desktop/Gerente/Gerente.exe`.
+5. Registra tudo em `updates/launcher.log` sem expor detalhes técnicos ao usuário.
+
+Dessa forma, o launcher garante que sempre exista um `Gerente.exe` atualizado na pasta `Gerente` da área de trabalho, com atalho disponível e sem remover configurações ou dados adicionais que o técnico possa ter colocado ali.
+
 ## 📡 Atualizações via GitHub Releases
 
 Trate o repositório como a fonte oficial das versões e deixe o launcher fazer o download. O próximo script é o cliente recomendado para rodar fora do `.exe`.
