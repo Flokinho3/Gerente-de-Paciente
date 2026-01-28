@@ -254,6 +254,7 @@ outros/dist/
 # Executáveis gerados (ignora builds, mas pode versionar releases)
 outros/dist/*.exe
 outros/build/*.exe
+dist/
 *.app
 *.dmg
 

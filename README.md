@@ -148,6 +148,24 @@ dist/Gerente.exe          # Executável pronto
 dist.zip                 # Opcional: inclui dist/ + data/
 ```
 
+Adicione também:
+
+```
+dist/Launcher.exe        # Launcher que verifica updates e abre o Gerente
+```
+
+O `Launcher.exe` deve ser o ponto de entrada do sistema: ele imprime mensagens simples para o usuário, chama `outros/atualizador_github.py` (que baixa o zip mais recente se houver) e, por fim, inicia `Gerente.exe`. Todo detalhe técnico sai só no log (`updates/launcher.log`), nunca na UI principal.
+
+### Launcher: a interface humana
+
+Crie o arquivo `launcher.py` (já presente no projeto) e o compile com PyInstaller para gerar `Launcher.exe`. O fluxo ideal é:
+
+1. `Launcher.exe` mostra mensagens como “Verificando atualizações…” e “Atualização pronta. Reinicie o sistema.”.
+2. Ele chama `outros/atualizador_github.py` e redireciona o stdout/stderr para o log `updates/launcher.log`.
+3. Se tudo rodar bem, ele inicia `Gerente.exe` (o app principal `main.py`) com os argumentos originais.
+
+Assim você entrega dois artefatos: o Launcher, responsável por atualizações seguras, e o Gerente, que roda a aplicação. Nunca execute o Gerente diretamente no cliente sem passar pelo Launcher.
+
 ## 📡 Atualizações via GitHub Releases
 
 Trate o repositório como a fonte oficial das versões e deixe o launcher fazer o download. O próximo script é o cliente recomendado para rodar fora do `.exe`.
