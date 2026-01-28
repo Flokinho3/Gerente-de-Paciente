@@ -149,32 +149,13 @@ export function showStep(step) {
             setTimeout(() => {
                 const calculatorIcon = stepElement.querySelector('#dum-calculator-icon');
                 const tooltip = stepElement.querySelector('#dum-calculator-tooltip');
-                
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'wizard.js:147',message:'Step 11 exibido - verificando calculadora',data:{iconFound:!!calculatorIcon,tooltipFound:!!tooltip,stepActive:stepElement.classList.contains('active')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                // #endregion
-                
                 if (calculatorIcon && tooltip) {
-                    // Remover qualquer listener anterior anexando um novo com capture phase
-                    // Usar uma função nomeada para poder removê-la depois se necessário
                     const handleCalculatorClick = function(e) {
-                        // #region agent log
-                        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'wizard.js:158',message:'Clique capturado no step 11',data:{targetId:e.target.id,currentDisplay:tooltip.style.display,iconId:calculatorIcon.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                        // #endregion
                         e.stopPropagation();
                         e.stopImmediatePropagation();
                         const isVisible = tooltip.style.display === 'block' || window.getComputedStyle(tooltip).display === 'block';
                         tooltip.style.display = isVisible ? 'none' : 'block';
-                        // #region agent log
-                        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'wizard.js:163',message:'Tooltip display alterado no step 11',data:{isVisible,newDisplay:tooltip.style.display,computedDisplay:window.getComputedStyle(tooltip).display},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-                        // #endregion
                     };
-                    
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'wizard.js:154',message:'Re-anexando listener no step 11',data:{iconId:calculatorIcon.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                    // #endregion
-                    
-                    // Adicionar listener com capture phase para garantir que seja executado primeiro
                     calculatorIcon.addEventListener('click', handleCalculatorClick, true);
                 }
             }, 300);

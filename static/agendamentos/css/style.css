@@ -470,7 +470,7 @@ body {
 /* ========== EXPANSÃO DE DIA (Detalhes do Dia Selecionado) ========== */
 
 .expansao-dia {
-    background: linear-gradient(135deg, var(--card) 0%, var(--accent) 100%);
+    background: var(--card);
     border-radius: var(--radius-lg);
     padding: var(--spacing-xl);
     box-shadow: 0 8px 32px var(--shadow-strong);

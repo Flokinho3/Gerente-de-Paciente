@@ -207,10 +207,13 @@ export function initializeFormSubmit() {
                 estratificacao: formData.get('estratificacao') === 'true',
                 estratificacao_problema: formData.get('estratificacao_problema') || '',
                 cartao_pre_natal_completo: formData.get('cartao_pre_natal_completo') === 'true',
+                possui_bolsa_familia: formData.get('possui_bolsa_familia') === 'true',
+                tem_vacina_covid: formData.get('tem_vacina_covid') === 'true',
                 ganhou_kit: formData.get('ganhou_kit') === 'true',
                 kit_tipo: ganhouKitValue === 'true' ? (kitTipoValues.length > 0 ? kitTipoValues.join(',') : null) : null,
                 proxima_avaliacao: formData.get('proxima_avaliacao') || null,
-                proxima_avaliacao_hora: formData.get('proxima_avaliacao_hora') || null
+                proxima_avaliacao_hora: formData.get('proxima_avaliacao_hora') || null,
+                plano_parto_entregue_por_unidade: formData.get('plano_parto_entregue_por_unidade') || 'Nenhuma'
             }
         };
         

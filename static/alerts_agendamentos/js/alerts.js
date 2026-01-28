@@ -249,6 +249,7 @@ function renderizarAlertasAgendamentos(agendamentos) {
         return `
             <div class="alerta-item-agendamentos ${isUrgente ? 'alerta-urgente-agendamentos' : ''} ${index === 0 ? 'alerta-ativo-agendamentos' : ''}" 
                  data-agendamento-id="${agendamento.id}" 
+                 data-paciente-id="${(agendamento.paciente_id || '').replace(/"/g, '&quot;')}"
                  data-index="${index}"
                  style="display: ${index === 0 ? 'block' : 'none'};">
                 <div class="alerta-info-agendamentos">
@@ -260,9 +261,7 @@ function renderizarAlertasAgendamentos(agendamentos) {
                     </div>
                 </div>
                 <div class="alerta-actions-agendamentos">
-                    <button class="btn-alerta-ver-agendamentos" onclick="irParaAgendamento('${agendamento.id}')">
-                        Ver Detalhes
-                    </button>
+                    <button type="button" class="btn-alerta-ver-agendamentos">Ver Detalhes</button>
                 </div>
             </div>
         `;
@@ -372,63 +371,56 @@ function formatarTipoConsulta(tipo) {
     return tipos[tipo] || tipo;
 }
 
-// Função para ir ao agendamento
-async function irParaAgendamento(agendamentoId) {
-    // Verificar se estamos na página de agendamentos
-    if (window.location.pathname === '/agendamentos' || window.location.pathname === '/agendamentos/') {
-        // Verificar se existe função mostrarView para mudar de view
-        if (typeof mostrarView === 'function') {
-            // Mudar para a view de agenda se não estiver nela
-            const agendaView = document.getElementById('agenda');
-            if (agendaView && !agendaView.classList.contains('ativa')) {
-                mostrarView('agenda');
-                // Aguardar a view mudar e carregar
-                await new Promise(resolve => setTimeout(resolve, 300));
-            }
+// Função para ir ao paciente a partir do alerta de agendamento ("Ver Detalhes")
+function irParaPacienteDoAgendamento(pacienteId) {
+    if (!pacienteId) return;
+    if (window.location.pathname === '/pacientes' || window.location.pathname === '/pacientes/') {
+        if (typeof window.selecionarPaciente === 'function') {
+            window.selecionarPaciente(pacienteId);
+            setTimeout(() => {
+                const perfil = document.getElementById('pacientePerfil');
+                if (perfil) perfil.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 300);
+        } else {
+            window.location.href = `/pacientes?paciente=${encodeURIComponent(pacienteId)}`;
         }
-        
-        // Verificar se a lista está carregada
-        const agendamentosList = document.getElementById('agendamentosList');
-        const item = document.querySelector(`[data-agendamento-id="${agendamentoId}"]`);
-        
-        // Se a lista não existe ou o item não foi encontrado, carregar agendamentos
-        if ((!agendamentosList || !item) && typeof carregarAgendamentos === 'function') {
-            await carregarAgendamentos();
+    } else {
+        window.location.href = `/pacientes?paciente=${encodeURIComponent(pacienteId)}`;
+    }
+}
+
+// Função para ir ao agendamento (usada na página de agendamentos)
+async function irParaAgendamento(agendamentoId) {
+    if (window.location.pathname !== '/agendamentos' && window.location.pathname !== '/agendamentos/') return;
+    if (typeof mostrarView === 'function') {
+        const agendaView = document.getElementById('agenda');
+        if (agendaView && !agendaView.classList.contains('ativa')) {
+            mostrarView('agenda');
             await new Promise(resolve => setTimeout(resolve, 300));
         }
-        
-        // Função para destacar o agendamento
-        const destacarAgendamento = () => {
-            const item = document.querySelector(`[data-agendamento-id="${agendamentoId}"]`);
-            if (item) {
-                // Scroll até o item
-                setTimeout(() => {
-                    item.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    
-                    // Adicionar animação de destaque
-                    item.style.transition = 'all 0.3s ease';
-                    item.style.boxShadow = '0 0 20px rgba(33, 150, 243, 0.5)';
-                    item.style.transform = 'scale(1.02)';
-                    item.style.border = '2px solid rgba(33, 150, 243, 0.5)';
-                    
-                    setTimeout(() => {
-                        item.style.boxShadow = '';
-                        item.style.transform = '';
-                        item.style.border = '';
-                    }, 2000);
-                }, 300);
-            }
-        };
-        
-        // Scroll até a lista de agendamentos
-        const lista = document.getElementById('agendamentosList');
-        if (lista) {
-            lista.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-        
-        // Destacar o agendamento
-        setTimeout(destacarAgendamento, 500);
     }
+    const agendamentosList = document.getElementById('agendamentosList');
+    let item = document.querySelector(`[data-agendamento-id="${agendamentoId}"]`);
+    if ((!agendamentosList || !item) && typeof carregarAgendamentos === 'function') {
+        await carregarAgendamentos();
+        await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    const destacarAgendamento = () => {
+        const el = document.querySelector(`[data-agendamento-id="${agendamentoId}"]`);
+        if (el) {
+            setTimeout(() => {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.style.transition = 'all 0.3s ease';
+                el.style.boxShadow = '0 0 20px rgba(33, 150, 243, 0.5)';
+                el.style.transform = 'scale(1.02)';
+                el.style.border = '2px solid rgba(33, 150, 243, 0.5)';
+                setTimeout(() => { el.style.boxShadow = ''; el.style.transform = ''; el.style.border = ''; }, 2000);
+            }, 300);
+        }
+    };
+    const lista = document.getElementById('agendamentosList');
+    if (lista) lista.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(destacarAgendamento, 500);
 }
 
 // Função para minimizar alerta
@@ -521,21 +513,35 @@ async function carregarAlertasAgendamentos() {
     }
 }
 
+// Delegar clique em "Ver Detalhes" para ir ao paciente
+function configurarCliqueVerDetalhesAgendamentos() {
+    const container = document.getElementById('alertas-agendamentos-container');
+    if (!container) return;
+    container.addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-alerta-ver-agendamentos');
+        if (!btn) return;
+        const item = btn.closest('.alerta-item-agendamentos');
+        const pacienteId = item && item.getAttribute('data-paciente-id');
+        if (pacienteId) irParaPacienteDoAgendamento(pacienteId);
+    });
+}
+
 // Inicializar quando o DOM estiver pronto
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
+        configurarCliqueVerDetalhesAgendamentos();
         setTimeout(carregarAlertasAgendamentos, 500);
-        // Atualizar a cada 5 minutos
         setInterval(carregarAlertasAgendamentos, 5 * 60 * 1000);
     });
 } else {
+    configurarCliqueVerDetalhesAgendamentos();
     setTimeout(carregarAlertasAgendamentos, 500);
-    // Atualizar a cada 5 minutos
     setInterval(carregarAlertasAgendamentos, 5 * 60 * 1000);
 }
 
 // Exportar funções para uso global
 window.irParaAgendamento = irParaAgendamento;
+window.irParaPacienteDoAgendamento = irParaPacienteDoAgendamento;
 window.navegarAlertaAgendamentos = navegarAlertaAgendamentos;
 window.minimizarAlertaAgendamentos = minimizarAlertaAgendamentos;
 window.restaurarAlertaAgendamentos = restaurarAlertaAgendamentos;

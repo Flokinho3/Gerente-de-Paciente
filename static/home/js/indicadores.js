@@ -6,7 +6,7 @@ let indicadoresData = null;
 // Função para obter os dados de um indicador específico
 function getIndicadorData(filtro, unidadeSaude = null) {
     // Indicadores hardcoded conhecidos
-    const indicadoresHardcoded = ['inicio_pre_natal_antes_12s', 'consultas_pre_natal', 'vacinas_completas', 'plano_parto', 'participou_grupos'];
+    const indicadoresHardcoded = ['inicio_pre_natal_antes_12s', 'consultas_pre_natal', 'vacinas_completas', 'plano_parto', 'participou_grupos', 'possui_bolsa_familia', 'tem_vacina_covid'];
     
     // Se não especificar unidade, usar dados gerais (apenas para hardcoded)
     if (!unidadeSaude && indicadoresData && indicadoresHardcoded.includes(filtro)) {
@@ -40,6 +40,18 @@ function getIndicadorData(filtro, unidadeSaude = null) {
                 labels: ['Participou', 'Não participou'],
                 backgroundColor: ['#4CAF50', '#9E9E9E'],
                 title: 'Participação em grupos'
+            },
+            'possui_bolsa_familia': {
+                data: indicadoresData.possui_bolsa_familia,
+                labels: ['Sim', 'Não'],
+                backgroundColor: ['#4CAF50', '#9E9E9E'],
+                title: 'Possui Bolsa Família'
+            },
+            'tem_vacina_covid': {
+                data: indicadoresData.tem_vacina_covid,
+                labels: ['Sim', 'Não'],
+                backgroundColor: ['#4CAF50', '#9E9E9E'],
+                title: 'Tem vacina de COVID'
             }
         };
         
@@ -54,7 +66,7 @@ function getIndicadorData(filtro, unidadeSaude = null) {
 // Função para buscar dados de indicador filtrado por unidade
 async function buscarIndicadorPorUnidade(filtro, unidadeSaude) {
     // Indicadores hardcoded conhecidos
-    const indicadoresHardcoded = ['inicio_pre_natal_antes_12s', 'consultas_pre_natal', 'vacinas_completas', 'plano_parto', 'participou_grupos'];
+    const indicadoresHardcoded = ['inicio_pre_natal_antes_12s', 'consultas_pre_natal', 'vacinas_completas', 'plano_parto', 'participou_grupos', 'possui_bolsa_familia', 'tem_vacina_covid'];
     
     // Se for um indicador hardcoded, usar a API original
     if (indicadoresHardcoded.includes(filtro)) {
@@ -96,6 +108,18 @@ async function buscarIndicadorPorUnidade(filtro, unidadeSaude) {
                     labels: ['Participou', 'Não participou'],
                     backgroundColor: ['#4CAF50', '#9E9E9E'],
                     title: 'Participação em grupos'
+                },
+                'possui_bolsa_familia': {
+                    data: data.possui_bolsa_familia,
+                    labels: ['Sim', 'Não'],
+                    backgroundColor: ['#4CAF50', '#9E9E9E'],
+                    title: 'Possui Bolsa Família'
+                },
+                'tem_vacina_covid': {
+                    data: data.tem_vacina_covid,
+                    labels: ['Sim', 'Não'],
+                    backgroundColor: ['#4CAF50', '#9E9E9E'],
+                    title: 'Tem vacina de COVID'
                 }
             };
             

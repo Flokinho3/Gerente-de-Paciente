@@ -158,7 +158,9 @@ window.compararPacientesSelecionados = function() {
         { nome: 'Consultas de pré-natal', campo: 'consultas_pre_natal', labels: ['≥ 6 consultas', '< 6 consultas'], tipo: 'numero' },
         { nome: 'Vacinas completas', campo: 'vacinas_completas', labels: ['Completo', 'Incompleto', 'Não avaliado'] },
         { nome: 'Plano de parto', campo: 'plano_parto', labels: ['Sim', 'Não'] },
-        { nome: 'Participação em grupos', campo: 'participou_grupos', labels: ['Participou', 'Não participou'] }
+        { nome: 'Participação em grupos', campo: 'participou_grupos', labels: ['Participou', 'Não participou'] },
+        { nome: 'Possui Bolsa Família', campo: 'possui_bolsa_familia', labels: ['Sim', 'Não'] },
+        { nome: 'Tem vacina de COVID', campo: 'tem_vacina_covid', labels: ['Sim', 'Não'] }
     ];
     
     indicadores.forEach(indicador => {

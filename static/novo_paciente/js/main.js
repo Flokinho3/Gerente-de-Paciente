@@ -140,71 +140,54 @@ function mostrarBadgeDPP() {
 
 // Função para inicializar calculadora DPP
 function initializeCalculatorDPP() {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'main.js:118',message:'initializeCalculatorDPP chamada',data:{readyState:document.readyState},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     const calculatorIcon = document.getElementById('dum-calculator-icon');
     const tooltip = document.getElementById('dum-calculator-tooltip');
-    
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'main.js:121',message:'Elementos encontrados',data:{iconFound:!!calculatorIcon,tooltipFound:!!tooltip,iconId:calculatorIcon?.id,tooltipId:tooltip?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
-    
+
     if (calculatorIcon && tooltip) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'main.js:125',message:'Anexando event listener ao ícone',data:{iconDisplay:tooltip.style.display},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
         calculatorIcon.addEventListener('click', function(e) {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'main.js:127',message:'Clique no ícone capturado',data:{targetId:e.target.id,currentDisplay:tooltip.style.display},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-            // #endregion
             e.stopPropagation();
             const isVisible = tooltip.style.display === 'block';
             tooltip.style.display = isVisible ? 'none' : 'block';
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'main.js:130',message:'Tooltip display alterado',data:{isVisible,newDisplay:tooltip.style.display,computedDisplay:window.getComputedStyle(tooltip).display},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-            // #endregion
         });
-        
+
         // Fechar tooltip ao clicar fora
         document.addEventListener('click', function(e) {
-            // Buscar elementos dinamicamente para garantir referências atualizadas
             const currentIcon = document.getElementById('dum-calculator-icon');
             const currentTooltip = document.getElementById('dum-calculator-tooltip');
-            
             if (!currentIcon || !currentTooltip) return;
-            
             const isOutside = !currentIcon.contains(e.target) && !currentTooltip.contains(e.target);
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'main.js:135',message:'Listener clicar fora executado',data:{isOutside,targetId:e.target.id,tooltipDisplay:currentTooltip.style.display,iconContains:currentIcon.contains(e.target),tooltipContains:currentTooltip.contains(e.target)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-            // #endregion
-            if (isOutside) {
-                currentTooltip.style.display = 'none';
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'main.js:138',message:'Tooltip fechado por clique fora',data:{finalDisplay:currentTooltip.style.display},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-                // #endregion
-            }
+            if (isOutside) currentTooltip.style.display = 'none';
         });
-    } else {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'main.js:142',message:'Elementos não encontrados - listener não anexado',data:{iconFound:!!calculatorIcon,tooltipFound:!!tooltip},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
     }
 }
 
 // Inicializar calculadora quando o DOM estiver pronto
 if (document.readyState === 'loading') {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'main.js:148',message:'DOM ainda carregando - aguardando DOMContentLoaded',data:{readyState:document.readyState},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     document.addEventListener('DOMContentLoaded', initializeCalculatorDPP);
 } else {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'main.js:152',message:'DOM já pronto - usando setTimeout',data:{readyState:document.readyState},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
-    // DOM já está pronto
     setTimeout(initializeCalculatorDPP, 100);
 }
 
 // Inicializar submit do formulário
 initializeFormSubmit();
+
+// Carregar unidades para "Plano de parto entregue por qual unidade"
+async function carregarUnidadesPlanoParto() {
+    const sel = document.getElementById('plano_parto_entregue_por_unidade');
+    if (!sel) return;
+    try {
+        const r = await fetch('/api/unidades_saude');
+        const data = await r.json();
+        if (!data.success || !Array.isArray(data.unidades)) return;
+        const unidades = data.unidades.filter(Boolean);
+        unidades.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u;
+            opt.textContent = u;
+            sel.appendChild(opt);
+        });
+    } catch (e) {
+        console.warn('Erro ao carregar unidades para plano de parto:', e);
+    }
+}
+carregarUnidadesPlanoParto();

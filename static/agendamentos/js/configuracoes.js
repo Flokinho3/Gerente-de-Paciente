@@ -109,9 +109,6 @@ async function exportarBD() {
 
 // Excluir BD
 async function excluirBD() {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'configuracoes.js:excluirBD',message:'Iniciando exclusão do BD',data:{agendamentosCalendarioLength:window.agendamentosCalendario?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion agent log
     const modalExcluirBD = document.getElementById('modalExcluirBD');
     const confirmTextExcluirBD = document.getElementById('confirmTextExcluirBD');
     
@@ -128,32 +125,16 @@ async function excluirBD() {
         });
         
         const data = await response.json();
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'configuracoes.js:excluirBD',message:'Resposta da exclusão do BD',data:{success:data.success},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion agent log
-        
+
         if (data.success) {
             mostrarMensagem('Banco de dados excluído com sucesso!', false);
-            
-            if (modalExcluirBD) {
-                modalExcluirBD.style.display = 'none';
-            }
-            if (confirmTextExcluirBD) {
-                confirmTextExcluirBD.value = '';
-            }
-            
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'configuracoes.js:excluirBD',message:'Chamando atualizarBD após exclusão',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion agent log
+            if (modalExcluirBD) modalExcluirBD.style.display = 'none';
+            if (confirmTextExcluirBD) confirmTextExcluirBD.value = '';
             await atualizarBD();
         } else {
             mostrarMensagem(data.message || 'Erro ao excluir banco de dados', true);
         }
     } catch (error) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'configuracoes.js:excluirBD',message:'Erro ao excluir BD',data:{error:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion agent log
         console.error('Erro ao excluir BD:', error);
         mostrarMensagem('Erro ao excluir banco de dados', true);
     }
@@ -161,9 +142,6 @@ async function excluirBD() {
 
 // Atualizar BD (recarregar dados)
 async function atualizarBD() {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'configuracoes.js:atualizarBD',message:'Iniciando atualização do BD',data:{agendamentosCalendarioLength:window.agendamentosCalendario?.length||0,viewAtiva:document.querySelector('.view.ativa')?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion agent log
     try {
         mostrarMensagem('Atualizando dados do sistema...', false);
         
@@ -220,27 +198,10 @@ async function atualizarBD() {
         
         // Recarregar pacientes
         await window.carregarTodosPacientes();
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'configuracoes.js:atualizarBD',message:'Antes de atualizar views',data:{temCarregarCalendario:typeof window.carregarCalendario==='function',temCarregarAgendamentos:typeof window.carregarAgendamentos==='function'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion agent log
-        
-        // Forçar atualização de todas as views, independentemente de estarem ativas
-        // Atualizar calendário
-        if (window.carregarCalendario) {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'configuracoes.js:atualizarBD',message:'Chamando carregarCalendario',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion agent log
-            await window.carregarCalendario();
-        }
-        
-        // Atualizar lista de agendamentos
-        if (window.carregarAgendamentos) {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'configuracoes.js:atualizarBD',message:'Chamando carregarAgendamentos',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion agent log
-            await window.carregarAgendamentos();
-        }
+
+        // Forçar atualização de todas as views
+        if (window.carregarCalendario) await window.carregarCalendario();
+        if (window.carregarAgendamentos) await window.carregarAgendamentos();
         
         // Atualizar histórico
         if (window.carregarHistorico) {
@@ -267,18 +228,8 @@ async function atualizarBD() {
             }
         }
         
-        // Sincronizar referência do calendário (será atualizada quando carregarCalendario for chamado)
-        // A função buscarAgendamentosPorPeriodo já atualiza a referência global
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'configuracoes.js:atualizarBD',message:'Após atualizar views',data:{agendamentosCalendarioLength:window.agendamentosCalendario?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion agent log
-        
         mostrarMensagem('Dados atualizados com sucesso!', false);
     } catch (error) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'configuracoes.js:atualizarBD',message:'Erro ao atualizar BD',data:{error:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion agent log
         console.error('Erro ao atualizar BD:', error);
         mostrarMensagem('Erro ao atualizar dados', true);
     }

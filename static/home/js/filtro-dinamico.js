@@ -21,7 +21,7 @@ async function carregarColunasParaFiltro() {
             
             // Mapeamento de campos para grupos
             const gruposMap = {
-                'Avaliação Pré-Natal': ['inicio_pre_natal_semanas', 'inicio_pre_natal_observacao', 'avaliacao_odontologica', 'estratificacao', 'estratificacao_problema', 'cartao_pre_natal_completo'],
+                'Avaliação Pré-Natal': ['inicio_pre_natal_semanas', 'inicio_pre_natal_observacao', 'avaliacao_odontologica', 'estratificacao', 'estratificacao_problema', 'cartao_pre_natal_completo', 'possui_bolsa_familia', 'tem_vacina_covid', 'plano_parto_entregue_por_unidade'],
                 'Datas e Gestação': ['dum', 'dpp', 'data_salvamento'],
                 'Kit': ['ganhou_kit', 'kit_tipo'],
                 'Próxima Avaliação': ['proxima_avaliacao', 'proxima_avaliacao_hora'],

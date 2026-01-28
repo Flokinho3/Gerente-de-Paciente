@@ -368,6 +368,36 @@
                         </div>
                         <small class="form-help">Verifique se o cartão de pré-natal está preenchido corretamente</small>
                     </div>
+                    <div class="form-group">
+                        <label class="required">
+                            Possui Bolsa Família?
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="possui_bolsa_familia" value="true" required>
+                                <span>✅ Sim</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="possui_bolsa_familia" value="false">
+                                <span>❌ Não</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="required">
+                            Tem vacina de COVID?
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="tem_vacina_covid" value="true" required>
+                                <span>✅ Sim</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="tem_vacina_covid" value="false">
+                                <span>❌ Não</span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -618,6 +648,22 @@
                             class="form-input"
                         >
                         <small class="form-help">Informe o horário previsto para a próxima consulta (opcional - padrão: 08:00)</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 18: Plano de parto entregue por qual unidade -->
+            <div class="wizard-step" data-step="18">
+                <div class="step-content">
+                    <h2 class="step-title">📋 Plano de Parto</h2>
+                    <div class="form-group">
+                        <label for="plano_parto_entregue_por_unidade">
+                            O plano de parto foi entregue por qual unidade?
+                        </label>
+                        <select id="plano_parto_entregue_por_unidade" name="plano_parto_entregue_por_unidade" class="form-input">
+                            <option value="Nenhuma" selected>Nenhuma</option>
+                        </select>
+                        <small class="form-help">Unidades registradas no sistema. Padrão: Nenhuma.</small>
                     </div>
                 </div>
             </div>

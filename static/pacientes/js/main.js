@@ -181,6 +181,9 @@ function exibirPerfil(paciente) {
             ${campo('Avaliação Odontológica', formatarBoolean(av.avaliacao_odontologica))}${campo('Estratificação', formatarBoolean(av.estratificacao))}
             ${campoTexto('Problema Identificado na Estratificação', av.estratificacao_problema, av.estratificacao && av.estratificacao_problema, 'grid-column: 1 / -1; background: #fff3cd; padding: 12px; border-radius: 8px; border-left: 4px solid #ffc107; white-space: pre-wrap; word-wrap: break-word;')}
             ${campo('Cartão Pré-Natal Completo', formatarBoolean(av.cartao_pre_natal_completo))}
+            ${campo('Possui Bolsa Família', formatarBoolean(av.possui_bolsa_familia))}
+            ${campo('Tem vacina de COVID', formatarBoolean(av.tem_vacina_covid))}
+            ${campo('Plano de parto entregue por', av.plano_parto_entregue_por_unidade || 'Nenhuma')}
         </div></div>
         ${av.ganhou_kit !== undefined ? `<div class="perfil-section"><h3>🎁 KIT</h3><div class="perfil-field-grid">
             ${campo('Ganhou o KIT?', formatarBoolean(av.ganhou_kit))}${campo('Tipo(s) de KIT', formatarKitTipo(av.kit_tipo), av.ganhou_kit && av.kit_tipo)}

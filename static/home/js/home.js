@@ -9,12 +9,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.error('Erro ao carregar tema:', error);
     }
 
-    // Carregar dados dos indicadores (se disponível nesta página)
+    // Carregar dados dos indicadores (apenas na Home, onde existe a UI)
     let data = null;
-    if (typeof window.carregarIndicadores === 'function') {
+    const temUIIndicadores = !!document.getElementById('status1-geral');
+    if (temUIIndicadores && typeof window.carregarIndicadores === 'function') {
         data = await window.carregarIndicadores();
-    } else {
-        console.warn('carregarIndicadores não disponível nesta página.');
     }
     if (data) {
         // Calcular porcentagens e atualizar indicadores visuais

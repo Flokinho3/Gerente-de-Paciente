@@ -209,6 +209,73 @@
                     </div>
 
                     <div class="form-section">
+                        <h3>👶 Histórico Reprodutivo</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="jaGanhouCrianca">
+                                    Já ganhou a criança?
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group" id="data-ganhou-group" style="display: none;">
+                            <label for="dataGanhouCrianca">Data (gêmeos ou mais)</label>
+                            <input type="date" id="dataGanhouCrianca" class="form-input">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="quantidadeFilhos">Quantidade de Filhos</label>
+                                <input type="number" id="quantidadeFilhos" min="0" value="0" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label for="generosFilhos">Gêneros dos Filhos</label>
+                                <input type="text" id="generosFilhos" class="form-input" placeholder="Ex.: M, F, M">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="metodoPreventivo">Método Preventivo Atual</label>
+                                <select id="metodoPreventivo" class="form-input">
+                                    <option value="">Selecione</option>
+                                    <option value="DIU">DIU</option>
+                                    <option value="Laqueadura">Laqueadura</option>
+                                    <option value="Contraceptivo">Contraceptivo</option>
+                                    <option value="Vasectomia">Vasectomia (parceiro)</option>
+                                    <option value="Outros">Outros</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="metodo-preventivo-outros-group" style="display: none;">
+                                <label for="metodoPreventivoOutros">Especificação</label>
+                                <input type="text" id="metodoPreventivoOutros" class="form-input" placeholder="Descreva o método">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>📅 Datas Importantes</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="dum">DUM (Data da Última Menstruação)</label>
+                                <input type="date" id="dum" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label for="dpp">DPP (Data Provável do Parto)</label>
+                                <input type="date" id="dpp" class="form-input">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="proximaAvaliacao">Próxima Avaliação</label>
+                                <input type="date" id="proximaAvaliacao" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label for="proximaAvaliacaoHora">Horário</label>
+                                <input type="time" id="proximaAvaliacaoHora" class="form-input" value="08:00">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
                         <h3>Avaliação</h3>
                         <div class="form-row">
                             <div class="form-group">
@@ -230,6 +297,18 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="form-group" id="inicio-pre-natal-detalhes-group" style="display: none;">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="inicioPreNatalSemanas">Semanas de gestação no início</label>
+                                    <input type="number" id="inicioPreNatalSemanas" min="1" max="42" class="form-input" placeholder="Ex.: 10">
+                                </div>
+                                <div class="form-group" style="flex: 1;">
+                                    <label for="inicioPreNatalObservacao">Observações sobre o início do pré-natal</label>
+                                    <textarea id="inicioPreNatalObservacao" class="form-input" rows="2" placeholder="Opcional" style="resize: vertical;"></textarea>
+                                </div>
+                            </div>
+                        </div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label>
@@ -249,6 +328,24 @@
                                     Cartão pré-natal completo
                                 </label>
                             </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="possuiBolsaFamilia">
+                                    Possui Bolsa Família
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="temVacinaCovid">
+                                    Tem vacina de COVID
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="planoPartoEntreguePorUnidade">Plano de parto entregue por qual unidade?</label>
+                            <select id="planoPartoEntreguePorUnidade" class="form-input">
+                                <option value="Nenhuma">Nenhuma</option>
+                            </select>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
@@ -273,6 +370,31 @@
                                 placeholder="Descreva o problema identificado na estratificação de risco..."
                                 style="resize: vertical; min-height: 100px;"
                             ></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>🎁 KIT</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="ganhouKit">
+                                    Ganhou o KIT?
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group" id="kit-tipo-group" style="display: none;">
+                            <label>Tipo(s) de KIT</label>
+                            <div class="form-row" style="gap: 12px;">
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                    <input type="checkbox" name="kitTipo" value="MP" id="kitTipoMp">
+                                    MP (Mãe Piraporense)
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                    <input type="checkbox" name="kitTipo" value="FM" id="kitTipoFm">
+                                    FM (Filhos de Minas)
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </form>

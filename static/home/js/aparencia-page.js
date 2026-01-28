@@ -8,11 +8,10 @@ class AparenciaPage {
         this.currentTheme = null;
         this.originalTheme = null;
         this.colorInputs = {};
-        this.init();
     }
 
     /**
-     * Inicializa a página
+     * Inicializa a página (chamado após DOMContentLoaded, após tema aplicado)
      */
     init() {
         this.loadCurrentTheme();
@@ -24,37 +23,37 @@ class AparenciaPage {
     }
 
     /**
-     * Carrega o tema atual nos inputs
+     * Carrega o tema atual nos inputs a partir do themeManager
      */
     loadCurrentTheme() {
         try {
             this.currentTheme = themeManager.getCurrentTheme();
-            this.originalTheme = JSON.parse(JSON.stringify(this.currentTheme)); // Deep copy
-
-            // Preencher nome do tema
-            const nameInput = document.getElementById('theme-name');
-            if (nameInput) {
-                nameInput.value = this.currentTheme.nome;
-            }
-
-            // Preencher inputs de cor
-            for (const [variable, color] of Object.entries(this.currentTheme.cores)) {
-                const inputId = variable.replace('--', '');
-                const input = document.getElementById(inputId);
-                if (input) {
-                    input.value = color;
-                    this.colorInputs[variable] = input;
-
-                    // Atualizar valor exibido
-                    const valueSpan = input.nextElementSibling;
-                    if (valueSpan && valueSpan.classList.contains('aparencia-color-value')) {
-                        valueSpan.textContent = color;
-                    }
-                }
-            }
-
+            this.originalTheme = JSON.parse(JSON.stringify(this.currentTheme));
+            this.fillFormFromTheme(this.currentTheme);
         } catch (error) {
             console.error('Erro ao carregar tema atual:', error);
+        }
+    }
+
+    /**
+     * Preenche o formulário a partir de um objeto tema (sem ler do themeManager)
+     */
+    fillFormFromTheme(theme) {
+        if (!theme || !theme.cores) return;
+        const nameInput = document.getElementById('theme-name');
+        if (nameInput) nameInput.value = theme.nome || '';
+        this.colorInputs = {};
+        for (const [variable, color] of Object.entries(theme.cores)) {
+            const inputId = variable.replace('--', '');
+            const input = document.getElementById(inputId);
+            if (input) {
+                input.value = color;
+                this.colorInputs[variable] = input;
+                const valueSpan = input.nextElementSibling;
+                if (valueSpan && valueSpan.classList.contains('aparencia-color-value')) {
+                    valueSpan.textContent = color;
+                }
+            }
         }
     }
 
@@ -169,19 +168,32 @@ class AparenciaPage {
      */
     resetToDefault() {
         if (confirm('Tem certeza que deseja resetar para o tema padrão? Todas as personalizações serão perdidas.')) {
-            try {
-                const success = themeManager.resetToDefault();
-                if (success) {
-                    alert('Tema resetado para o padrão com sucesso! 🔄');
-                    this.loadCurrentTheme();
-                    this.updateThemeStatus();
-                } else {
-                    alert('Erro ao resetar tema. Tente novamente.');
-                }
-            } catch (error) {
-                console.error('Erro ao resetar tema:', error);
-                alert('Erro inesperado ao resetar tema.');
+            this._aplicarPadrao();
+        }
+    }
+
+    /** Aplica o tema padrão sem pedir confirmação (usado pelo botão "Aplicar" do Padrão na lista). */
+    aplicarPadrao() {
+        this._aplicarPadrao();
+    }
+
+    _aplicarPadrao() {
+        try {
+            themeManager.deleteCookie('custom_css_filename');
+            const link = document.getElementById('custom-css-link');
+            if (link) link.remove();
+            const success = themeManager.resetToDefault();
+            if (success) {
+                this.loadCurrentTheme();
+                this.updateThemeStatus();
+                this.loadSavedThemes();
+                alert('Tema resetado para o padrão com sucesso! 🔄');
+            } else {
+                alert('Erro ao resetar tema. Tente novamente.');
             }
+        } catch (error) {
+            console.error('Erro ao resetar tema:', error);
+            alert('Erro inesperado ao resetar tema.');
         }
     }
 
@@ -478,44 +490,21 @@ Responda agora com perguntas sobre minhas preferências de cores:`;
      * Processa e valida CSS importado
      */
     async processCSSImport(cssText) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'aparencia-page.js:475',message:'processCSSImport chamado',data:{cssLength:cssText.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion agent log
-        
         try {
-            // Validar CSS
             const validation = this.validateCSS(cssText);
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'aparencia-page.js:479',message:'Validação CSS',data:{valid:validation.valid,error:validation.error},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion agent log
-            
             if (!validation.valid) {
                 this.showErrorMessage('text', validation.error);
                 return;
             }
 
-            // Extrair variáveis
             const variables = this.parseCSSVariables(cssText);
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'aparencia-page.js:486',message:'Variáveis extraídas',data:{variablesCount:Object.keys(variables).length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion agent log
-            
             if (Object.keys(variables).length === 0) {
                 this.showErrorMessage('text', 'Erro: Nenhuma variável CSS válida encontrada no arquivo.');
                 return;
             }
 
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'aparencia-page.js:491',message:'Antes de salvar CSS no servidor',data:{willSave:false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-            // #endregion agent log
-
-            // Tentar salvar CSS no servidor
             let cssFilename = null;
             try {
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'aparencia-page.js:496',message:'Chamando API salvar_css',data:{endpoint:'/api/tema/salvar_css'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                // #endregion agent log
-                
                 const response = await fetch('/api/tema/salvar_css', {
                     method: 'POST',
                     headers: {
@@ -524,29 +513,14 @@ Responda agora com perguntas sobre minhas preferências de cores:`;
                     body: JSON.stringify({ css: cssText })
                 });
 
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'aparencia-page.js:507',message:'Resposta API salvar_css',data:{status:response.status,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                // #endregion agent log
-
                 const result = await response.json();
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'aparencia-page.js:511',message:'Resultado API salvar_css',data:{success:result.success,filename:result.filename,message:result.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                // #endregion agent log
-                
                 if (result.success && result.filename) {
                     cssFilename = result.filename;
-                    // Salvar nome do arquivo no cookie
                     themeManager.setCookie('custom_css_filename', cssFilename, 365);
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'aparencia-page.js:516',message:'Nome CSS salvo no cookie',data:{filename:cssFilename},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-                    // #endregion agent log
                 } else {
                     console.warn('Aviso: Não foi possível salvar CSS no servidor:', result.message);
                 }
             } catch (error) {
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'aparencia-page.js:520',message:'Erro ao salvar CSS no servidor',data:{error:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                // #endregion agent log
                 console.warn('Aviso: Erro ao salvar CSS no servidor:', error);
                 // Continuar mesmo se não conseguir salvar no servidor
             }
@@ -562,29 +536,25 @@ Responda agora com perguntas sobre minhas preferências de cores:`;
                 newTheme.cores[key] = variables[key] || value;
             }
 
-            // Atualizar tema
             this.currentTheme = newTheme;
-            this.loadCurrentTheme();
-            themeManager.applyTheme(this.currentTheme);
+            this.originalTheme = JSON.parse(JSON.stringify(newTheme));
+            themeManager.saveTheme(newTheme);
+            themeManager.applyTheme(newTheme);
+            this.fillFormFromTheme(newTheme);
+            this.updateThemeStatus();
 
-            // Carregar CSS customizado se foi salvo
             if (cssFilename) {
                 themeManager.loadCustomCSSFile(cssFilename);
             }
 
-            // Mostrar sucesso
             this.showSuccessMessage('Tema importado e aplicado com sucesso! 🎨');
-            
-            // Limpar inputs
+
             const fileInput = document.getElementById('css-file-input');
             const textInput = document.getElementById('css-text-input');
             if (fileInput) fileInput.value = '';
             if (textInput) textInput.value = '';
 
         } catch (error) {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'aparencia-page.js:550',message:'Erro geral processCSSImport',data:{error:error.message,stack:error.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion agent log
             console.error('Erro ao processar CSS:', error);
             this.showErrorMessage('text', 'Erro ao processar CSS: ' + error.message);
         }
@@ -765,47 +735,50 @@ Responda agora com perguntas sobre minhas preferências de cores:`;
         try {
             const temasSalvos = this.getSavedThemes();
             const listaContainer = document.getElementById('temas-salvos-lista');
-            
             if (!listaContainer) return;
-            
+
+            const padraoHtml = `
+                <div class="tema-salvo-item tema-salvo-padrao">
+                    <div class="tema-salvo-info">
+                        <span class="tema-salvo-nome">Padrão</span>
+                        <span class="tema-salvo-data">Tema padrão do sistema (sempre disponível)</span>
+                    </div>
+                    <div class="tema-salvo-acoes">
+                        <button class="btn-aplicar-tema" onclick="aparenciaPage.aplicarPadrao()">Aplicar</button>
+                    </div>
+                </div>`;
+
             if (temasSalvos.length === 0) {
-                listaContainer.innerHTML = '<div class="temas-salvos-vazio">Nenhum tema salvo ainda. Salve um tema para vê-lo aqui.</div>';
+                listaContainer.innerHTML = padraoHtml + '<div class="temas-salvos-vazio">Nenhum tema salvo ainda. Salve um tema para vê-lo aqui.</div>';
                 return;
             }
-            
-            // Ordenar por data (mais recente primeiro)
+
             temasSalvos.sort((a, b) => {
                 const dateA = new Date(a.dataSalvamento || 0);
                 const dateB = new Date(b.dataSalvamento || 0);
                 return dateB - dateA;
             });
-            
-            listaContainer.innerHTML = temasSalvos.map((tema, index) => {
-                const dataFormatada = tema.dataSalvamento 
+
+            const listHtml = temasSalvos.map((tema, index) => {
+                const dataFormatada = tema.dataSalvamento
                     ? new Date(tema.dataSalvamento).toLocaleDateString('pt-BR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
+                        day: '2-digit', month: '2-digit', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
                     })
                     : 'Data não disponível';
-                
                 return `
                     <div class="tema-salvo-item">
                         <div class="tema-salvo-info">
-                            <span class="tema-salvo-nome">${tema.nome || 'Tema sem nome'}</span>
+                            <span class="tema-salvo-nome">${(tema.nome || 'Tema sem nome').replace(/</g, '&lt;')}</span>
                             <span class="tema-salvo-data">Salvo em: ${dataFormatada}</span>
                         </div>
                         <div class="tema-salvo-acoes">
-                            <button class="btn-aplicar-tema" onclick="aparenciaPage.aplicarTemaSalvo(${index})">
-                                Aplicar
-                            </button>
+                            <button class="btn-aplicar-tema" onclick="aparenciaPage.aplicarTemaSalvo(${index})">Aplicar</button>
                         </div>
-                    </div>
-                `;
+                    </div>`;
             }).join('');
-            
+
+            listaContainer.innerHTML = padraoHtml + listHtml;
         } catch (error) {
             console.error('Erro ao carregar temas salvos:', error);
         }
@@ -1581,7 +1554,15 @@ document.head.insertAdjacentHTML('beforeend', pageStyles);
 
 // ========== INSTÂNCIA GLOBAL ==========
 const aparenciaPage = new AparenciaPage();
-
-// ========== FUNÇÕES GLOBAIS ==========
 window.AparenciaPage = AparenciaPage;
 window.aparenciaPage = aparenciaPage;
+
+// Inicializar após DOM e tema (loadAndApplyTheme, loadCustomCSSFromCookie) estarem prontos
+function runAparenciaInit() {
+    aparenciaPage.init();
+}
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', runAparenciaInit);
+} else {
+    runAparenciaInit();
+}

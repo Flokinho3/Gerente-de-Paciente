@@ -43,6 +43,21 @@ function formatarBoolean(valor) {
     return 'Não informado';
 }
 
+function getBadgeClassVacina(valor) {
+    if (!valor) return 'badge-warning';
+    const v = String(valor).toLowerCase();
+    if (v.includes('completa') || v === 'completo') return 'badge-success';
+    if (v.includes('incompleta') || v === 'incompleto') return 'badge-danger';
+    return 'badge-warning';
+}
+
+function formatarKitTipo(kitTipo) {
+    if (!kitTipo) return 'Não informado';
+    const tipos = String(kitTipo).split(',').map(t => t.trim()).filter(Boolean);
+    const labels = { MP: 'MP (Mãe Piraporense)', FM: 'FM (Filhos de Minas)' };
+    return tipos.map(tipo => `<span class="badge-status badge-info" style="margin-right: 5px;">${labels[tipo] || tipo}</span>`).join('');
+}
+
 function formatarStatus(status) {
     const statusMap = {
         'agendado': 'Agendado',
@@ -112,6 +127,8 @@ window.formatarData = formatarData;
 window.formatarHora = formatarHora;
 window.formatarDataSimples = formatarDataSimples;
 window.formatarBoolean = formatarBoolean;
+window.getBadgeClassVacina = getBadgeClassVacina;
+window.formatarKitTipo = formatarKitTipo;
 window.formatarStatus = formatarStatus;
 window.formatarTipoConsulta = formatarTipoConsulta;
 window.mostrarMensagem = mostrarMensagem;

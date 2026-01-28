@@ -136,13 +136,25 @@ function renderizarModalPerfil(paciente) {
                     <span class="perfil-label">Início Pré-Natal antes de 12 semanas</span>
                     <div class="perfil-value">${formatarBoolean(avaliacao.inicio_pre_natal_antes_12s)}</div>
                 </div>
+                ${avaliacao.inicio_pre_natal_antes_12s && avaliacao.inicio_pre_natal_semanas != null ? `
+                <div class="perfil-field">
+                    <span class="perfil-label">Semanas de gestação no início</span>
+                    <div class="perfil-value">${avaliacao.inicio_pre_natal_semanas} semanas</div>
+                </div>
+                ` : ''}
+                ${avaliacao.inicio_pre_natal_antes_12s && avaliacao.inicio_pre_natal_observacao ? `
+                <div class="perfil-field" style="grid-column: 1 / -1;">
+                    <span class="perfil-label">Observações sobre o início do pré-natal</span>
+                    <div class="perfil-value" style="background: #e3f2fd; padding: 12px; border-radius: 8px; border-left: 4px solid #2196f3; white-space: pre-wrap; word-wrap: break-word;">${avaliacao.inicio_pre_natal_observacao}</div>
+                </div>
+                ` : ''}
                 <div class="perfil-field">
                     <span class="perfil-label">Consultas de pré-natal</span>
-                    <div class="perfil-value">${avaliacao.consultas_pre_natal || 'Não informado'}</div>
+                    <div class="perfil-value">${avaliacao.consultas_pre_natal ?? 'Não informado'}</div>
                 </div>
                 <div class="perfil-field">
                     <span class="perfil-label">Vacinas completas</span>
-                    <div class="perfil-value">${avaliacao.vacinas_completas || 'Não avaliado'}</div>
+                    <div class="perfil-value">${typeof window.getBadgeClassVacina === 'function' ? `<span class="badge-status ${window.getBadgeClassVacina(avaliacao.vacinas_completas)}">${avaliacao.vacinas_completas || 'Não avaliado'}</span>` : (avaliacao.vacinas_completas || 'Não avaliado')}</div>
                 </div>
                 <div class="perfil-field">
                     <span class="perfil-label">Plano de parto</span>
@@ -160,12 +172,48 @@ function renderizarModalPerfil(paciente) {
                     <span class="perfil-label">Estratificação</span>
                     <div class="perfil-value">${formatarBoolean(avaliacao.estratificacao)}</div>
                 </div>
+                ${avaliacao.estratificacao && avaliacao.estratificacao_problema ? `
+                <div class="perfil-field" style="grid-column: 1 / -1;">
+                    <span class="perfil-label">Problema identificado na estratificação</span>
+                    <div class="perfil-value" style="background: #fff3cd; padding: 12px; border-radius: 8px; border-left: 4px solid #ffc107; white-space: pre-wrap; word-wrap: break-word;">${avaliacao.estratificacao_problema}</div>
+                </div>
+                ` : ''}
                 <div class="perfil-field">
                     <span class="perfil-label">Cartão pré-natal completo</span>
                     <div class="perfil-value">${formatarBoolean(avaliacao.cartao_pre_natal_completo)}</div>
                 </div>
+                <div class="perfil-field">
+                    <span class="perfil-label">Possui Bolsa Família</span>
+                    <div class="perfil-value">${formatarBoolean(avaliacao.possui_bolsa_familia)}</div>
+                </div>
+                <div class="perfil-field">
+                    <span class="perfil-label">Tem vacina de COVID</span>
+                    <div class="perfil-value">${formatarBoolean(avaliacao.tem_vacina_covid)}</div>
+                </div>
+                <div class="perfil-field">
+                    <span class="perfil-label">Plano de parto entregue por</span>
+                    <div class="perfil-value">${avaliacao.plano_parto_entregue_por_unidade || 'Nenhuma'}</div>
+                </div>
             </div>
         </div>
+
+        ${avaliacao.ganhou_kit !== undefined ? `
+        <div class="perfil-section">
+            <h3>🎁 KIT</h3>
+            <div class="perfil-field-grid">
+                <div class="perfil-field">
+                    <span class="perfil-label">Ganhou o KIT?</span>
+                    <div class="perfil-value">${formatarBoolean(avaliacao.ganhou_kit)}</div>
+                </div>
+                ${avaliacao.ganhou_kit && avaliacao.kit_tipo && typeof window.formatarKitTipo === 'function' ? `
+                <div class="perfil-field">
+                    <span class="perfil-label">Tipo(s) de KIT</span>
+                    <div class="perfil-value">${window.formatarKitTipo(avaliacao.kit_tipo)}</div>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+        ` : ''}
     `;
 
     const conteudoPerfil = document.getElementById('conteudoPerfil');

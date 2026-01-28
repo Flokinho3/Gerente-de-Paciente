@@ -10,7 +10,6 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
 downloads/
 eggs/
 .eggs/
@@ -236,6 +235,7 @@ data/*.sqlite3
 *.tmp
 temp/
 tmp/
+updates/
 
 # Logs
 *.log

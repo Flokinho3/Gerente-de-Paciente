@@ -397,10 +397,9 @@
         </div>
     </div>
 
-    <!-- Scripts -->
+    <!-- Scripts (sem home.js: tema e topbar tratados inline para evitar conflitos) -->
     <script src="{{ url_for('static', filename='home/js/theme-manager.js') }}"></script>
     <script src="{{ url_for('static', filename='home/js/aparencia-page.js') }}"></script>
-    <script src="{{ url_for('static', filename='home/js/home.js') }}"></script>
     <script>
         // Suprimir erros de extensões do navegador (Copilot, etc.)
         window.addEventListener('error', function(e) {
@@ -460,24 +459,48 @@
             }
         }
 
-        // Carregar versão ao carregar a página
-        document.addEventListener('DOMContentLoaded', carregarVersao);
-        
-        // Garantir que os dropdowns sejam configurados
-        function initDropdowns() {
-            if (typeof configurarDropdownsTopbar === 'function') {
-                configurarDropdownsTopbar();
-            } else {
-                // Se a função ainda não estiver disponível, tentar novamente após um pequeno delay
-                setTimeout(initDropdowns, 100);
-            }
+        // Função para configurar os dropdowns do topbar (inline, não depende de home.js)
+        function configurarDropdownsTopbar() {
+            const dropdowns = document.querySelectorAll('.topbar-dropdown');
+            dropdowns.forEach(dropdown => {
+                const btn = dropdown.querySelector('.topbar-dropdown-btn');
+                const content = dropdown.querySelector('.topbar-dropdown-content');
+                if (!btn || !content) return;
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dropdowns.forEach(other => {
+                        if (other !== dropdown) other.classList.remove('active');
+                    });
+                    dropdown.classList.toggle('active');
+                });
+            });
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.topbar-dropdown')) {
+                    dropdowns.forEach(d => d.classList.remove('active'));
+                }
+            });
+            document.querySelectorAll('.topbar-dropdown-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    dropdowns.forEach(d => d.classList.remove('active'));
+                });
+            });
+            marcarItemAtivoTopbar();
         }
-        
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initDropdowns);
-        } else {
-            initDropdowns();
+
+        function marcarItemAtivoTopbar() {
+            const path = window.location.pathname;
+            document.querySelectorAll('.topbar-dropdown-item').forEach(item => {
+                item.classList.remove('active');
+                const href = item.getAttribute('href');
+                if (href === path || (path === '/' && href === '/')) item.classList.add('active');
+            });
         }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            try { themeManager.loadAndApplyTheme(); } catch (e) { console.error('Erro ao carregar tema:', e); }
+            carregarVersao();
+            configurarDropdownsTopbar();
+        });
     </script>
     <script src="{{ url_for('static', filename='alerts/js/alerts.js') }}"></script>
     <script src="{{ url_for('static', filename='alerts_agendamentos/js/alerts.js') }}"></script>

@@ -10,5 +10,8 @@ export const COLUNAS_DISPONIVEIS = [
     { value: 'avaliacao.participou_grupos', label: 'Participou de grupos' },
     { value: 'avaliacao.avaliacao_odontologica', label: 'Avaliação odontológica' },
     { value: 'avaliacao.estratificacao', label: 'Estratificação' },
-    { value: 'avaliacao.cartao_pre_natal_completo', label: 'Cartão pré-natal completo' }
+    { value: 'avaliacao.cartao_pre_natal_completo', label: 'Cartão pré-natal completo' },
+    { value: 'avaliacao.possui_bolsa_familia', label: 'Possui Bolsa Família' },
+    { value: 'avaliacao.tem_vacina_covid', label: 'Tem vacina de COVID' },
+    { value: 'avaliacao.plano_parto_entregue_por_unidade', label: 'Plano de parto entregue por unidade' }
 ];

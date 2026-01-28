@@ -36,7 +36,22 @@ const statusMessage = document.getElementById('statusMessage');
 const patientId = document.getElementById('patientId');
 const nomeGestante = document.getElementById('nomeGestante');
 const unidadeSaude = document.getElementById('unidadeSaude');
+const jaGanhouCrianca = document.getElementById('jaGanhouCrianca');
+const dataGanhouCrianca = document.getElementById('dataGanhouCrianca');
+const dataGanhouGroup = document.getElementById('data-ganhou-group');
+const quantidadeFilhos = document.getElementById('quantidadeFilhos');
+const generosFilhos = document.getElementById('generosFilhos');
+const metodoPreventivo = document.getElementById('metodoPreventivo');
+const metodoPreventivoOutros = document.getElementById('metodoPreventivoOutros');
+const metodoPreventivoOutrosGroup = document.getElementById('metodo-preventivo-outros-group');
+const dum = document.getElementById('dum');
+const dpp = document.getElementById('dpp');
+const proximaAvaliacao = document.getElementById('proximaAvaliacao');
+const proximaAvaliacaoHora = document.getElementById('proximaAvaliacaoHora');
 const inicioPreNatal = document.getElementById('inicioPreNatal');
+const inicioPreNatalSemanas = document.getElementById('inicioPreNatalSemanas');
+const inicioPreNatalObservacao = document.getElementById('inicioPreNatalObservacao');
+const inicioPreNatalDetalhesGroup = document.getElementById('inicio-pre-natal-detalhes-group');
 const consultasPreNatal = document.getElementById('consultasPreNatal');
 const vacinasCompletas = document.getElementById('vacinasCompletas');
 const planoParto = document.getElementById('planoParto');
@@ -46,12 +61,36 @@ const estratificacao = document.getElementById('estratificacao');
 const estratificacaoProblema = document.getElementById('estratificacaoProblema');
 const estratificacaoProblemaGroup = document.getElementById('estratificacao-problema-group');
 const cartaoPreNatalCompleto = document.getElementById('cartaoPreNatalCompleto');
+const possuiBolsaFamilia = document.getElementById('possuiBolsaFamilia');
+const temVacinaCovid = document.getElementById('temVacinaCovid');
+const planoPartoEntreguePorUnidade = document.getElementById('planoPartoEntreguePorUnidade');
+const ganhouKit = document.getElementById('ganhouKit');
+const kitTipoGroup = document.getElementById('kit-tipo-group');
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
     carregarPacientes();
     configurarEventos();
+    carregarUnidadesPlanoPartoBD();
 });
+
+async function carregarUnidadesPlanoPartoBD() {
+    const sel = document.getElementById('planoPartoEntreguePorUnidade');
+    if (!sel) return;
+    try {
+        const r = await fetch('/api/unidades_saude');
+        const data = await r.json();
+        if (!data.success || !Array.isArray(data.unidades)) return;
+        data.unidades.filter(Boolean).forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u;
+            opt.textContent = u;
+            sel.appendChild(opt);
+        });
+    } catch (e) {
+        console.warn('Erro ao carregar unidades para plano de parto:', e);
+    }
+}
 
 // Configurar eventos
 function configurarEventos() {
@@ -113,6 +152,45 @@ function configurarEventos() {
                     estratificacaoProblema.value = '';
                 }
             }
+        });
+    }
+
+    // Condicionais: já ganhou criança -> data; método preventivo Outros -> especificação; ganhou KIT -> tipo; início pré-natal -> semanas/observação
+    if (jaGanhouCrianca && dataGanhouGroup) {
+        jaGanhouCrianca.addEventListener('change', () => {
+            dataGanhouGroup.style.display = jaGanhouCrianca.checked ? 'block' : 'none';
+            if (!jaGanhouCrianca.checked) dataGanhouCrianca.value = '';
+        });
+    }
+    if (metodoPreventivo && metodoPreventivoOutrosGroup) {
+        metodoPreventivo.addEventListener('change', () => {
+            metodoPreventivoOutrosGroup.style.display = metodoPreventivo.value === 'Outros' ? 'block' : 'none';
+            if (metodoPreventivo.value !== 'Outros') metodoPreventivoOutros.value = '';
+        });
+    }
+    if (ganhouKit && kitTipoGroup) {
+        ganhouKit.addEventListener('change', () => {
+            kitTipoGroup.style.display = ganhouKit.checked ? 'block' : 'none';
+            if (!ganhouKit.checked) {
+                document.querySelectorAll('input[name="kitTipo"]').forEach(cb => { cb.checked = false; });
+            }
+        });
+    }
+    if (inicioPreNatal && inicioPreNatalDetalhesGroup) {
+        inicioPreNatal.addEventListener('change', () => {
+            inicioPreNatalDetalhesGroup.style.display = inicioPreNatal.checked ? 'block' : 'none';
+            if (!inicioPreNatal.checked) {
+                if (inicioPreNatalSemanas) inicioPreNatalSemanas.value = '';
+                if (inicioPreNatalObservacao) inicioPreNatalObservacao.value = '';
+            }
+        });
+    }
+
+    // DUM -> calcular DPP automaticamente
+    if (dum && dpp) {
+        dum.addEventListener('change', () => {
+            const dppVal = calcularDPPBD(dum.value);
+            if (dppVal) dpp.value = dppVal;
         });
     }
     
@@ -383,14 +461,28 @@ function renderizarTabela() {
     atualizarEstatisticas();
 }
 
+function calcularDPPBD(dumStr) {
+    if (!dumStr) return null;
+    try {
+        const d = new Date(dumStr + 'T00:00:00');
+        if (isNaN(d.getTime())) return null;
+        d.setDate(d.getDate() + 7);
+        d.setMonth(d.getMonth() - 3);
+        const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    } catch (e) { return null; }
+}
+
 // Abrir modal para adicionar
 function abrirModalAdicionar() {
     modalTitle.textContent = 'Adicionar Novo Paciente';
     patientForm.reset();
     patientId.value = '';
-    if (estratificacaoProblemaGroup) {
-        estratificacaoProblemaGroup.style.display = 'none';
-    }
+    if (proximaAvaliacaoHora) proximaAvaliacaoHora.value = '08:00';
+    [estratificacaoProblemaGroup, dataGanhouGroup, metodoPreventivoOutrosGroup, kitTipoGroup, inicioPreNatalDetalhesGroup].forEach(el => {
+        if (el) el.style.display = 'none';
+    });
+    document.querySelectorAll('input[name="kitTipo"]').forEach(cb => { cb.checked = false; });
     editModal.classList.add('active');
 }
 
@@ -420,25 +512,61 @@ async function editarPaciente(pacienteId) {
 // Preencher formulário
 function preencherFormulario(paciente) {
     const ident = paciente.identificacao || {};
-    const avaliacao = paciente.avaliacao || {};
+    const av = paciente.avaliacao || {};
 
     patientId.value = paciente.id || '';
     nomeGestante.value = ident.nome_gestante || '';
     unidadeSaude.value = ident.unidade_saude || '';
-    inicioPreNatal.checked = avaliacao.inicio_pre_natal_antes_12s === true;
-    consultasPreNatal.value = avaliacao.consultas_pre_natal || 0;
-    vacinasCompletas.value = avaliacao.vacinas_completas || '';
-    planoParto.checked = avaliacao.plano_parto === true;
-    participouGrupos.checked = avaliacao.participou_grupos === true;
-    avaliacaoOdontologica.checked = avaliacao.avaliacao_odontologica === true;
-    estratificacao.checked = avaliacao.estratificacao === true;
+
+    if (jaGanhouCrianca) jaGanhouCrianca.checked = av.ja_ganhou_crianca === true;
+    if (dataGanhouCrianca) dataGanhouCrianca.value = (av.data_ganhou_crianca || '').toString().slice(0, 10);
+    if (dataGanhouGroup) dataGanhouGroup.style.display = av.ja_ganhou_crianca ? 'block' : 'none';
+    if (quantidadeFilhos) quantidadeFilhos.value = av.quantidade_filhos ?? 0;
+    if (generosFilhos) generosFilhos.value = av.generos_filhos || '';
+    if (metodoPreventivo) metodoPreventivo.value = av.metodo_preventivo || '';
+    if (metodoPreventivoOutros) metodoPreventivoOutros.value = av.metodo_preventivo_outros || '';
+    if (metodoPreventivoOutrosGroup) metodoPreventivoOutrosGroup.style.display = av.metodo_preventivo === 'Outros' ? 'block' : 'none';
+
+    if (dum) dum.value = (av.dum || '').toString().slice(0, 10);
+    if (dpp) dpp.value = (av.dpp || '').toString().slice(0, 10);
+    if (proximaAvaliacao) proximaAvaliacao.value = (av.proxima_avaliacao || '').toString().slice(0, 10);
+    if (proximaAvaliacaoHora) proximaAvaliacaoHora.value = (av.proxima_avaliacao_hora || '08:00').toString().slice(0, 5);
+
+    inicioPreNatal.checked = av.inicio_pre_natal_antes_12s === true;
+    if (inicioPreNatalSemanas) inicioPreNatalSemanas.value = av.inicio_pre_natal_semanas ?? '';
+    if (inicioPreNatalObservacao) inicioPreNatalObservacao.value = av.inicio_pre_natal_observacao || '';
+    if (inicioPreNatalDetalhesGroup) inicioPreNatalDetalhesGroup.style.display = av.inicio_pre_natal_antes_12s ? 'block' : 'none';
+
+    consultasPreNatal.value = av.consultas_pre_natal ?? 0;
+    vacinasCompletas.value = av.vacinas_completas || '';
+    planoParto.checked = av.plano_parto === true;
+    participouGrupos.checked = av.participou_grupos === true;
+    avaliacaoOdontologica.checked = av.avaliacao_odontologica === true;
+    estratificacao.checked = av.estratificacao === true;
     if (estratificacaoProblema) {
-        estratificacaoProblema.value = avaliacao.estratificacao_problema || '';
-        if (estratificacaoProblemaGroup) {
-            estratificacaoProblemaGroup.style.display = estratificacao.checked ? 'block' : 'none';
+        estratificacaoProblema.value = av.estratificacao_problema || '';
+        if (estratificacaoProblemaGroup) estratificacaoProblemaGroup.style.display = av.estratificacao ? 'block' : 'none';
+    }
+    cartaoPreNatalCompleto.checked = av.cartao_pre_natal_completo === true;
+    if (possuiBolsaFamilia) possuiBolsaFamilia.checked = av.possui_bolsa_familia === true;
+    if (temVacinaCovid) temVacinaCovid.checked = av.tem_vacina_covid === true;
+    if (planoPartoEntreguePorUnidade) {
+        const v = av.plano_parto_entregue_por_unidade || 'Nenhuma';
+        planoPartoEntreguePorUnidade.value = v;
+        if (![].slice.call(planoPartoEntreguePorUnidade.options).some(o => o.value === v)) {
+            const opt = document.createElement('option');
+            opt.value = v;
+            opt.textContent = v;
+            planoPartoEntreguePorUnidade.appendChild(opt);
+            planoPartoEntreguePorUnidade.value = v;
         }
     }
-    cartaoPreNatalCompleto.checked = avaliacao.cartao_pre_natal_completo === true;
+
+    if (ganhouKit) ganhouKit.checked = av.ganhou_kit === true;
+    if (kitTipoGroup) kitTipoGroup.style.display = av.ganhou_kit ? 'block' : 'none';
+    document.querySelectorAll('input[name="kitTipo"]').forEach(cb => {
+        cb.checked = (av.kit_tipo || '').split(',').map(s => s.trim()).includes(cb.value);
+    });
 }
 
 // Salvar paciente
@@ -448,21 +576,42 @@ async function salvarPaciente() {
         return;
     }
 
+    const kitTipoVals = [];
+    document.querySelectorAll('input[name="kitTipo"]:checked').forEach(cb => { kitTipoVals.push(cb.value); });
+    const kitTipoStr = ganhouKit && ganhouKit.checked && kitTipoVals.length ? kitTipoVals.join(',') : null;
+
     const pacienteData = {
         identificacao: {
             nome_gestante: nomeGestante.value.trim(),
             unidade_saude: unidadeSaude.value.trim()
         },
         avaliacao: {
+            ja_ganhou_crianca: jaGanhouCrianca ? jaGanhouCrianca.checked : false,
+            data_ganhou_crianca: dataGanhouCrianca && jaGanhouCrianca && jaGanhouCrianca.checked && dataGanhouCrianca.value ? dataGanhouCrianca.value : null,
+            quantidade_filhos: quantidadeFilhos ? (parseInt(quantidadeFilhos.value) || 0) : null,
+            generos_filhos: generosFilhos ? (generosFilhos.value.trim() || null) : null,
+            metodo_preventivo: metodoPreventivo ? (metodoPreventivo.value || null) : null,
+            metodo_preventivo_outros: metodoPreventivo && metodoPreventivo.value === 'Outros' && metodoPreventivoOutros ? (metodoPreventivoOutros.value.trim() || null) : null,
+            dum: dum && dum.value ? dum.value : null,
+            dpp: dpp && dpp.value ? dpp.value : null,
+            proxima_avaliacao: proximaAvaliacao && proximaAvaliacao.value ? proximaAvaliacao.value : null,
+            proxima_avaliacao_hora: proximaAvaliacaoHora && proximaAvaliacao.value ? (proximaAvaliacaoHora.value || '08:00') : null,
             inicio_pre_natal_antes_12s: inicioPreNatal.checked,
+            inicio_pre_natal_semanas: inicioPreNatal.checked && inicioPreNatalSemanas && inicioPreNatalSemanas.value ? parseInt(inicioPreNatalSemanas.value) : null,
+            inicio_pre_natal_observacao: inicioPreNatal.checked && inicioPreNatalObservacao ? (inicioPreNatalObservacao.value.trim() || null) : null,
             consultas_pre_natal: parseInt(consultasPreNatal.value) || 0,
-            vacinas_completas: vacinasCompletas.value,
+            vacinas_completas: vacinasCompletas.value || null,
             plano_parto: planoParto.checked,
             participou_grupos: participouGrupos.checked,
             avaliacao_odontologica: avaliacaoOdontologica.checked,
             estratificacao: estratificacao.checked,
-            estratificacao_problema: estratificacaoProblema ? estratificacaoProblema.value.trim() : '',
-            cartao_pre_natal_completo: cartaoPreNatalCompleto.checked
+            estratificacao_problema: estratificacao.checked && estratificacaoProblema ? (estratificacaoProblema.value.trim() || null) : null,
+            cartao_pre_natal_completo: cartaoPreNatalCompleto.checked,
+            possui_bolsa_familia: possuiBolsaFamilia ? possuiBolsaFamilia.checked : false,
+            tem_vacina_covid: temVacinaCovid ? temVacinaCovid.checked : false,
+            plano_parto_entregue_por_unidade: planoPartoEntreguePorUnidade ? (planoPartoEntreguePorUnidade.value || 'Nenhuma') : 'Nenhuma',
+            ganhou_kit: ganhouKit ? ganhouKit.checked : false,
+            kit_tipo: kitTipoStr
         }
     };
 

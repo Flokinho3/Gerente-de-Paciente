@@ -11,6 +11,9 @@
     "consultas_pre_natal": "number",
     "vacinas_completas": "enum",
     "plano_parto": "boolean",
-    "cartao_pre_natal_completo": "boolean"
+    "cartao_pre_natal_completo": "boolean",
+    "possui_bolsa_familia": "boolean",
+    "tem_vacina_covid": "boolean",
+    "plano_parto_entregue_por_unidade": "string"
   }
 }

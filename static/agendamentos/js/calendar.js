@@ -7,9 +7,6 @@ let diaExpandido = null;
 
 // Carregar calendário completo
 async function carregarCalendario() {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'calendar.js:carregarCalendario',message:'Iniciando carregamento do calendário',data:{viewAtiva:document.querySelector('.view.ativa')?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion agent log
     try {
         const calendarioContainer = document.querySelector('.calendario-container');
         if (calendarioContainer) {
@@ -24,9 +21,6 @@ async function carregarCalendario() {
             calendarioContainer.style.opacity = '1';
         }
     } catch (error) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'calendar.js:carregarCalendario',message:'Erro ao carregar calendário',data:{error:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion agent log
         console.error('Erro ao carregar calendário:', error);
         mostrarErro('Erro ao carregar calendário');
     }
@@ -43,30 +37,15 @@ async function buscarAgendamentosPorPeriodo() {
     const dataInicio = primeiroDia.toISOString().split('T')[0];
     const dataFim = ultimoDia.toISOString().split('T')[0];
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'calendar.js:buscarAgendamentosPorPeriodo',message:'Buscando agendamentos do período',data:{ano:ano,mes:mes,dataInicio:dataInicio,dataFim:dataFim,agendamentosCalendarioAntes:agendamentosCalendario.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion agent log
-
     try {
         const response = await fetch(`/api/agendamentos?data_inicio=${dataInicio}&data_fim=${dataFim}`);
         const data = await response.json();
-
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'calendar.js:buscarAgendamentosPorPeriodo',message:'Dados recebidos da API',data:{success:data.success,agendamentosCount:data.agendamentos?.length||0,agendamentosIds:data.agendamentos?.map(a=>a.id)||[]},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion agent log
-
         if (data.success && data.agendamentos) {
             agendamentosCalendario = data.agendamentos;
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'calendar.js:buscarAgendamentosPorPeriodo',message:'Atualizado agendamentosCalendario',data:{agendamentosCalendarioDepois:agendamentosCalendario.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-            // #endregion agent log
         } else {
             agendamentosCalendario = [];
         }
     } catch (error) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'calendar.js:buscarAgendamentosPorPeriodo',message:'Erro ao buscar',data:{error:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion agent log
         console.error('Erro ao buscar agendamentos:', error);
         agendamentosCalendario = [];
     }
@@ -120,10 +99,6 @@ async function renderizarDiasCalendario() {
     const ultimoDia = new Date(ano, mes + 1, 0);
     const ultimoDiaMes = ultimoDia.getDate();
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'calendar.js:renderizarDiasCalendario',message:'Iniciando renderização',data:{ano:ano,mes:mes,agendamentosCalendarioLength:agendamentosCalendario.length,agendamentosIds:agendamentosCalendario.map(a=>a.id)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-    // #endregion agent log
-
     const agendamentosPorDia = {};
     agendamentosCalendario.forEach(agendamento => {
         const data = agendamento.data_consulta;
@@ -132,10 +107,6 @@ async function renderizarDiasCalendario() {
         }
         agendamentosPorDia[data].push(agendamento);
     });
-    
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/606c4a8c-c1a2-4ff2-a7bc-5c4d58af8b63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'calendar.js:renderizarDiasCalendario',message:'Agendamentos por dia calculados',data:{agendamentosPorDia:Object.keys(agendamentosPorDia).map(data=>({data:data,count:agendamentosPorDia[data].length,ids:agendamentosPorDia[data].map(a=>a.id)}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-    // #endregion agent log
 
     let html = '';
 

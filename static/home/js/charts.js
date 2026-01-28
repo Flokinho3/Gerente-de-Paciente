@@ -181,6 +181,40 @@ function criarGraficoTemporal(filtro, chartId, containerId, container, unidadeSa
                         tension: 0.4
                     }
                 ];
+            } else if (filtro === 'possui_bolsa_familia') {
+                datasets = [
+                    {
+                        label: 'Sim',
+                        data: datas.map(data => valores[data]['Sim'] || 0),
+                        borderColor: '#4CAF50',
+                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Não',
+                        data: datas.map(data => valores[data]['Não'] || 0),
+                        borderColor: '#9E9E9E',
+                        backgroundColor: 'rgba(158, 158, 158, 0.1)',
+                        tension: 0.4
+                    }
+                ];
+            } else if (filtro === 'tem_vacina_covid') {
+                datasets = [
+                    {
+                        label: 'Sim',
+                        data: datas.map(data => valores[data]['Sim'] || 0),
+                        borderColor: '#4CAF50',
+                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Não',
+                        data: datas.map(data => valores[data]['Não'] || 0),
+                        borderColor: '#9E9E9E',
+                        backgroundColor: 'rgba(158, 158, 158, 0.1)',
+                        tension: 0.4
+                    }
+                ];
             }
             
             const chartConfig = {

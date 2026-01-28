@@ -178,6 +178,21 @@ class Database:
             self.conn.commit()
         except sqlite3.OperationalError:
             pass  # Coluna já existe
+        try:
+            self.conn.execute("ALTER TABLE pacientes ADD COLUMN possui_bolsa_familia INTEGER")
+            self.conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Coluna já existe
+        try:
+            self.conn.execute("ALTER TABLE pacientes ADD COLUMN tem_vacina_covid INTEGER")
+            self.conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Coluna já existe
+        try:
+            self.conn.execute("ALTER TABLE pacientes ADD COLUMN plano_parto_entregue_por_unidade TEXT")
+            self.conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Coluna já existe
         # Adicionar novas colunas de sincronização se não existirem (migração)
         try:
             self.conn.execute("ALTER TABLE pacientes ADD COLUMN pc_id TEXT")
@@ -456,6 +471,9 @@ class Database:
                 'estratificacao': int_to_bool(row['estratificacao']),
                 'estratificacao_problema': estratificacao_problema,
                 'cartao_pre_natal_completo': int_to_bool(row['cartao_pre_natal_completo']),
+                'possui_bolsa_familia': int_to_bool(row['possui_bolsa_familia']) if 'possui_bolsa_familia' in row.keys() else None,
+                'tem_vacina_covid': int_to_bool(row['tem_vacina_covid']) if 'tem_vacina_covid' in row.keys() else None,
+                'plano_parto_entregue_por_unidade': row['plano_parto_entregue_por_unidade'] if 'plano_parto_entregue_por_unidade' in row.keys() else None,
                 'dum': dum,
                 'dpp': dpp,
                 'ganhou_kit': ganhou_kit,
@@ -531,12 +549,13 @@ class Database:
                 inicio_pre_natal_antes_12s, inicio_pre_natal_semanas, inicio_pre_natal_observacao,
                 consultas_pre_natal, vacinas_completas,
                 plano_parto, participou_grupos, avaliacao_odontologica,
-                estratificacao, estratificacao_problema, cartao_pre_natal_completo, 
+                estratificacao,                 estratificacao_problema, cartao_pre_natal_completo,
+                possui_bolsa_familia, tem_vacina_covid, plano_parto_entregue_por_unidade,
                 dum, dpp, ganhou_kit, kit_tipo, proxima_avaliacao, proxima_avaliacao_hora,
                 ja_ganhou_crianca, data_ganhou_crianca, quantidade_filhos, generos_filhos,
                 metodo_preventivo, metodo_preventivo_outros, arquivo_origem,
                 pc_id, ultima_modificacao, versao, status
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
             (
                 paciente_id,
@@ -554,6 +573,9 @@ class Database:
                 bool_to_int(avaliacao.get('estratificacao')),
                 (avaliacao.get('estratificacao_problema') or '').strip(),
                 bool_to_int(avaliacao.get('cartao_pre_natal_completo')),
+                bool_to_int(avaliacao.get('possui_bolsa_familia')),
+                bool_to_int(avaliacao.get('tem_vacina_covid')),
+                (avaliacao.get('plano_parto_entregue_por_unidade') or '').strip() or None,
                 (avaliacao.get('dum') or '').strip() or None,
                 (avaliacao.get('dpp') or '').strip() or None,
                 bool_to_int(avaliacao.get('ganhou_kit')),
@@ -782,7 +804,9 @@ class Database:
             'consultas_pre_natal': {'ate_6': 0, 'mais_6': 0},
             'vacinas_completas': {'completa': 0, 'incompleta': 0, 'nao_avaliado': 0},
             'plano_parto': {'sim': 0, 'nao': 0},
-            'participou_grupos': {'sim': 0, 'nao': 0}
+            'participou_grupos': {'sim': 0, 'nao': 0},
+            'possui_bolsa_familia': {'sim': 0, 'nao': 0},
+            'tem_vacina_covid': {'sim': 0, 'nao': 0}
         }
         for row in rows:
             inicio = row['inicio_pre_natal_antes_12s']
@@ -802,7 +826,41 @@ class Database:
             stats['plano_parto']['nao'] += 1 if row['plano_parto'] == 0 else 0
             stats['participou_grupos']['sim'] += 1 if row['participou_grupos'] == 1 else 0
             stats['participou_grupos']['nao'] += 1 if row['participou_grupos'] == 0 else 0
+            bf = row['possui_bolsa_familia'] if 'possui_bolsa_familia' in row.keys() else None
+            stats['possui_bolsa_familia']['sim'] += 1 if bf == 1 else 0
+            stats['possui_bolsa_familia']['nao'] += 1 if bf == 0 or bf is None else 0
+            vc = row['tem_vacina_covid'] if 'tem_vacina_covid' in row.keys() else None
+            stats['tem_vacina_covid']['sim'] += 1 if vc == 1 else 0
+            stats['tem_vacina_covid']['nao'] += 1 if vc == 0 or vc is None else 0
         return stats
+
+    def obter_contagem_dados_completos(
+        self, unidade_saude: Optional[str] = None
+    ) -> Tuple[int, int]:
+        """Retorna (total_pacientes, com_dados_completos).
+        Completo = todos os 7 critérios do ranking com valor válido (sim/nao ou equivalente)."""
+        cursor = self.conn.cursor()
+        base = "FROM pacientes"
+        where = "WHERE LOWER(unidade_saude) = LOWER(?)" if unidade_saude else ""
+        params: Tuple = (unidade_saude,) if unidade_saude else ()
+        sql = f"""
+        SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN
+                inicio_pre_natal_antes_12s IN (0, 1)
+                AND consultas_pre_natal IS NOT NULL
+                AND vacinas_completas IS NOT NULL AND TRIM(COALESCE(vacinas_completas, '')) != ''
+                AND plano_parto IN (0, 1)
+                AND participou_grupos IN (0, 1)
+                AND possui_bolsa_familia IS NOT NULL AND possui_bolsa_familia IN (0, 1)
+                AND tem_vacina_covid IS NOT NULL AND tem_vacina_covid IN (0, 1)
+            THEN 1 ELSE 0 END) AS completos
+        """ + base + (" " + where if where else "")
+        cursor.execute(sql, params)
+        row = cursor.fetchone()
+        total = int(row["total"]) if row else 0
+        completos = int(row["completos"] or 0)
+        return (total, completos)
 
     def obter_estatisticas_coluna(self, nome_coluna: str, unidade_saude: Optional[str] = None) -> Dict:
         """Obtém estatísticas genéricas de uma coluna específica do BD"""
@@ -917,7 +975,9 @@ class Database:
                     'consultas_pre_natal': {'ate_6': 0, 'mais_6': 0},
                     'vacinas_completas': {'completa': 0, 'incompleta': 0, 'nao_avaliado': 0},
                     'plano_parto': {'sim': 0, 'nao': 0},
-                    'participou_grupos': {'sim': 0, 'nao': 0}
+                    'participou_grupos': {'sim': 0, 'nao': 0},
+                    'possui_bolsa_familia': {'sim': 0, 'nao': 0},
+                    'tem_vacina_covid': {'sim': 0, 'nao': 0}
                 }
             
             stats = dados_por_data[data]
@@ -943,6 +1003,12 @@ class Database:
             stats['plano_parto']['nao'] += 1 if row['plano_parto'] == 0 else 0
             stats['participou_grupos']['sim'] += 1 if row['participou_grupos'] == 1 else 0
             stats['participou_grupos']['nao'] += 1 if row['participou_grupos'] == 0 else 0
+            bf = row['possui_bolsa_familia'] if 'possui_bolsa_familia' in row.keys() else None
+            stats['possui_bolsa_familia']['sim'] += 1 if bf == 1 else 0
+            stats['possui_bolsa_familia']['nao'] += 1 if bf == 0 or bf is None else 0
+            vc = row['tem_vacina_covid'] if 'tem_vacina_covid' in row.keys() else None
+            stats['tem_vacina_covid']['sim'] += 1 if vc == 1 else 0
+            stats['tem_vacina_covid']['nao'] += 1 if vc == 0 or vc is None else 0
         
         # Preparar resposta no formato esperado
         datas = sorted(dados_por_data.keys())
@@ -968,6 +1034,12 @@ class Database:
             elif filtro == 'participou_grupos':
                 valores[data]['Participou'] = stats['participou_grupos']['sim']
                 valores[data]['Não participou'] = stats['participou_grupos']['nao']
+            elif filtro == 'possui_bolsa_familia':
+                valores[data]['Sim'] = stats['possui_bolsa_familia']['sim']
+                valores[data]['Não'] = stats['possui_bolsa_familia']['nao']
+            elif filtro == 'tem_vacina_covid':
+                valores[data]['Sim'] = stats['tem_vacina_covid']['sim']
+                valores[data]['Não'] = stats['tem_vacina_covid']['nao']
         
         return {
             'datas': datas,

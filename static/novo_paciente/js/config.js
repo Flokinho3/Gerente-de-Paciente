@@ -1,2 +1,2 @@
 // Configuração do Wizard
-export const totalSteps = 17;
+export const totalSteps = 18;
