@@ -1,0 +1,561 @@
+# 🏥 Gerente Gestante Server - VPS Backend
+
+## 📋 Visão Geral do Projeto
+
+Este é o **servidor VPS (Virtual Private Server)** do sistema **Gerente Gestante/Paciente** - uma aplicação web profissional para gerenciamento de pacientes gestantes. Este servidor substitui a antiga dependência do Firebase, oferecendo uma solução privada, performática e centralizada para sincronização de dados entre múltiplos dispositivos/clientes.
+
+### Propósito Principal
+- **Centralizador de Dados**: Recebe, armazena e distribui dados de pacientes e agendamentos
+- **API de Sincronização**: Permite que clientes locais (aplicação principal) sincronizem dados em nuvem
+- **Backup em Nuvem**: Mantém cópia centralizada do banco SQLite (`pacientes.db`)
+- **CRUD Remoto**: Operações de Create, Read, Update, Delete via API REST
+
+---
+
+## 🏗️ Arquitetura Técnica
+
+### Stack Tecnológico
+| Componente | Versão | Propósito |
+|------------|--------|-----------|
+| Python | 3.8+ | Linguagem principal |
+| Flask | 3.0.0 | Framework web/HTTP |
+| Flask-CORS | 4.0.0 | Cross-Origin Resource Sharing |
+| python-dotenv | 1.0.0 | Gerenciamento de variáveis de ambiente |
+| SQLite3 | Built-in | Banco de dados relacional |
+
+### Estrutura de Arquivos
+```
+Gerente_gestante_server/
+├── app.py                 # Aplicação principal Flask (450 linhas)
+├── requirements.txt       # Dependências Python
+├── .env                   # Variáveis de ambiente (SENHA, PORT)
+├── README.md             # Esta documentação
+├── data/                 # Diretório de dados (SQLite)
+│   └── pacientes.db      # Banco de dados principal
+├── venv/                 # Ambiente virtual Python
+└── __pycache__/          # Cache Python compilado
+```
+
+### Fluxo de Dados
+```
+┌─────────────────┐      HTTP/JSON       ┌─────────────────┐
+│  Cliente Local   │  ─────────────────→  │   VPS Server    │
+│  (Aplicativo     │  ←─────────────────  │   (Este Repo)   │
+│   Gerente)       │    Autenticada       │                 │
+└─────────────────┘                      └─────────────────┘
+                                                │
+                                                ▼ SQLite
+                                         ┌──────────────┐
+                                         │ pacientes.db │
+                                         │  (SQLite3)   │
+                                         └──────────────┘
+```
+
+---
+
+## 🔐 Sistema de Autenticação
+
+### Mecanismo de Segurança
+TODAS as rotas da API (exceto health check) exigem autenticação via **Header HTTP**:
+
+```
+X-API-Password: <senha_configurada_no_env>
+```
+
+### Implementação no Código
+```python
+# app.py:60-69
+def check_auth():
+    """Check for valid password in headers."""
+    auth_header = request.headers.get('X-API-Password')
+    if not API_PASSWORD:
+        return False
+    is_valid = auth_header == API_PASSWORD
+    if not is_valid:
+        logger.warning(f"Tentativa de acesso NÃO AUTORIZADA de {request.remote_addr}")
+    return is_valid
+```
+
+### Resposta em Caso de Falha
+```json
+{
+  "error": "Unauthorized"
+}
+```
+HTTP Status: **401**
+
+---
+
+## 🌐 API Endpoints - Referência Completa
+
+### 1. Sistema e Health Checks
+
+#### `GET /` - Página Inicial
+**Resposta:** `Gerente Gestante Server is running!`
+
+#### `GET /api/health` - Health Check Público
+- **Autenticação:** Não requerida
+- **Resposta:**
+```json
+{
+  "status": "ok"
+}
+```
+
+#### `GET /api/vps/status` - Status Completo do VPS
+- **Autenticação:** Requerida (`X-API-Password`)
+- **Resposta:**
+```json
+{
+  "status": "ok",
+  "db_exists": true,
+  "timestamp": 1707123456.789,
+  "db_size": 24576,
+  "db_last_modified": 1707123400.123
+}
+```
+
+---
+
+### 2. Manipulação de Arquivo (.db Completo)
+
+#### `POST /api/vps/upload` - Upload de Banco de Dados
+- **Autenticação:** Requerida
+- **Content-Type:** `multipart/form-data`
+- **Parâmetros:**
+  - `file`: Arquivo `.db`, `.sqlite`, `.sqlite3`
+- **Fluxo:**
+  1. Valida extensão do arquivo
+  2. Substitui o arquivo `data/pacientes.db`
+  3. Retorna tamanho do arquivo salvo
+- **Resposta Sucesso:**
+```json
+{
+  "message": "Database uploaded successfully",
+  "size": 24576
+}
+```
+
+#### `GET /api/vps/download` - Download do Banco
+- **Autenticação:** Requerida
+- **Resposta:** Arquivo `pacientes.db` (binary stream)
+- **Headers de Resposta:** `Content-Disposition: attachment`
+
+---
+
+### 3. Sincronização Granular (JSON)
+
+#### `POST /api/vps/sync` - Sincronização de Registros
+- **Autenticação:** Requerida
+- **Content-Type:** `application/json`
+- **Payload:**
+```json
+{
+  "table": "pacientes",
+  "data": [
+    {
+      "id": "pac_001",
+      "nome": "Maria Silva",
+      "data_nascimento": "1990-05-15",
+      "telefone": "11999999999",
+      "unidade_saude": "UBS Centro",
+      "created_at": "2024-01-15T10:30:00",
+      "updated_at": "2024-01-20T14:22:00"
+    }
+  ]
+}
+```
+- **Comportamento:**
+  - Usa `INSERT OR REPLACE` - insere se não existe, atualiza se existe
+  - Cria tabela automaticamente se não existir
+  - Adiciona colunas dinamicamente se necessário
+  - Todas as colunas são do tipo `TEXT`
+  - Coluna `id` é definida como `PRIMARY KEY`
+- **Resposta:**
+```json
+{
+  "status": "success",
+  "records_synced": 1
+}
+```
+
+#### `POST /api/vps/compare` - Comparação de Metadados
+- **Autenticação:** Requerida
+- **Payload:**
+```json
+{
+  "tables": ["pacientes", "agendamentos"]
+}
+```
+- **Propósito:** Permite cliente decidir o que precisa sincronizar
+- **Resposta:**
+```json
+{
+  "pacientes": {
+    "count": 150
+  },
+  "agendamentos": {
+    "count": 0,
+    "status": "table_not_found"
+  }
+}
+```
+
+#### `POST /api/vps/dados/baixar` - Download Seletivo de Dados
+- **Autenticação:** Requerida
+- **Payload:**
+```json
+{
+  "pacientes_ids": ["pac_001", "pac_002"],
+  "agendamentos_ids": ["agd_001"]
+}
+```
+- **Fluxo:**
+  1. Busca registros pelos IDs fornecidos
+  2. Retorna dados completos
+  3. **Remove** registros do servidor (marca como "baixados")
+- **Resposta:**
+```json
+{
+  "message": "Baixados 2 pacientes e 1 agendamentos",
+  "resultados": {
+    "pacientes_baixados": 2,
+    "agendamentos_baixados": 1,
+    "erros": []
+  },
+  "pacientes": [...],
+  "agendamentos": [...],
+  "success": true
+}
+```
+
+---
+
+### 4. CRUD Direto (API REST Granular)
+
+#### `GET /api/data/<table_name>` - Listar Registros
+- **Autenticação:** Requerida
+- **Parâmetro URL:** `table_name` - nome da tabela
+- **Resposta:** Array de objetos JSON
+```json
+[
+  {
+    "id": "pac_001",
+    "nome": "Maria Silva",
+    ...
+  }
+]
+```
+- **Nota:** Se tabela não existe, retorna `[]` (array vazio)
+
+#### `POST /api/data/<table_name>` - Inserir/Atualizar Registro
+- **Autenticação:** Requerida
+- **Content-Type:** `application/json`
+- **Body:** Objeto com dados do registro
+- **Comportamento:**
+  - Cria tabela se não existir
+  - Adiciona colunas automaticamente
+  - Usa `INSERT OR REPLACE`
+- **Resposta:**
+```json
+{
+  "status": "success",
+  "table": "pacientes"
+}
+```
+
+#### `DELETE /api/data/<table_name>/<id>` - Deletar Registro
+- **Autenticação:** Requerida
+- **Parâmetros:**
+  - `table_name`: Nome da tabela
+  - `id`: ID do registro a deletar
+- **Query Executada:** `DELETE FROM {table} WHERE id = ?`
+- **Resposta:**
+```json
+{
+  "status": "deleted",
+  "id": "pac_001"
+}
+```
+
+---
+
+## 🗄️ Esquema do Banco de Dados
+
+### Banco de Dados
+- **Tipo:** SQLite3
+- **Localização:** `data/pacientes.db`
+- **Encoding:** UTF-8
+
+### Estrutura Dinâmica
+O servidor suporta **schema dinâmico** - tabelas e colunas são criadas automaticamente conforme os dados recebidos:
+
+```python
+# app.py:78-109 - init_table_if_not_exists
+def init_table_if_not_exists(table_name, data):
+    """Dynamically create table or add missing columns based on data keys."""
+    # 1. Verifica se tabela existe
+    # 2. Se não existe: CREATE TABLE com todas as colunas do primeiro registro
+    # 3. Se existe: PRAGMA table_info -> verifica colunas faltantes -> ALTER TABLE ADD COLUMN
+    # 4. TODAS as colunas são TEXT
+    # 5. Coluna 'id' é sempre PRIMARY KEY
+```
+
+### Tabelas Esperadas (Convenção)
+| Tabela | Propósito | Colunas Típicas |
+|--------|-----------|-----------------|
+| `pacientes` | Dados dos pacientes | id, nome, data_nascimento, telefone, unidade_saude, created_at, updated_at |
+| `agendamentos` | Consultas agendadas | id, paciente_id, data_consulta, hora, tipo, status, observacoes |
+
+---
+
+## ⚙️ Configuração
+
+### Arquivo `.env`
+```bash
+# Porta do servidor (padrão: 8080)
+PORT=8080
+
+# Senha de autenticação da API (OBRIGATÓRIA)
+SENHA=SuaSenhaSuperSegura123
+```
+
+### Constantes no Código (app.py:47-54)
+```python
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+ALLOWED_EXTENSIONS = {'db', 'sqlite', 'sqlite3'}
+DB_FILENAME = 'pacientes.db'
+API_PASSWORD = os.getenv('SENHA')  # Carregado do .env
+```
+
+---
+
+## 🚀 Execução e Deployment
+
+### Instalação Local
+```bash
+# 1. Clone o repositório
+cd Gerente_gestante_server
+
+# 2. Crie ambiente virtual
+python3 -m venv venv
+source venv/bin/activate
+
+# 3. Instale dependências
+pip install -r requirements.txt
+
+# 4. Configure o .env
+echo "PORT=8080" > .env
+echo "SENHA=SuaSenhaSegura" >> .env
+
+# 5. Execute
+python app.py
+```
+
+### Inicialização do Servidor
+```
+==================================================
+      🚀 GERENTE GESTANTE SERVER - VPS 🚀
+==================================================
+🕒 Início: 05/02/2026 03:57:00
+📡 Host:   0.0.0.0
+🔌 Porta:  8080
+🔐 Senha:  DEFINIDA
+--------------------------------------------------
+✅ Porta 8080 já está livre.
+--------------------------------------------------
+[INFO] Iniciando servidor Flask em http://0.0.0.0:8080
+```
+
+### Deployment em VPS (Produção)
+```bash
+# Usando systemd (Linux)
+sudo nano /etc/systemd/system/gerente-vps.service
+
+[Unit]
+Description=Gerente Gestante VPS Server
+After=network.target
+
+[Service]
+User=gerente
+WorkingDirectory=/opt/gerente-vps
+Environment="PATH=/opt/gerente-vps/venv/bin"
+EnvironmentFile=/opt/gerente-vps/.env
+ExecStart=/opt/gerente-vps/venv/bin/python app.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+---
+
+## 📝 Logging e Monitoramento
+
+### Sistema de Logs
+Configuração (app.py:9-15):
+```python
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+```
+
+### Eventos Logados
+| Evento | Nível | Mensagem |
+|--------|-------|----------|
+| Requisição entrada | INFO | `>>> POST /api/vps/sync \| IP: 192.168.1.100 \| Auth: PROVIDED` |
+| Resposta saída | INFO | `<<< Status: 200` |
+| Sincronização | INFO | `🔄 Sincronizando 50 registros na tabela 'pacientes'...` |
+| Sucesso sync | INFO | `✅ Sincronização concluída: 50 registros.` |
+| Upload DB | INFO | `📁 Banco de dados recebido: 24576 bytes` |
+| Delete | INFO | `🗑️ Registro 'pac_001' excluído da tabela 'pacientes'` |
+| Erro | ERROR | `❌ Erro na sincronização: <mensagem>` |
+| Acesso negado | WARNING | `Tentativa de acesso NÃO AUTORIZADA de <IP>` |
+
+### Hooks de Request/Response (app.py:25-45)
+```python
+@app.before_request
+def log_request_info():
+    # Loga método, path, IP e status de autenticação
+    # Ignora /api/health e /api/vps/status
+
+@app.after_request
+def log_response_info(response):
+    # Loga status code da resposta
+```
+
+---
+
+## 🔧 Funcionalidades Especiais
+
+### Liberação Automática de Porta
+```python
+# app.py:411-427
+def kill_process_on_port(port):
+    """Kills any process currently using the specified port."""
+    # Usa `lsof -i :<port> -t` para encontrar PIDs
+    # Usa `fuser -k <port>/tcp` para matar processos
+    # Executado automaticamente no startup
+```
+
+### Schema Dinâmico
+O servidor **não exige schema fixo**. Qualquer JSON enviado para sincronização:
+1. Cria a tabela se não existir
+2. Adiciona colunas automaticamente se novas keys aparecerem
+3. Todas colunas são TEXT (incluindo datas/números)
+
+### Validação de Nomes de Tabela
+```python
+# app.py:195, 260, 281, 306, 239
+if not table_name.isalnum() and '_' not in table_name:
+    return jsonify({'error': 'Invalid table name'}), 400
+```
+Protege contra SQL Injection nos nomes de tabela.
+
+---
+
+## 🧪 Testando a API
+
+### Exemplo com cURL
+```bash
+# 1. Health check (público)
+curl http://localhost:8080/api/health
+
+# 2. Status com autenticação
+curl -H "X-API-Password: SuaSenha" http://localhost:8080/api/vps/status
+
+# 3. Sync de paciente
+curl -X POST \
+  -H "X-API-Password: SuaSenha" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "table": "pacientes",
+    "data": [{
+      "id": "test_001",
+      "nome": "Paciente Teste",
+      "telefone": "11999999999"
+    }]
+  }' \
+  http://localhost:8080/api/vps/sync
+
+# 4. Listar dados
+curl -H "X-API-Password: SuaSenha" http://localhost:8080/api/data/pacientes
+
+# 5. Upload de arquivo
+curl -X POST \
+  -H "X-API-Password: SuaSenha" \
+  -F "file=@/caminho/para/backup.db" \
+  http://localhost:8080/api/vps/upload
+```
+
+---
+
+## 🔄 Integração com Cliente
+
+### Fluxo Típico de Sincronização
+1. Cliente chama `GET /api/vps/compare` com lista de tabelas
+2. Compara contagem local vs servidor
+3. Se houver diferença, prepara registros modificados
+4. Envia via `POST /api/vps/sync` em lotes
+5. Recebe confirmação de registros sincronizados
+
+### Estratégia de IDs
+- Use IDs únicos e estáveis (ex: UUID, ou combinação campos)
+- Coluna `id` é sempre PRIMARY KEY
+- `INSERT OR REPLACE` garante idempotência
+
+---
+
+## 🐛 Troubleshooting
+
+### Problemas Comuns
+
+| Problema | Causa | Solução |
+|----------|-------|---------|
+| 401 Unauthorized | Senha incorreta ou não enviada | Verificar header `X-API-Password` |
+| 500 Erro no sync | JSON malformado | Validar payload, verificar logs |
+| Porta em uso | Outro processo usando a porta | Servidor mata automaticamente, ou use `fuser -k 8080/tcp` |
+| Tabela não aparece | Schema dinâmico | Primeiro POST cria a tabela automaticamente |
+
+### Debug
+Habilite logs detalhados verificando a saída do console. Todos os erros são logados com nível ERROR incluindo stack traces.
+
+---
+
+## 📦 Informações para Desenvolvedores
+
+### Dependências (requirements.txt)
+```
+Flask==3.0.0
+python-dotenv==1.0.0
+flask-cors==4.0.0
+```
+
+### Extensões Flask Utilizadas
+- **Flask-CORS**: Permite requisições de origens diferentes (cross-domain)
+- **python-dotenv**: Carrega variáveis de ambiente do arquivo `.env`
+
+### Padrões de Código
+- PEP 8
+- Docstrings em português (público-alvo brasileiro)
+- Logging em português
+- Comentários em português
+
+---
+
+## 📝 Notas para IA/Automação
+
+Se você é um modelo de IA trabalhando neste código:
+
+1. **Autenticação é obrigatória** - Sempre inclua `X-API-Password` no header
+2. **Schema dinâmico** - Não assuma colunas fixas, tabelas são criadas sob demanda
+3. **SQLite** - Use queries SQL padrão, mas lembre-se que colunas são TEXT
+4. **Porta** - Padrão é 8080, mas pode ser alterada via env var `PORT`
+5. **Logging** - O sistema loga automaticamente, não duplique logs
+6. **SQL Injection** - Nomes de tabela são validados, mas sempre sanitize inputs
+
+---
+
+*Gerente Gestante Server v1.0.5 - Módulo VPS*

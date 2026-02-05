@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agendamentos</title>
+    <link rel="stylesheet" href="/static/css/variables.css">
+    <link rel="stylesheet" href="/static/agendamentos/css/style.css">
+    <link rel="stylesheet" href="/static/alerts/css/style.css">
+    <link rel="stylesheet" href="/static/alerts_agendamentos/css/style.css">
+    <style id="custom-theme" type="text/css"></style>
+</head>
+<body>
+
+    <!-- Sistema de Alertas de Parto Próximo -->
+    <div id="alertas-parto-container" style="display: none;">
+        <div class="alertas-header">
+            <h3>
+                🚨 Alertas de Parto
+                <span class="badge-contador" id="alertas-contador">0</span>
+            </h3>
+        </div>
+        <div id="alertas-parto-list">
+            <!-- Alertas serão inseridos aqui via JavaScript -->
+        </div>
+    </div>
+
+    <!-- Sistema de Alertas de Agendamentos Próximos -->
+    <div id="alertas-agendamentos-container" style="display: none;">
+        <div class="alertas-header-agendamentos">
+            <h3>
+                📅 Agendamentos Próximos
+                <span class="badge-contador" id="alertas-agendamentos-contador">0</span>
+            </h3>
+        </div>
+        <div id="alertas-agendamentos-list">
+            <!-- Alertas serão inseridos aqui via JavaScript -->
+        </div>
+    </div>
+
+<nav class="sidebar">
+    <h2>Sistema</h2>
+    <a href="#" data-view="calendario">Calendário</a>
+    <a href="#" data-view="novo">Adicionar Agendamento</a>
+    <a href="#" data-view="agenda">Agendamentos</a>
+    <a href="#" data-view="historico">Histórico</a>
+    <a href="#" data-view="config">Configurações</a>
+    <a href="/ajuda">Ajuda</a>
+    <a href="/" class="sair">Sair</a>
+</nav>
+
+<main class="conteudo">
+
+    <section id="calendario" class="view ativa">
+        <h1>Calendário de Agendamentos</h1>
+
+        <!-- Controles de Navegação -->
+        <div class="calendario-controles">
+            <button id="mesAnterior" class="btn btn-secondary">← Anterior</button>
+            <h2 id="mesAtual">Carregando...</h2>
+            <button id="proximoMes" class="btn btn-secondary">Próximo →</button>
+        </div>
+
+        <!-- Container do Calendário -->
+        <div class="calendario-container">
+            <div class="dias-semana">
+                <div class="dia-semana">Dom</div>
+                <div class="dia-semana">Seg</div>
+                <div class="dia-semana">Ter</div>
+                <div class="dia-semana">Qua</div>
+                <div class="dia-semana">Qui</div>
+                <div class="dia-semana">Sex</div>
+                <div class="dia-semana">Sáb</div>
+            </div>
+            <div id="diasCalendario" class="dias-calendario">
+                <!-- Dias serão inseridos aqui via JavaScript -->
+            </div>
+        </div>
+
+        <!-- Área de Expansão para Agendamentos do Dia -->
+        <div id="expansaoDia" class="expansao-dia" style="display: none;">
+            <h3 id="tituloDiaExpandido">Agendamentos do dia</h3>
+            <div id="agendamentosDia" class="agendamentos-dia">
+                <!-- Agendamentos serão inseridos aqui -->
+            </div>
+        </div>
+    </section>
+
+    <section id="novo" class="view">
+        <h1>Adicionar Agendamento</h1>
+        <form id="formAgendamento" class="form-agendamento">
+            <input type="hidden" id="agendamentoId">
+            
+            <div class="form-group">
+                <label for="pacienteSearch">Paciente <span style="color: #666; font-size: 0.85em;">(opcional)</span></label>
+                <div class="paciente-search-container">
+                    <input 
+                        type="text" 
+                        id="pacienteSearch" 
+                        placeholder="Digite o nome do paciente para pesquisar..."
+                        autocomplete="off"
+                        class="form-input"
+                    >
+                    <input type="hidden" id="pacienteId" name="paciente_id">
+                    <div id="pacienteSearchResults" class="paciente-search-results" style="display: none;">
+                        <!-- Resultados da pesquisa serão inseridos aqui -->
+                    </div>
+                </div>
+                <small class="form-help">Opcional: vincule a um paciente existente ou deixe em branco para agendamento avulso</small>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="dataConsulta">Data da Consulta <span style="color: #666; font-size: 0.85em;">(opcional)</span></label>
+                    <input type="date" id="dataConsulta">
+                    <small class="form-help" style="color: #666; font-style: italic;">Se não preencher, o agendamento não será salvo no banco de dados</small>
+                </div>
+                <div class="form-group">
+                    <label for="horaConsulta">Hora <span style="color: #666; font-size: 0.85em;">(opcional)</span></label>
+                    <input type="time" id="horaConsulta">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="tipoConsulta">Tipo de Consulta</label>
+                <select id="tipoConsulta">
+                    <option value="">Selecione...</option>
+                    <option value="consulta_pre_natal">Consulta Pré-Natal</option>
+                    <option value="retorno">Retorno</option>
+                    <option value="avaliacao">Avaliação</option>
+                    <option value="exame">Exame</option>
+                    <option value="outro">Outro</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="statusAgendamento">Status</label>
+                <select id="statusAgendamento">
+                    <option value="agendado">Agendado</option>
+                    <option value="confirmado">Confirmado</option>
+                    <option value="realizado">Realizado</option>
+                    <option value="cancelado">Cancelado</option>
+                    <option value="falta">Falta</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="observacoes">Observações</label>
+                <textarea id="observacoes" rows="4" placeholder="Observações sobre o agendamento..."></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Salvar Agendamento</button>
+                <button type="reset" class="btn btn-secondary">Limpar</button>
+            </div>
+        </form>
+    </section>
+
+    <section id="agenda" class="view">
+        <h1>Lista de Agendamentos</h1>
+        
+        <!-- Barra de Filtros -->
+        <div class="filtros-container">
+            <div class="filtros-header">
+                <h3>🔍 Filtrar Agendamentos</h3>
+                <button class="btn-toggle-filtros" onclick="toggleFiltros()" type="button">
+                    <span class="toggle-icon">▼</span>
+                </button>
+            </div>
+            
+            <div class="filtros-content" id="filtrosContent">
+                <div class="filtros-row">
+                    <div class="filtro-group">
+                        <label for="filterDataInicio">📅 Data Início</label>
+                        <input type="date" id="filterDataInicio" class="filtro-input">
+                    </div>
+                    
+                    <div class="filtro-group">
+                        <label for="filterDataFim">📅 Data Fim</label>
+                        <input type="date" id="filterDataFim" class="filtro-input">
+                    </div>
+                    
+                    <div class="filtro-group">
+                        <label for="filterStatus">🏷️ Status</label>
+                        <select id="filterStatus" class="filtro-select">
+                            <option value="">Todos os status</option>
+                            <option value="agendado">Agendado</option>
+                            <option value="confirmado">Confirmado</option>
+                            <option value="realizado">Realizado</option>
+                            <option value="cancelado">Cancelado</option>
+                            <option value="falta">Falta</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="filtros-actions">
+                    <button class="btn btn-primary" onclick="aplicarFiltros()" type="button">
+                        🔍 Aplicar Filtros
+                    </button>
+                    <button class="btn btn-secondary" onclick="limparFiltros()" type="button">
+                        🗑️ Limpar Filtros
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Estatísticas Rápidas -->
+        <div class="stats-resumo" id="statsResumo">
+            <!-- Estatísticas serão inseridas via JavaScript -->
+        </div>
+        
+        <!-- Lista de Agendamentos -->
+        <div id="agendamentosList" class="agendamentos-list">
+            <!-- Agendamentos serão inseridos aqui via JavaScript -->
+        </div>
+    </section>
+
+    <section id="historico" class="view">
+        <h1>Histórico de Agendamentos</h1>
+        
+        <div class="historico-info" style="margin-bottom: 20px; padding: 15px; background: var(--accent); border-radius: 8px;">
+            <p style="margin: 0;">
+                <strong>ℹ️ Informação:</strong> Esta seção exibe agendamentos passados que ainda não foram confirmados.
+                Clique em um agendamento para confirmar se o atendimento foi realizado.
+            </p>
+        </div>
+        
+        <!-- Filtros do Histórico -->
+        <div class="filtros-container" style="margin-bottom: 20px;">
+            <div class="filtros-header">
+                <h3>🔍 Filtrar Histórico</h3>
+                <button class="btn-toggle-filtros" onclick="toggleFiltrosHistorico()" type="button">
+                    <span class="toggle-icon">▼</span>
+                </button>
+            </div>
+            
+            <div class="filtros-content" id="filtrosContentHistorico">
+                <div class="filtros-row">
+                    <div class="filtro-group">
+                        <label for="filterHistoricoStatus">🏷️ Status</label>
+                        <select id="filterHistoricoStatus" class="filtro-select">
+                            <option value="">Todos os status</option>
+                            <option value="pendente">Pendentes (Não confirmados)</option>
+                            <option value="realizado">Realizados</option>
+                            <option value="falta">Faltas</option>
+                            <option value="cancelado">Cancelados</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filtro-group">
+                        <label for="filterHistoricoDataInicio">📅 Data Início</label>
+                        <input type="date" id="filterHistoricoDataInicio" class="filtro-input">
+                    </div>
+                    
+                    <div class="filtro-group">
+                        <label for="filterHistoricoDataFim">📅 Data Fim</label>
+                        <input type="date" id="filterHistoricoDataFim" class="filtro-input">
+                    </div>
+                </div>
+                
+                <div class="filtros-actions">
+                    <button class="btn btn-primary" onclick="aplicarFiltrosHistorico()" type="button">
+                        🔍 Aplicar Filtros
+                    </button>
+                    <button class="btn btn-secondary" onclick="limparFiltrosHistorico()" type="button">
+                        🗑️ Limpar Filtros
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Lista de Agendamentos do Histórico -->
+        <div id="historicoList" class="agendamentos-list">
+            <!-- Agendamentos serão inseridos aqui via JavaScript -->
+        </div>
+    </section>
+
+    <section id="config" class="view">
+        <h1>Configurações</h1>
+        
+        <div class="config-container">
+            <div class="config-section">
+                <h2>Gerenciamento de Banco de Dados</h2>
+                <p class="config-description">Operações avançadas para gerenciar o banco de dados do sistema</p>
+                
+                <div class="config-actions">
+                    <button id="btnExcluirBD" class="btn-config btn-danger" type="button">
+                        <span class="btn-icon">🗑️</span>
+                        <span class="btn-text">Excluir BD</span>
+                        <span class="btn-description">Remove todos os dados do banco de dados</span>
+                    </button>
+                    
+                    <button id="btnExportarBD" class="btn-config btn-primary" type="button">
+                        <span class="btn-icon">💾</span>
+                        <span class="btn-text">Exportar BD</span>
+                        <span class="btn-description">Baixa uma cópia de segurança do banco de dados</span>
+                    </button>
+                    
+                    <button id="btnAtualizarBD" class="btn-config btn-info" type="button">
+                        <span class="btn-icon">🔄</span>
+                        <span class="btn-text">Atualizar BD</span>
+                        <span class="btn-description">Recarrega e atualiza os dados do sistema</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Modal de confirmação para excluir BD -->
+    <div id="modalExcluirBD" class="modal-config" style="display: none;">
+        <div class="modal-config-content">
+            <div class="modal-config-header">
+                <h2>⚠️ Confirmar Exclusão</h2>
+                <button id="fecharModalExcluirBD" class="btn-close-modal">×</button>
+            </div>
+            <div class="modal-config-body">
+                <p><strong>ATENÇÃO:</strong> Esta ação irá excluir TODOS os dados do banco de dados!</p>
+                <p>Esta ação não pode ser desfeita. Tem certeza que deseja continuar?</p>
+                <p>Digite <strong>CONFIRMAR</strong> para prosseguir:</p>
+                <input type="text" id="confirmTextExcluirBD" class="form-input" placeholder="Digite CONFIRMAR">
+            </div>
+            <div class="modal-config-footer">
+                <button type="button" id="cancelarExcluirBD" class="btn btn-secondary">Cancelar</button>
+                <button type="button" id="confirmarExcluirBD" class="btn btn-danger" disabled>Excluir Todos os Dados</button>
+            </div>
+        </div>
+    </div>
+
+    <section id="ajuda" class="view">
+        <h1>🤗 Ajuda - Guia Completo do Sistema de Agendamentos</h1>
+        
+        <style>
+            .ajuda-container {
+                max-width: 1000px;
+                margin: 0 auto;
+                padding: 20px;
+            }
+            
+            .mensagem-boas-vindas {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 30px;
+                border-radius: 15px;
+                text-align: center;
+                margin-bottom: 30px;
+                animation: pulseWelcome 2s ease-in-out infinite;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            }
+            
+            @keyframes pulseWelcome {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.02); }
+            }
+            
+            .mensagem-boas-vindas h2 {
+                font-size: 2rem;
+                margin-bottom: 15px;
+                animation: slideDown 1s ease-out;
+            }
+            
+            @keyframes slideDown {
+                from { opacity: 0; transform: translateY(-20px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            
+            .mensagem-boas-vindas p {
+                font-size: 1.2rem;
+                line-height: 1.6;
+                margin: 10px 0;
+            }
+            
+            .guia-passos {
+                display: grid;
+                gap: 25px;
+                margin-bottom: 30px;
+            }
+            
+            .passo-card {
+                background: white;
+                border-left: 5px solid #667eea;
+                border-radius: 12px;
+                padding: 25px;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+                transition: all 0.3s ease;
+                animation: fadeInUp 0.6s ease-out backwards;
+            }
+            
+            .passo-card:nth-child(1) { animation-delay: 0.1s; }
+            .passo-card:nth-child(2) { animation-delay: 0.2s; }
+            .passo-card:nth-child(3) { animation-delay: 0.3s; }
+            .passo-card:nth-child(4) { animation-delay: 0.4s; }
+            .passo-card:nth-child(5) { animation-delay: 0.5s; }
+            
+            @keyframes fadeInUp {
+                from { opacity: 0; transform: translateY(30px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            
+            .passo-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+                border-left-color: #764ba2;
+            }
+            
+            .passo-header {
+                display: flex;
+                align-items: center;
+                margin-bottom: 15px;
+            }
+            
+            .passo-numero {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                width: 50px;
+                height: 50px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.5rem;
+                font-weight: bold;
+                margin-right: 15px;
+                animation: rotate 3s linear infinite;
+            }
+            
+            @keyframes rotate {
+                0%, 100% { transform: rotate(0deg); }
+                25% { transform: rotate(-5deg); }
+                75% { transform: rotate(5deg); }
+            }
+            
+            .passo-titulo {
+                font-size: 1.4rem;
+                color: #333;
+                margin: 0;
+            }
+            
+            .passo-conteudo {
+                color: #555;
+                line-height: 1.8;
+                font-size: 1.05rem;
+            }
+            
+            .passo-conteudo ul {
+                margin: 10px 0;
+                padding-left: 20px;
+            }
+            
+            .passo-conteudo li {
+                margin: 8px 0;
+            }
+            
+            .dicas-rapidas {
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                color: white;
+                padding: 25px;
+                border-radius: 15px;
+                margin-bottom: 30px;
+                animation: slideIn 1s ease-out;
+            }
+            
+            @keyframes slideIn {
+                from { opacity: 0; transform: translateX(-50px); }
+                to { opacity: 1; transform: translateX(0); }
+            }
+            
+            .dicas-rapidas h3 {
+                font-size: 1.6rem;
+                margin-bottom: 15px;
+                text-align: center;
+            }
+            
+            .dicas-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 15px;
+                margin-top: 20px;
+            }
+            
+            .dica-item {
+                background: rgba(255,255,255,0.2);
+                padding: 15px;
+                border-radius: 10px;
+                backdrop-filter: blur(10px);
+                transition: all 0.3s ease;
+            }
+            
+            .dica-item:hover {
+                background: rgba(255,255,255,0.3);
+                transform: scale(1.05);
+            }
+            
+            .dica-item strong {
+                display: block;
+                font-size: 1.1rem;
+                margin-bottom: 8px;
+            }
+            
+            .perguntas-frequentes {
+                margin-top: 30px;
+            }
+            
+            .pergunta-card {
+                background: #f8f9fa;
+                border-radius: 10px;
+                padding: 20px;
+                margin-bottom: 15px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                border: 2px solid transparent;
+            }
+            
+            .pergunta-card:hover {
+                background: #e9ecef;
+                border-color: #667eea;
+                transform: translateX(5px);
+            }
+            
+            .pergunta-titulo {
+                font-weight: bold;
+                font-size: 1.1rem;
+                color: #333;
+                margin-bottom: 10px;
+            }
+            
+            .resposta {
+                color: #555;
+                line-height: 1.6;
+            }
+            
+            .emoji-grande {
+                font-size: 2.5rem;
+                display: inline-block;
+                animation: bounce 2s ease-in-out infinite;
+            }
+            
+            @keyframes bounce {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-10px); }
+            }
+            
+            .destaque-importante {
+                background: #fff3cd;
+                border-left: 4px solid #ffc107;
+                padding: 15px;
+                margin: 15px 0;
+                border-radius: 5px;
+            }
+            
+            .botao-ajuda-extra {
+                display: inline-block;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 12px 25px;
+                border-radius: 25px;
+                text-decoration: none;
+                margin: 10px 5px;
+                transition: all 0.3s ease;
+                border: none;
+                cursor: pointer;
+                font-size: 1rem;
+            }
+            
+            .botao-ajuda-extra:hover {
+                transform: scale(1.1);
+                box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            }
+        </style>
+        
+        <div class="ajuda-container">
+            <!-- Mensagem de Boas-Vindas -->
+            <div class="mensagem-boas-vindas">
+                <h2><span class="emoji-grande">🤗</span> Respire Fundo, Você Chegou no Lugar Certo!</h2>
+                <p>Sabemos que lidar com agendamentos pode parecer complicado no início...</p>
+                <p>Mas <strong>não se preocupe!</strong> Este guia foi feito especialmente para você! 💜</p>
+                <p>Vamos explicar tudo passo a passo, de forma simples e clara.</p>
+            </div>
+            
+            <!-- Guia Passo a Passo -->
+            <div class="guia-passos">
+                <div class="passo-card">
+                    <div class="passo-header">
+                        <div class="passo-numero">1️⃣</div>
+                        <h3 class="passo-titulo">📅 Visualizar o Calendário</h3>
+                    </div>
+                    <div class="passo-conteudo">
+                        <p><strong>Para que serve:</strong> Ver todos os agendamentos de forma visual, como em um calendário comum.</p>
+                        <p><strong>Como usar:</strong></p>
+                        <ul>
+                            <li>Clique em <strong>"Calendário"</strong> no menu lateral esquerdo</li>
+                            <li>Você verá o mês atual com todos os dias</li>
+                            <li>Dias com agendamentos aparecem com uma <strong>bolinha colorida</strong> 🔵</li>
+                            <li>Use os botões <strong>"← Anterior"</strong> e <strong>"Próximo →"</strong> para navegar entre os meses</li>
+                            <li>Clique em qualquer dia para ver os agendamentos daquele dia específico</li>
+                        </ul>
+                        <div class="destaque-importante">
+                            <strong>💡 Dica:</strong> O calendário é atualizado automaticamente quando você adiciona ou remove agendamentos!
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="passo-card">
+                    <div class="passo-header">
+                        <div class="passo-numero">2️⃣</div>
+                        <h3 class="passo-titulo">➕ Adicionar um Novo Agendamento</h3>
+                    </div>
+                    <div class="passo-conteudo">
+                        <p><strong>Para que serve:</strong> Marcar uma nova consulta ou atendimento.</p>
+                        <p><strong>Como usar:</strong></p>
+                        <ul>
+                            <li>Clique em <strong>"Adicionar Agendamento"</strong> no menu lateral</li>
+                            <li><strong>Escolha a paciente:</strong> Digite o nome e selecione da lista que aparece</li>
+                            <li><strong>Data e Hora:</strong> Escolha quando será a consulta</li>
+                            <li><strong>Tipo de Consulta:</strong> Selecione o tipo (Pré-natal, Retorno, Exame, etc.)</li>
+                            <li><strong>Status:</strong> Normalmente deixe como "Agendado"</li>
+                            <li><strong>Observações:</strong> Anote informações importantes (opcional)</li>
+                            <li>Clique em <strong>"Salvar Agendamento"</strong> 💾</li>
+                        </ul>
+                        <div class="destaque-importante">
+                            <strong>⚠️ Importante:</strong> Os campos com asterisco (*) são obrigatórios!
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="passo-card">
+                    <div class="passo-header">
+                        <div class="passo-numero">3️⃣</div>
+                        <h3 class="passo-titulo">📋 Ver Lista de Agendamentos</h3>
+                    </div>
+                    <div class="passo-conteudo">
+                        <p><strong>Para que serve:</strong> Ver todos os agendamentos em formato de lista.</p>
+                        <p><strong>Como usar:</strong></p>
+                        <ul>
+                            <li>Clique em <strong>"Agendamentos"</strong> no menu lateral</li>
+                            <li>Você verá uma lista com todos os agendamentos</li>
+                            <li><strong>Filtrar:</strong> Use os filtros no topo para encontrar agendamentos específicos:
+                                <ul>
+                                    <li>Por data (início e fim)</li>
+                                    <li>Por status (Agendado, Confirmado, Realizado, etc.)</li>
+                                </ul>
+                            </li>
+                            <li><strong>Ações disponíveis:</strong> Cada agendamento tem botões para:
+                                <ul>
+                                    <li>👁️ Ver detalhes da paciente</li>
+                                    <li>✏️ Editar o agendamento</li>
+                                    <li>🗑️ Excluir o agendamento</li>
+                                </ul>
+                            </li>
+                        </ul>
+                        <div class="destaque-importante">
+                            <strong>💡 Dica:</strong> As estatísticas no topo mostram um resumo rápido dos seus agendamentos!
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="passo-card">
+                    <div class="passo-header">
+                        <div class="passo-numero">4️⃣</div>
+                        <h3 class="passo-titulo">📜 Histórico de Agendamentos</h3>
+                    </div>
+                    <div class="passo-conteudo">
+                        <p><strong>Para que serve:</strong> Ver e confirmar agendamentos que já passaram.</p>
+                        <p><strong>Como usar:</strong></p>
+                        <ul>
+                            <li>Clique em <strong>"Histórico"</strong> no menu lateral</li>
+                            <li>Aqui aparecem agendamentos passados que ainda não foram confirmados</li>
+                            <li><strong>Confirmar atendimento:</strong> Clique em um agendamento para confirmar:
+                                <ul>
+                                    <li>✅ Foi realizado? Marque como "Realizado"</li>
+                                    <li>❌ Não foi realizado? Marque como "Falta" e adicione um motivo</li>
+                                </ul>
+                            </li>
+                            <li>Use os filtros para encontrar agendamentos específicos</li>
+                        </ul>
+                        <div class="destaque-importante">
+                            <strong>⚠️ Importante:</strong> É uma boa prática confirmar os atendimentos regularmente para manter o histórico atualizado!
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="passo-card">
+                    <div class="passo-header">
+                        <div class="passo-numero">5️⃣</div>
+                        <h3 class="passo-titulo">🚨 Alertas Automáticos</h3>
+                    </div>
+                    <div class="passo-conteudo">
+                        <p><strong>Para que serve:</strong> O sistema avisa você sobre eventos importantes!</p>
+                        <p><strong>Tipos de alertas:</strong></p>
+                        <ul>
+                            <li><strong>🚨 Alertas de Parto:</strong> Aparecem no topo da tela quando uma paciente está próxima da data prevista do parto (últimas 2 semanas)</li>
+                            <li><strong>📅 Agendamentos Próximos:</strong> Mostra consultas que estão chegando (próximos 3 dias)</li>
+                        </ul>
+                        <p><strong>Como usar:</strong></p>
+                        <ul>
+                            <li>Os alertas aparecem automaticamente quando você abre a página</li>
+                            <li>Clique no alerta para ver mais detalhes</li>
+                            <li>Você pode fechar um alerta clicando no "×"</li>
+                        </ul>
+                        <div class="destaque-importante">
+                            <strong>💡 Dica:</strong> Verifique os alertas regularmente para não perder nenhum atendimento importante!
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Dicas Rápidas -->
+            <div class="dicas-rapidas">
+                <h3>✨ Dicas Rápidas para Facilitar sua Vida</h3>
+                <div class="dicas-grid">
+                    <div class="dica-item">
+                        <strong>🔍 Pesquisa Inteligente</strong>
+                        Quando for adicionar um agendamento, comece a digitar o nome da paciente e o sistema vai buscar automaticamente!
+                    </div>
+                    <div class="dica-item">
+                        <strong>🎨 Cores nos Status</strong>
+                        Cada status tem uma cor diferente para você identificar rapidamente: azul (agendado), verde (confirmado), roxo (realizado), etc.
+                    </div>
+                    <div class="dica-item">
+                        <strong>👁️ Preview Rápido</strong>
+                        Passe o mouse sobre o nome de uma paciente para ver um preview rápido dos dados dela, sem precisar abrir o perfil completo!
+                    </div>
+                    <div class="dica-item">
+                        <strong>📊 Estatísticas Úteis</strong>
+                        Na lista de agendamentos, o sistema mostra estatísticas automáticas: total, confirmados, pendentes, etc.
+                    </div>
+                    <div class="dica-item">
+                        <strong>💾 Salvamento Automático</strong>
+                        Sempre que você faz uma alteração, o sistema salva automaticamente. Não precisa se preocupar em perder dados!
+                    </div>
+                    <div class="dica-item">
+                        <strong>⏰ Lembretes Visuais</strong>
+                        Agendamentos próximos aparecem destacados no calendário e na lista para você não esquecer!
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Perguntas Frequentes -->
+            <div class="perguntas-frequentes">
+                <h2 style="text-align: center; margin-bottom: 25px; color: #333;">❓ Perguntas Frequentes</h2>
+                
+                <div class="pergunta-card">
+                    <div class="pergunta-titulo">🤔 Como edito um agendamento existente?</div>
+                    <div class="resposta">
+                        Vá em "Agendamentos" ou "Histórico", encontre o agendamento que deseja editar e clique no botão "✏️ Editar". 
+                        Faça as alterações necessárias e clique em "Salvar Agendamento".
+                    </div>
+                </div>
+                
+                <div class="pergunta-card">
+                    <div class="pergunta-titulo">🗑️ Como cancelo um agendamento?</div>
+                    <div class="resposta">
+                        Você tem duas opções: 1) Editar o agendamento e mudar o status para "Cancelado", ou 2) Clicar no botão "🗑️ Excluir" 
+                        para remover completamente o agendamento do sistema.
+                    </div>
+                </div>
+                
+                <div class="pergunta-card">
+                    <div class="pergunta-titulo">📞 O que faço se uma paciente confirmar por telefone?</div>
+                    <div class="resposta">
+                        Vá em "Agendamentos", encontre o agendamento dela e clique em "✏️ Editar". 
+                        Mude o status de "Agendado" para "Confirmado" e salve. Pronto!
+                    </div>
+                </div>
+                
+                <div class="pergunta-card">
+                    <div class="pergunta-titulo">🔍 Como encontro um agendamento específico?</div>
+                    <div class="resposta">
+                        Use os filtros! Em "Agendamentos" ou "Histórico", você pode filtrar por data (início e fim) e por status. 
+                        Clique em "🔍 Aplicar Filtros" para ver apenas os agendamentos que você procura.
+                    </div>
+                </div>
+                
+                <div class="pergunta-card">
+                    <div class="pergunta-titulo">👤 Como vejo os dados completos de uma paciente?</div>
+                    <div class="resposta">
+                        Clique no nome da paciente em qualquer agendamento. Um modal vai abrir mostrando todos os dados cadastrados, 
+                        incluindo informações pessoais, gestacionais, histórico médico, etc.
+                    </div>
+                </div>
+                
+                <div class="pergunta-card">
+                    <div class="pergunta-titulo">⚠️ E se eu cometer um erro?</div>
+                    <div class="resposta">
+                        Sem problemas! Você sempre pode editar qualquer agendamento. Se excluir por engano, infelizmente não há como 
+                        recuperar (então tome cuidado ao excluir). Mas criar um novo agendamento é rápido e fácil!
+                    </div>
+                </div>
+                
+                <div class="pergunta-card">
+                    <div class="pergunta-titulo">🎯 Qual a diferença entre os status?</div>
+                    <div class="resposta">
+                        <ul style="margin-top: 10px;">
+                            <li><strong>Agendado:</strong> Consulta foi marcada mas ainda não confirmada pela paciente</li>
+                            <li><strong>Confirmado:</strong> Paciente confirmou que virá (por telefone, WhatsApp, etc.)</li>
+                            <li><strong>Realizado:</strong> Atendimento já aconteceu</li>
+                            <li><strong>Cancelado:</strong> Consulta foi cancelada (por você ou pela paciente)</li>
+                            <li><strong>Falta:</strong> Paciente não compareceu ao atendimento</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Mensagem Final -->
+            <div class="mensagem-boas-vindas" style="margin-top: 40px;">
+                <h2><span class="emoji-grande">💪</span> Você Consegue!</h2>
+                <p>Lembre-se: todo sistema pode parecer complicado no início, mas com o tempo fica natural.</p>
+                <p>Não tenha medo de explorar! <strong>Você não vai "quebrar" nada.</strong> 😊</p>
+                <p>Se tiver dúvidas, sempre pode voltar aqui nesta página de ajuda.</p>
+                <p style="font-size: 1.3rem; margin-top: 20px;"><strong>Estamos aqui para facilitar seu trabalho! 💜</strong></p>
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<!-- Preview do Perfil (Tooltip) -->
+<div id="previewPerfil" class="preview-perfil" style="display: none;">
+    <div class="preview-perfil-content">
+        <div class="preview-perfil-header">
+            <h3>👤 Perfil da Paciente</h3>
+            <button id="fecharPreviewPerfil" class="btn-close-preview">×</button>
+        </div>
+        <div id="conteudoPreviewPerfil" class="preview-perfil-body">
+            <!-- Conteúdo do preview será inserido aqui -->
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Perfil Completo da Paciente -->
+<div id="modalPerfil" class="modal-perfil" style="display: none;">
+    <div class="modal-perfil-content">
+        <div class="modal-perfil-header">
+            <h2>Perfil da Paciente</h2>
+            <button id="fecharModalPerfil" class="btn-close-modal">×</button>
+        </div>
+        <div id="conteudoPerfil" class="modal-perfil-body">
+            <!-- Conteúdo do perfil será inserido aqui -->
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Confirmar Atendimento (Agendamentos Passados) -->
+<div id="modalConfirmarAtendimento" class="modal-perfil" style="display: none;">
+    <div class="modal-perfil-content">
+        <div class="modal-perfil-header">
+            <h2>📅 Confirmar Atendimento</h2>
+            <button id="fecharModalConfirmarAtendimento" class="btn-close-modal">×</button>
+        </div>
+        <div class="modal-perfil-body">
+            <div id="infoAgendamentoConfirmar" style="margin-bottom: 20px; padding: 15px; background: var(--accent); border-radius: 8px;">
+                <!-- Informações do agendamento serão inseridas aqui -->
+            </div>
+            <div style="margin-bottom: 20px;">
+                <p style="font-size: 1.1rem; font-weight: bold; margin-bottom: 15px;">O atendimento foi realizado?</p>
+            </div>
+            <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                <button id="btnAtendimentoSim" class="btn btn-primary" style="flex: 1; padding: 12px;">
+                    ✅ Sim, foi realizado
+                </button>
+                <button id="btnAtendimentoNao" class="btn btn-secondary" style="flex: 1; padding: 12px;">
+                    ❌ Não foi realizado
+                </button>
+            </div>
+            <div id="divMotivoNaoRealizado" style="display: none; margin-top: 20px;">
+                <label for="motivoNaoRealizado" style="display: block; margin-bottom: 8px; font-weight: bold;">
+                    Motivo pelo qual não foi realizado:
+                </label>
+                <textarea 
+                    id="motivoNaoRealizado" 
+                    rows="4" 
+                    style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit;"
+                    placeholder="Descreva o motivo pelo qual o atendimento não foi realizado..."
+                ></textarea>
+                <div style="margin-top: 15px; display: flex; gap: 10px;">
+                    <button id="btnSalvarMotivo" class="btn btn-danger" style="flex: 1; padding: 12px;">
+                        💾 Salvar como Não Realizado
+                    </button>
+                    <button id="btnCancelarMotivo" class="btn btn-secondary" style="padding: 12px;">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Módulos do sistema de agendamentos -->
+<script src="/static/home/js/theme-manager.js"></script>
+<script src="/static/agendamentos/js/utils.js"></script>
+<script src="/static/agendamentos/js/paciente-search.js"></script>
+<script src="/static/agendamentos/js/modal-profile.js"></script>
+<script src="/static/agendamentos/js/modal-confirm.js"></script>
+<script src="/static/agendamentos/js/agendamentos.js"></script>
+<script src="/static/agendamentos/js/calendar.js"></script>
+<script src="/static/agendamentos/js/historico.js"></script>
+<script src="/static/agendamentos/js/configuracoes.js"></script>
+<script src="/static/agendamentos/js/main.js"></script>
+<script src="/static/alerts/js/alerts.js"></script>
+<script src="/static/alerts_agendamentos/js/alerts.js"></script>
+<script>
+    // Suprimir erros de extensões do navegador (Copilot, etc.)
+    window.addEventListener('error', function(e) {
+        if (e.message && (
+            e.message.includes('message channel closed') ||
+            e.message.includes('contentLogger') ||
+            e.message.includes('chrome.runtime') ||
+            e.message.includes('browser.runtime') ||
+            e.message.includes('asynchronous response')
+        )) {
+            e.preventDefault();
+            return false;
+        }
+    });
+    
+    window.addEventListener('unhandledrejection', function(e) {
+        if (e.reason && (
+            e.reason.message && (
+                e.reason.message.includes('message channel closed') ||
+                e.reason.message.includes('contentLogger') ||
+                e.reason.message.includes('asynchronous response')
+            )
+        )) {
+            e.preventDefault();
+            return false;
+        }
+    });
+</script>
+</body>
+</html>

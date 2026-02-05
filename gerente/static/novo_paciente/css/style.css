@@ -1,0 +1,559 @@
+/* Estilos específicos para o formulário de novo paciente */
+@import url('/static/css/variables.css');
+
+.container {
+    max-width: 900px;
+    padding: var(--spacing-xxl);
+}
+
+.header {
+    text-align: center;
+    margin-bottom: var(--spacing-xxl);
+}
+
+.header h1 {
+    color: var(--text);
+    font-size: var(--font-size-h1);
+    margin-bottom: var(--spacing-md);
+}
+
+.header p {
+    color: var(--text-muted);
+    font-size: var(--font-size-large);
+}
+
+/* Indicador de Progresso */
+.progress-container {
+    margin-bottom: var(--spacing-xl);
+    background: var(--card);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-md);
+    box-shadow: 0 4px 16px var(--shadow);
+    border: 2px solid var(--border-light);
+}
+
+.progress-bar {
+    width: 100%;
+    height: 14px;
+    background: var(--border-light);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    margin-bottom: var(--spacing-md);
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--primary);
+    border-radius: var(--radius-md);
+    transition: width var(--transition-slow);
+    width: 10%;
+}
+
+.progress-text {
+    text-align: center;
+    color: var(--text);
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.form-paciente {
+    background: var(--accent);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xxl);
+    box-shadow: 0 4px 16px var(--shadow);
+    position: relative;
+    min-height: 400px;
+    border: 2px solid var(--border-light);
+}
+
+/* Wizard Steps */
+.wizard-step {
+    display: none;
+    animation: fadeIn 0.4s ease;
+}
+
+.wizard-step.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.step-content {
+    padding: 20px 0;
+}
+
+.step-title {
+    color: var(--primary);
+    font-size: var(--font-size-h2);
+    margin-bottom: var(--spacing-xl);
+    text-align: center;
+    padding-bottom: var(--spacing-lg);
+    border-bottom: 3px solid var(--primary);
+}
+
+.form-group {
+    margin-bottom: var(--spacing-xl);
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: var(--spacing-sm);
+    color: var(--text);
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.form-group label.required::after {
+    content: " *";
+    color: var(--danger);
+}
+
+.form-input {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 1rem;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-normal);
+    font-family: var(--font-family);
+    background: var(--card);
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--accent);
+}
+
+.form-input:invalid {
+    border-color: var(--danger);
+}
+
+.form-help {
+    display: block;
+    margin-top: var(--spacing-xs);
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* Radio buttons estilizados */
+.radio-group {
+    display: flex;
+    gap: var(--spacing-lg);
+    flex-wrap: wrap;
+    margin-top: var(--spacing-md);
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    cursor: pointer;
+    padding: 12px 24px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--card);
+    transition: all var(--transition-normal);
+    font-weight: 600;
+    flex: 1;
+    min-width: 140px;
+    justify-content: center;
+    font-size: 1rem;
+}
+
+.radio-label:hover {
+    border-color: var(--primary);
+    background: var(--accent);
+}
+
+.radio-label input[type="radio"] {
+    width: 22px;
+    height: 22px;
+    cursor: pointer;
+    accent-color: var(--primary);
+}
+
+.radio-label input[type="radio"]:checked + span {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+.radio-label:has(input[type="radio"]:checked) {
+    border-color: var(--primary);
+    background: var(--accent);
+}
+
+/* Estilos para checkboxes dentro de radio-group */
+.radio-label input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+    cursor: pointer;
+    accent-color: var(--primary);
+}
+
+.radio-label input[type="checkbox"]:checked + span {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+.radio-label:has(input[type="checkbox"]:checked) {
+    border-color: var(--primary);
+    background: var(--accent);
+}
+
+/* Select estilizado */
+select.form-input {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23263238' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    padding-right: 45px;
+    cursor: pointer;
+}
+
+select.form-input:focus {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%232f7d6d' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+}
+
+/* Botões de ação do Wizard */
+.wizard-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: space-between;
+    margin-top: 40px;
+    padding-top: 30px;
+    border-top: 2px solid #e0e0e0;
+    flex-wrap: wrap;
+}
+
+.wizard-actions .btn {
+    min-width: 150px;
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    flex: 1;
+    max-width: 300px;
+}
+
+.wizard-actions #btnProximo:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #ccc;
+}
+
+.wizard-actions #btnProximo:disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* Mensagens de feedback */
+.message {
+    padding: 16px 24px;
+    border-radius: var(--radius-md);
+    margin-top: var(--spacing-lg);
+    font-weight: 600;
+    text-align: center;
+    animation: slideDown 0.3s ease;
+    font-size: 1rem;
+}
+
+.message.success {
+    background: var(--success-light);
+    color: var(--success);
+    border: 2px solid var(--success);
+}
+
+.message.error {
+    background: var(--danger-light);
+    color: var(--danger);
+    border: 2px solid var(--danger);
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Validação de campos */
+.form-input:invalid:not(:placeholder-shown) {
+    border-color: var(--danger);
+}
+
+.form-input:valid:not(:placeholder-shown) {
+    border-color: var(--success);
+}
+
+/* Modal de Confirmação de Duplicata */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(38, 50, 56, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-content {
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xxl);
+    max-width: 520px;
+    width: 90%;
+    box-shadow: 0 16px 48px var(--shadow-strong);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-content h3 {
+    color: var(--danger);
+    font-size: var(--font-size-h2);
+    margin-bottom: var(--spacing-lg);
+    text-align: center;
+}
+
+.modal-content > p {
+    color: var(--text);
+    margin-bottom: var(--spacing-lg);
+    line-height: 1.6;
+    text-align: center;
+    font-size: 1rem;
+}
+
+.modal-info {
+    background: var(--accent);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-md);
+    margin: var(--spacing-lg) 0;
+    border-left: 4px solid var(--primary);
+}
+
+.modal-info p {
+    margin: var(--spacing-sm) 0;
+    color: var(--text);
+    text-align: left;
+    font-size: 1rem;
+}
+
+.modal-question {
+    font-weight: 600;
+    color: var(--text);
+    margin: var(--spacing-lg) 0 var(--spacing-lg) 0 !important;
+    text-align: center !important;
+    font-size: 1rem;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 25px;
+}
+
+.modal-actions .btn {
+    flex: 1;
+    min-width: 120px;
+    padding: 12px 20px;
+    font-size: 1rem;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .container {
+        padding: 20px;
+    }
+
+    .form-paciente {
+        padding: 25px;
+        min-height: 300px;
+    }
+
+    .header h1 {
+        font-size: 1.8rem;
+    }
+
+    .step-title {
+        font-size: 1.4rem;
+    }
+
+    .radio-group {
+        flex-direction: column;
+    }
+
+    .radio-label {
+        width: 100%;
+    }
+
+    .wizard-actions {
+        flex-direction: column;
+    }
+
+    .wizard-actions .btn {
+        width: 100%;
+        min-width: auto;
+        max-width: 100%;
+    }
+}
+
+/* Melhorias visuais */
+.form-group:last-child {
+    margin-bottom: 0;
+}
+
+/* Destaque para campos obrigatórios */
+.form-group label.required {
+    position: relative;
+}
+
+/* Loading state */
+button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Calculadora DPP - Ícone */
+.calculator-icon {
+    cursor: pointer;
+    font-size: 1.2em;
+    transition: transform 0.2s ease;
+    user-select: none;
+}
+
+.calculator-icon:hover {
+    transform: scale(1.1);
+}
+
+/* Tooltip da calculadora */
+.calculator-tooltip {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 10px;
+    z-index: 1000;
+    background: white;
+    border: 2px solid #4a90e2;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    padding: 20px;
+    max-width: 500px;
+    animation: fadeIn 0.3s ease;
+}
+
+.calculator-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 20px;
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 10px solid #4a90e2;
+}
+
+.calculator-tooltip::after {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 20px;
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 10px solid white;
+}
+
+.tooltip-content {
+    color: #333;
+    font-size: 0.95em;
+    line-height: 1.6;
+}
+
+.tooltip-content h3 {
+    margin-top: 0;
+    color: #4a90e2;
+    font-size: 1.1em;
+}
+
+.tooltip-content p {
+    margin: 10px 0;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Badge "Data Provável" */
+.dpp-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: #4a90e2;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    font-weight: 600;
+    animation: slideInRight 0.3s ease, fadeOut 0.3s ease 2.7s forwards;
+    box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
+    z-index: 10;
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}

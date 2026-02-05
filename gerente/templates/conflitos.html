@@ -1,0 +1,1634 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Pacientes - Conflitos de Sincronização</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='conflitos/css/style.css') }}">
+    <style id="custom-theme" type="text/css"></style>
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+    <style>
+        .firebase-status {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-online {
+            background: #28a745;
+        }
+
+        .status-offline {
+            background: #dc3545;
+        }
+
+        .status-warning {
+            background: #ffc107;
+        }
+
+        .firebase-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .btn-firebase {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95em;
+            transition: all 0.2s;
+        }
+
+        .btn-sync {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-sync:hover {
+            background: #0056b3;
+        }
+
+        .btn-sync:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .btn-start {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-start:hover {
+            background: #218838;
+        }
+
+        .btn-stop {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-stop:hover {
+            background: #c82333;
+        }
+
+        .firebase-info {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .last-sync {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        .conflict-badge {
+            display: inline-block;
+            background: #dc3545;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+
+        .vps-data-list table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .vps-data-list th {
+            background: #f8f9fa;
+            font-weight: 600;
+            text-align: left;
+            padding: 12px;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .vps-data-list td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .vps-data-list tr:hover {
+            background: #f8f9fa;
+        }
+
+        .vps-tab-content {
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Top Bar Fixa -->
+    <nav class="topbar">
+        <div class="topbar-content">
+            <div class="topbar-logo">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo Sistema Gestão Gestante">
+                <h3>Gestão de Pacientes</h3>
+            </div>
+            <div class="topbar-links">
+                <!-- Gaveta: Pacientes -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👥 Pacientes
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/" class="topbar-dropdown-item">📊 Indicadores</a>
+                        <a href="/novo_paciente" class="topbar-dropdown-item">➕ Novo Paciente</a>
+                        <a href="/pacientes" class="topbar-dropdown-item">📋 Lista de Pacientes</a>
+                        <a href="/exportar" class="topbar-dropdown-item">💾 Exportar</a>
+                    </div>
+                </div>
+
+                <!-- Gaveta: Profissionais -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👨‍⚕️ Profissionais
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/agendamentos" class="topbar-dropdown-item">📅 Agendamentos</a>
+                        <a href="#" class="topbar-dropdown-item"
+                            onclick="alert('Funcionalidade em desenvolvimento'); return false;">👨‍⚕️ Lista de
+                            Profissionais</a>
+                        <a href="#" class="topbar-dropdown-item"
+                            onclick="alert('Funcionalidade em desenvolvimento'); return false;">📊 Relatórios</a>
+                    </div>
+                </div>
+
+                <!-- Gaveta: Configurações -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        ⚙️ Configurações
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/bd" class="topbar-dropdown-item">🗄️ Banco de Dados</a>
+                        <a href="/conflitos" class="topbar-dropdown-item active">⚠️ Conflitos <span id="conflitos-badge"
+                                class="badge-contador" style="display: none;">0</span></a>
+                        <a href="#" class="topbar-dropdown-item"
+                            onclick="alert('Funcionalidade em desenvolvimento'); return false;">🔔 Notificações</a>
+                        <a href="/aparencia" class="topbar-dropdown-item">🎨 Aparência</a>
+                    </div>
+                </div>
+
+                <!-- Ajuda (não é gaveta) -->
+                <a href="/ajuda" class="topbar-link btn-ajuda">
+                    ❓ Ajuda
+                </a>
+                <span id="version-info" class="topbar-version">v{{ version }}</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>⚠️ Conflitos de Sincronização</h1>
+            <p>Gerencie conflitos entre o banco local e a nuvem (Firebase).</p>
+        </div>
+
+        <!-- Status do Firebase -->
+        <div class="firebase-status">
+            <h3>🔥 Sincronização Firebase</h3>
+            <div class="firebase-info">
+                <div id="firebaseStatusText">
+                    <span class="status-indicator status-offline"></span>
+                    <strong>Status:</strong> <span id="syncStatus">Verificando...</span>
+                </div>
+                <div class="last-sync" id="lastSyncTime"></div>
+                <div id="conflitosInfo" style="margin-top: 10px; color: #dc3545; font-weight: bold;"></div>
+            </div>
+
+            <div class="firebase-controls">
+                <button class="btn-firebase btn-sync" id="btnSyncManual" onclick="sincronizarManual()">
+                    🔄 Sincronizar Agora
+                </button>
+                <button class="btn-firebase btn-start" id="btnIniciarSync" onclick="iniciarSync()">
+                    ▶️ Iniciar Auto-Sync
+                </button>
+                <button class="btn-firebase btn-stop" id="btnPararSync" onclick="pararSync()">
+                    ⏹️ Parar Auto-Sync
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading -->
+        <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <p id="loadingMessage">Carregando conflitos...</p>
+            </div>
+        </div>
+
+        <!-- Mensagem de Status -->
+        <div id="statusMessage" class="status-message" style="display: none;"></div>
+
+        <!-- Estatísticas -->
+        <div class="conflitos-stats">
+            <div class="stat-card">
+                <div class="stat-value" id="totalConflitos">0</div>
+                <div class="stat-label">Total de Conflitos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="pacientesConflito">0</div>
+                <div class="stat-label">Pacientes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="agendamentosConflito">0</div>
+                <div class="stat-label">Agendamentos</div>
+            </div>
+        </div>
+
+        <!-- Gerenciamento de Dados VPS -->
+        <div class="conflitos-container" id="sectionDadosVPS"
+            style="border-top: 2px solid #17a2b8; padding-top: 20px; margin-top: 30px; display: none;">
+            <h2 style="color: #17a2b8;">
+                ☁️ Gerenciamento de Dados do VPS
+                <button class="btn-firebase btn-sync" onclick="carregarDadosVPS()"
+                    style="margin-left: 15px; font-size: 0.8em;">
+                    🔄 Atualizar
+                </button>
+            </h2>
+            <p style="color: #666; font-size: 0.9em; margin-bottom: 15px;">
+                Visualize e gerencie os dados armazenados no servidor VPS. Você pode baixar dados novos, enviar dados
+                locais ou deletar dados do servidor.
+            </p>
+
+            <!-- Tabs para diferentes categorias -->
+            <div style="margin-bottom: 20px;">
+                <button class="btn-firebase" onclick="mostrarTabVPS('novos')" id="tabNovos"
+                    style="background: #28a745;">
+                    📥 Novos no VPS
+                </button>
+                <button class="btn-firebase" onclick="mostrarTabVPS('atualizados')" id="tabAtualizados"
+                    style="background: #ffc107; color: #000;">
+                    🔄 Atualizados no VPS
+                </button>
+                <button class="btn-firebase" onclick="mostrarTabVPS('locais')" id="tabLocais"
+                    style="background: #007bff;">
+                    📤 Apenas Locais
+                </button>
+            </div>
+
+            <!-- Novos no VPS -->
+            <div id="vpsNovos" class="vps-tab-content" style="display: none;">
+                <h3 style="color: #28a745;">📥 Dados Novos no VPS (não existem localmente)</h3>
+                <p style="color: #666; font-size: 0.9em; margin-bottom: 10px;">
+                    Estes dados existem no VPS mas não estão no seu banco de dados local. Você pode baixá-los.
+                </p>
+
+                <div style="margin-bottom: 20px;">
+                    <h4>Pacientes Novos</h4>
+                    <div id="vpsNovosPacientesList" class="vps-data-list"></div>
+                </div>
+
+                <div>
+                    <h4>Agendamentos Novos</h4>
+                    <div id="vpsNovosAgendamentosList" class="vps-data-list"></div>
+                </div>
+
+                <div style="margin-top: 15px; text-align: right;">
+                    <button class="btn-firebase" onclick="baixarSelecionadosVPS('novos')"
+                        style="background: #28a745; color: white;">
+                        ⬇️ Baixar Selecionados
+                    </button>
+                </div>
+            </div>
+
+            <!-- Atualizados no VPS -->
+            <div id="vpsAtualizados" class="vps-tab-content" style="display: none;">
+                <h3 style="color: #ffc107;">🔄 Dados Atualizados no VPS (versão mais recente)</h3>
+                <p style="color: #666; font-size: 0.9em; margin-bottom: 10px;">
+                    Estes dados existem tanto localmente quanto no VPS, mas a versão do VPS é mais recente.
+                </p>
+
+                <div style="margin-bottom: 20px;">
+                    <h4>Pacientes Atualizados</h4>
+                    <div id="vpsAtualizadosPacientesList" class="vps-data-list"></div>
+                </div>
+
+                <div>
+                    <h4>Agendamentos Atualizados</h4>
+                    <div id="vpsAtualizadosAgendamentosList" class="vps-data-list"></div>
+                </div>
+
+                <div style="margin-top: 15px; text-align: right;">
+                    <button class="btn-firebase" onclick="baixarSelecionadosVPS('atualizados')"
+                        style="background: #ffc107; color: #000;">
+                        ⬇️ Baixar Selecionados
+                    </button>
+                </div>
+            </div>
+
+            <!-- Apenas Locais -->
+            <div id="vpsLocais" class="vps-tab-content" style="display: none;">
+                <h3 style="color: #007bff;">📤 Dados Apenas Locais (não estão no VPS)</h3>
+                <p style="color: #666; font-size: 0.9em; margin-bottom: 10px;">
+                    Estes dados existem apenas localmente e não foram enviados ao VPS. Você pode enviá-los ou deletá-los
+                    do VPS.
+                </p>
+
+                <div style="margin-bottom: 20px;">
+                    <h4>Pacientes Locais</h4>
+                    <div id="vpsLocaisPacientesList" class="vps-data-list"></div>
+                </div>
+
+                <div>
+                    <h4>Agendamentos Locais</h4>
+                    <div id="vpsLocaisAgendamentosList" class="vps-data-list"></div>
+                </div>
+
+                <div style="margin-top: 15px; text-align: right;">
+                    <button class="btn-firebase" onclick="enviarSelecionadosVPS()"
+                        style="background: #007bff; color: white;">
+                        ⬆️ Enviar Selecionados ao VPS
+                    </button>
+                    <button class="btn-firebase" onclick="deletarSelecionadosVPS()"
+                        style="background: #dc3545; color: white; margin-left: 10px;">
+                        🗑️ Deletar Selecionados do VPS
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conflitos Locais (P2P) -->
+        <div class="conflitos-container" id="sectionConflitosLocais"
+            style="border-top: 2px solid #6f42c1; padding-top: 20px; margin-top: 30px; display: none;">
+            <h2 style="color: #6f42c1;">
+                🖥️ Conflitos no Banco de Dados Local
+                <span id="badgeLocais" class="conflict-badge" style="background: #6f42c1; display: none;">0</span>
+            </h2>
+            <p style="color: #666; font-size: 0.9em; margin-bottom: 15px;">
+                Estes registros foram marcados como "Conflito" durante uma sincronização P2P (entre computadores).
+                <br>Você deve revisá-los e marcá-los como resolvidos.
+            </p>
+            <div id="conflitosLocaisList" class="conflitos-list">
+                <!-- Inserido via JS -->
+            </div>
+        </div>
+
+        <!-- Gráfico de Taxa de Transferência -->
+        <div class="card" style="margin-bottom: 20px;">
+            <div class="card-header">
+                <!-- Lista de Conflitos -->
+                <div class="conflitos-container" id="lista-conflitos-container" style="display: none;">
+                    <h2 id="tituloPacientes">
+                        Pacientes com Conflito
+                        <span id="badgePacientes" class="conflict-badge" style="display: none;">0</span>
+                    </h2>
+                    <div id="pacientesConflitoList" class="conflitos-list">
+                        <p style="color: #666; padding: 20px; text-align: center;">Carregando conflitos...</p>
+                    </div>
+
+                    <h2 id="tituloAgendamentos">
+                        Agendamentos com Conflito
+                        <span id="badgeAgendamentos" class="conflict-badge" style="display: none;">0</span>
+                    </h2>
+                    <div id="agendamentosConflitoList" class="conflitos-list">
+                        <p style="color: #666; padding: 20px; text-align: center;">Carregando conflitos...</p>
+                    </div>
+
+                    <div id="semConflitos" class="sem-conflitos" style="display: none;">
+                        <p>✅ Nenhum conflito pendente! Todos os registros estão sincronizados.</p>
+                    </div>
+                </div>
+
+                <!-- Seção: Itens Ignorados na Importação (Temporários - 5 dias) -->
+                <div class="conflitos-container" id="itensIgnoradosContainer"
+                    style="margin-top: 40px; border-top: 2px solid #e74c3c; padding-top: 30px;">
+                    <h2>🗑️ Itens Ignorados na Importação <span style="font-size: 0.6em; color: #e74c3c;">(Temporário -
+                            5
+                            dias)</span></h2>
+                    <p style="color: #666; font-size: 0.9em; margin-bottom: 15px;">
+                        Pacientes que foram ignorados durante a importação e podem ser recuperados ou editados.
+                        <strong style="color: #e74c3c;">Expiram automaticamente após 5 dias.</strong>
+                    </p>
+
+                    <div id="itensIgnoradosList" class="conflitos-list">
+                        <p style="color: #666; padding: 20px; text-align: center;">Carregando itens ignorados...</p>
+                    </div>
+
+                    <div id="semItensIgnorados" class="sem-conflitos" style="display: none;">
+                        <p>✅ Nenhum item ignorado pendente.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal de Comparação -->
+            <div id="comparacaoModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>🔍 Comparar Versões</h2>
+                        <button class="modal-close" onclick="fecharModalComparacao()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="comparacaoContent">
+                            <!-- Conteúdo de comparação será inserido aqui -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <script src="{{ url_for('static', filename='home/js/theme-manager.js') }}"></script>
+            <script src="{{ url_for('static', filename='conflitos/js/main.js') }}"></script>
+            <script>
+                // Variáveis globais
+                let conflitosData = null;
+                let conflitosLocaisData = null;
+                let syncRunning = false;
+
+                // Suprimir erros de extensões do navegador (Copilot, etc.)
+                window.addEventListener('error', function (e) {
+                    if (e.message && (
+                        e.message.includes('message channel closed') ||
+                        e.message.includes('contentLogger') ||
+                        e.message.includes('chrome.runtime') ||
+                        e.message.includes('browser.runtime')
+                    )) {
+                        e.preventDefault();
+                        return false;
+                    }
+                });
+
+                window.addEventListener('unhandledrejection', function (e) {
+                    if (e.reason && (
+                        e.reason.message && (
+                            e.reason.message.includes('message channel closed') ||
+                            e.reason.message.includes('contentLogger')
+                        )
+                    )) {
+                        e.preventDefault();
+                        return false;
+                    }
+                });
+
+                // Carregar versão do sistema
+                async function carregarVersao() {
+                    try {
+                        const response = await fetch('/api/version');
+                        const data = await response.json();
+                        if (data.success) {
+                            const versionElement = document.getElementById('version-info');
+                            if (versionElement) {
+                                versionElement.textContent = `v${data.version}`;
+                                versionElement.title = `Build: ${data.build_date}`;
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Erro ao carregar versão:', error);
+                    }
+                }
+
+                // Carregar status do Firebase
+                async function carregarStatusFirebase() {
+                    try {
+                        const response = await fetch('/api/vps/sync/status');
+                        const data = await response.json();
+
+                        if (data.success) {
+                            syncRunning = data.sync_running;
+                            atualizarUIStatus(data);
+
+                            // Se tem conflitos, carrega lista
+                            carregarTodosConflitos();
+                        }
+                    } catch (error) {
+                        console.warn('Erro de conectividade com o servidor Gerente:', error);
+                        const statusEl = document.getElementById('syncStatus');
+                        if (statusEl) {
+                            statusEl.textContent = 'Servidor Offline ou Erro de Rede';
+                            statusEl.style.color = 'red';
+                        }
+                    }
+                }
+
+                // Atualizar UI do status
+                function atualizarUIStatus(data) {
+                    const statusEl = document.getElementById('syncStatus');
+                    const indicator = document.querySelector('.status-indicator');
+                    const lastSyncEl = document.getElementById('lastSyncTime');
+                    const conflitosInfoEl = document.getElementById('conflitosInfo');
+
+                    if (data.sync_running) {
+                        statusEl.textContent = 'Sincronização automática ativa (30 min)';
+                        indicator.className = 'status-indicator status-online';
+                    } else {
+                        statusEl.textContent = 'Sincronização parada';
+                        indicator.className = 'status-indicator status-warning';
+                    }
+
+                    if (data.conflitos && data.conflitos.timestamp) {
+                        const dataSync = new Date(data.conflitos.timestamp);
+                        lastSyncEl.textContent = `Última verificação: ${dataSync.toLocaleString('pt-BR')}`;
+                    }
+
+                    // Atualiza badge no menu (somando firebase e locais)
+                    atualizarBadgesTotal();
+                }
+
+                function atualizarBadgesTotal() {
+                    const conflitosInfoEl = document.getElementById('conflitosInfo');
+                    const badge = document.getElementById('conflitos-badge');
+
+                    let totalFirebase = conflitosData ? (conflitosData.total || 0) : 0;
+                    let totalLocais = conflitosLocaisData ? (conflitosLocaisData.total || 0) : 0;
+                    let total = totalFirebase + totalLocais;
+
+                    if (badge) {
+                        if (total > 0) {
+                            badge.textContent = total;
+                            badge.style.display = 'inline-block';
+                            if (conflitosInfoEl) {
+                                conflitosInfoEl.textContent = `⚠️ ${total} conflito(s) pendente(s) para resolução`;
+                            }
+                        } else {
+                            badge.style.display = 'none';
+                            if (conflitosInfoEl) {
+                                conflitosInfoEl.textContent = '';
+                            }
+                        }
+                    }
+                }
+
+                // Carregar todos os conflitos (Firebase e Local)
+                async function carregarTodosConflitos() {
+                    const loadingOverlay = document.getElementById('loadingOverlay');
+                    loadingOverlay.style.display = 'flex';
+
+                    try {
+                        // Carregar Firebase (Cloud)
+                        const respCloud = await fetch('/api/vps/conflitos');
+                        const dataCloud = await respCloud.json();
+
+                        if (dataCloud.success) {
+                            conflitosData = dataCloud;
+                            renderizarConflitos(dataCloud);
+                        } else {
+                            mostrarMensagem('Erro ao carregar conflitos cloud: ' + dataCloud.message, 'error');
+                        }
+
+                        // Carregar Local API
+                        const respLocal = await fetch('/api/sync/conflitos');
+                        const dataLocal = await respLocal.json();
+
+                        if (dataLocal.success) {
+                            conflitosLocaisData = dataLocal;
+                            renderizarConflitosLocais(dataLocal);
+                        } else {
+                            mostrarMensagem('Erro ao carregar conflitos locais: ' + dataLocal.message, 'error');
+                        }
+
+                        atualizarEstatisticas(dataCloud, dataLocal);
+                        atualizarBadgesTotal();
+
+                    } catch (error) {
+                        console.error('Erro ao carregar conflitos:', error);
+                        mostrarMensagem('Erro ao carregar conflitos', 'error');
+                    } finally {
+                        loadingOverlay.style.display = 'none';
+                    }
+                }
+
+                // alias antigo para manter compatibilidade se algo chamar
+                const carregarConflitosFirebase = carregarTodosConflitos;
+
+                // Renderizar conflitos na tela (Cloud)
+                function renderizarConflitos(data) {
+                    const pacientesContainer = document.getElementById('pacientesConflitoList');
+                    const agendamentosContainer = document.getElementById('agendamentosConflitoList');
+                    const semConflitos = document.getElementById('semConflitos');
+                    const badgePacientes = document.getElementById('badgePacientes');
+                    const badgeAgendamentos = document.getElementById('badgeAgendamentos');
+
+                    const pacientes = data.pacientes || [];
+                    const agendamentos = data.agendamentos || [];
+
+                    // Atualiza badges
+                    if (badgePacientes) {
+                        if (pacientes.length > 0) {
+                            badgePacientes.textContent = pacientes.length;
+                            badgePacientes.style.display = 'inline-block';
+                        } else {
+                            badgePacientes.style.display = 'none';
+                        }
+                    }
+
+                    if (badgeAgendamentos) {
+                        if (agendamentos.length > 0) {
+                            badgeAgendamentos.textContent = agendamentos.length;
+                            badgeAgendamentos.style.display = 'inline-block';
+                        } else {
+                            badgeAgendamentos.style.display = 'none';
+                        }
+                    }
+
+                    // Se não há conflitos Cloud
+                    if (pacientes.length === 0 && agendamentos.length === 0) {
+                        pacientesContainer.innerHTML = '<p style="color: #666; padding: 20px; text-align: center;">Nenhum paciente com conflito na nuvem.</p>';
+                        agendamentosContainer.innerHTML = '<p style="color: #666; padding: 20px; text-align: center;">Nenhum agendamento com conflito na nuvem.</p>';
+                        // A visibilidade do 'semConflitos' agora depende também do local, checado depois
+                    } else {
+                        // Renderizar pacientes
+                        pacientesContainer.innerHTML = '';
+                        pacientes.forEach(paciente => {
+                            const item = criarItemConflitoPaciente(paciente);
+                            pacientesContainer.appendChild(item);
+                        });
+
+                        // Renderizar agendamentos
+                        agendamentosContainer.innerHTML = '';
+                        agendamentos.forEach(agendamento => {
+                            const item = criarItemConflitoAgendamento(agendamento);
+                            agendamentosContainer.appendChild(item);
+                        });
+                    }
+                }
+
+                // Renderizar Conflitos Locais (P2P)
+                function renderizarConflitosLocais(data) {
+                    const container = document.getElementById('conflitosLocaisList');
+                    const badge = document.getElementById('badgeLocais');
+                    const section = document.getElementById('sectionConflitosLocais'); // Vamos criar este ID no HTML
+
+                    const pacientes = data.pacientes || [];
+                    const agendamentos = data.agendamentos || [];
+                    const total = pacientes.length + agendamentos.length;
+
+                    if (badge) {
+                        if (total > 0) {
+                            badge.textContent = total;
+                            badge.style.display = 'inline-block';
+                            if (section) section.style.display = 'block';
+                        } else {
+                            badge.style.display = 'none';
+                            if (section) section.style.display = 'none';
+                        }
+                    }
+
+                    if (!container) return;
+                    container.innerHTML = '';
+
+                    if (total === 0) {
+                        container.innerHTML = '<p style="color: #666;">Nenhum conflito local de banco de dados.</p>';
+                        return;
+                    }
+
+                    // Pacientes Locais
+                    pacientes.forEach(p => {
+                        const div = document.createElement('div');
+                        div.className = 'conflito-item';
+                        div.style.borderLeft = '4px solid #6f42c1'; // Roxo para local
+
+                        div.innerHTML = `
+                    <div class="conflito-header">
+                        <div class="conflito-title">👤 ${p.identificacao?.nome_gestante || 'Paciente Sem Nome'} (Local)</div>
+                        <div class="conflito-actions">
+                            <button class="btn-resolver btn-manter-local" onclick="resolverConflitoLocal('paciente', '${p.id}')">
+                                ✅ Marcar como Resolvido
+                            </button>
+                        </div>
+                    </div>
+                    <div class="conflito-info">
+                        <div><strong>Status:</strong> Marcado como 'conflito' no banco local.</div>
+                        <div><strong>ID:</strong> ${p.id}</div>
+                        <div><strong>Última Modificação:</strong> ${p.ultima_modificacao || '-'}</div>
+                    </div>
+                `;
+                        container.appendChild(div);
+                    });
+
+                    // Agendamentos Locais
+                    agendamentos.forEach(a => {
+                        const div = document.createElement('div');
+                        div.className = 'conflito-item';
+                        div.style.borderLeft = '4px solid #6f42c1';
+
+                        div.innerHTML = `
+                    <div class="conflito-header">
+                        <div class="conflito-title">📅 Agendamento ${a.id.substring(0, 8)}... (Local)</div>
+                        <div class="conflito-actions">
+                            <button class="btn-resolver btn-manter-local" onclick="resolverConflitoLocal('agendamento', '${a.id}')">
+                                ✅ Marcar como Resolvido
+                            </button>
+                        </div>
+                    </div>
+                    <div class="conflito-info">
+                        <div><strong>Status:</strong> Marcado como 'conflito' no banco local.</div>
+                        <div><strong>Data:</strong> ${a.data_consulta} ${a.hora_consulta}</div>
+                    </div>
+                `;
+                        container.appendChild(div);
+                    });
+
+                    // Atualizar "Sem Conflitos" geral
+                    verificarSeHaAlgumConflito();
+                }
+
+                function verificarSeHaAlgumConflito() {
+                    const semConflitos = document.getElementById('semConflitos');
+
+                    let totalCloud = 0;
+                    if (conflitosData) {
+                        totalCloud = (conflitosData.pacientes?.length || 0) + (conflitosData.agendamentos?.length || 0);
+                    }
+
+                    let totalLocal = 0;
+                    if (conflitosLocaisData) {
+                        totalLocal = (conflitosLocaisData.pacientes?.length || 0) + (conflitosLocaisData.agendamentos?.length || 0);
+                    }
+
+                    if (totalCloud === 0 && totalLocal === 0) {
+                        semConflitos.style.display = 'block';
+                    } else {
+                        semConflitos.style.display = 'none';
+                    }
+                }
+
+                // Criar item de conflito de paciente
+                function criarItemConflitoPaciente(paciente) {
+                    const div = document.createElement('div');
+                    div.className = 'conflito-item';
+
+                    const nome = getNomePaciente(paciente) || 'Sem nome';
+                    const tipoConflito = paciente.tipo_conflito || 'modificado';
+
+                    let tipoLabel = '';
+                    let borderColor = '';
+                    switch (tipoConflito) {
+                        case 'novo_cloud':
+                            tipoLabel = '🆕 Novo na Nuvem';
+                            borderColor = '#28a745';
+                            break;
+                        case 'modificado':
+                            tipoLabel = '📝 Modificado';
+                            borderColor = '#ffc107';
+                            break;
+                        case 'removido_cloud':
+                            tipoLabel = '🗑️ Removido na Nuvem';
+                            borderColor = '#dc3545';
+                            break;
+                        default:
+                            tipoLabel = '⚠️ Conflito';
+                            borderColor = '#6c757d';
+                    }
+
+                    div.style.borderLeft = `4px solid ${borderColor}`;
+
+                    div.innerHTML = `
+                <div class="conflito-header">
+                    <div class="conflito-title">👤 ${nome}</div>
+                    <div class="conflito-actions">
+                        <button class="btn-resolver btn-comparar" onclick="compararConflitoFirebase('paciente', '${paciente.id}')">
+                            🔍 Comparar
+                        </button>
+                        <button class="btn-resolver btn-manter-local" onclick="resolverConflitoFirebase('paciente', '${paciente.id}', 'manter_local')">
+                            💾 Manter Local
+                        </button>
+                        <button class="btn-resolver btn-aceitar-remoto" onclick="resolverConflitoFirebase('paciente', '${paciente.id}', 'usar_cloud')">
+                            ☁️ Usar Nuvem
+                        </button>
+                    </div>
+                </div>
+                <div class="conflito-info">
+                    <div><strong>Tipo:</strong> <span style="color: ${borderColor}">${tipoLabel}</span></div>
+                    ${paciente.diferencas && paciente.diferencas.length > 0 ?
+                            `<div><strong>Campos diferentes:</strong> ${paciente.diferencas.map(d => d.campo).join(', ')}</div>` : ''}
+                </div>
+            `;
+
+                    return div;
+                }
+
+                // Criar item de conflito de agendamento
+                function criarItemConflitoAgendamento(agendamento) {
+                    const div = document.createElement('div');
+                    div.className = 'conflito-item';
+
+                    const id = agendamento.id || 'sem-id';
+                    const tipoConflito = agendamento.tipo_conflito || 'modificado';
+
+                    let tipoLabel = '';
+                    let borderColor = '';
+                    switch (tipoConflito) {
+                        case 'novo_cloud':
+                            tipoLabel = '🆕 Novo na Nuvem';
+                            borderColor = '#28a745';
+                            break;
+                        case 'modificado':
+                            tipoLabel = '📝 Modificado';
+                            borderColor = '#ffc107';
+                            break;
+                        case 'removido_cloud':
+                            tipoLabel = '🗑️ Removido na Nuvem';
+                            borderColor = '#dc3545';
+                            break;
+                        default:
+                            tipoLabel = '⚠️ Conflito';
+                            borderColor = '#6c757d';
+                    }
+
+                    div.style.borderLeft = `4px solid ${borderColor}`;
+
+                    div.innerHTML = `
+                <div class="conflito-header">
+                    <div class="conflito-title">📅 Agendamento ${id.substring(0, 8)}...</div>
+                    <div class="conflito-actions">
+                        <button class="btn-resolver btn-comparar" onclick="compararConflitoFirebase('agendamento', '${id}')">
+                            🔍 Comparar
+                        </button>
+                        <button class="btn-resolver btn-manter-local" onclick="resolverConflitoFirebase('agendamento', '${id}', 'manter_local')">
+                            💾 Manter Local
+                        </button>
+                        <button class="btn-resolver btn-aceitar-remoto" onclick="resolverConflitoFirebase('agendamento', '${id}', 'usar_cloud')">
+                            ☁️ Usar Nuvem
+                        </button>
+                    </div>
+                </div>
+                <div class="conflito-info">
+                    <div><strong>Tipo:</strong> <span style="color: ${borderColor}">${tipoLabel}</span></div>
+                    ${agendamento.diferencas && agendamento.diferencas.length > 0 ?
+                            `<div><strong>Campos diferentes:</strong> ${agendamento.diferencas.map(d => d.campo).join(', ')}</div>` : ''}
+                </div>
+            `;
+
+                    return div;
+                }
+
+                // Atualizar estatísticas
+                function atualizarEstatisticas(dataCloud, dataLocal) {
+                    const pacientesC = dataCloud?.pacientes || [];
+                    const agendamentosC = dataCloud?.agendamentos || [];
+
+                    const pacientesL = dataLocal?.pacientes || [];
+                    const agendamentosL = dataLocal?.agendamentos || [];
+
+                    const total = pacientesC.length + agendamentosC.length + pacientesL.length + agendamentosL.length;
+                    const totalPacientes = pacientesC.length + pacientesL.length;
+                    const totalAgendamentos = agendamentosC.length + agendamentosL.length;
+
+                    document.getElementById('totalConflitos').textContent = total;
+                    document.getElementById('pacientesConflito').textContent = totalPacientes;
+                    document.getElementById('agendamentosConflito').textContent = totalAgendamentos;
+                }
+
+                // Resolver conflito local P2P
+                async function resolverConflitoLocal(tipo, id) {
+                    const loadingOverlay = document.getElementById('loadingOverlay');
+                    loadingOverlay.style.display = 'flex';
+                    document.getElementById('loadingMessage').textContent = 'Resolvendo conflito local...';
+
+                    try {
+                        // Ação 'manter_local' basicamente reseta o status 'conflito' para 'ativo'
+                        const response = await fetch('/api/sync/conflitos/resolver', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                tipo: tipo,
+                                registro_id: id,
+                                acao: 'manter_local'
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            mostrarMensagem('Conflito local resolvido!', 'success');
+                            await carregarTodosConflitos(); // Recarrega tudo
+                        } else {
+                            mostrarMensagem('Erro ao resolver: ' + data.message, 'error');
+                        }
+                    } catch (error) {
+                        console.error('Erro ao resolver conflito local:', error);
+                        mostrarMensagem('Erro ao resolver conflito local', 'error');
+                    } finally {
+                        loadingOverlay.style.display = 'none';
+                    }
+                }
+
+                // Comparar conflito (mostrar modal)
+                async function compararConflitoFirebase(tipo, id) {
+                    const modal = document.getElementById('comparacaoModal');
+                    const content = document.getElementById('comparacaoContent');
+
+                    // Buscar dados do conflito
+                    const lista = tipo === 'paciente' ?
+                        (conflitosData?.pacientes || []) :
+                        (conflitosData?.agendamentos || []);
+
+                    const item = lista.find(i => i.id === id);
+                    if (!item) {
+                        mostrarMensagem('Conflito não encontrado', 'error');
+                        return;
+                    }
+
+                    // Criar tabela de comparação
+                    let html = `
+                <div style="margin-bottom: 20px;">
+                    <h3>${tipo === 'paciente' ? '👤 Paciente' : '📅 Agendamento'}: ${id}</h3>
+                    <p><strong>Tipo de conflito:</strong> ${item.tipo_conflito}</p>
+                </div>
+            `;
+
+                    if (item.diferencas && item.diferencas.length > 0) {
+                        html += `
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f8f9fa;">
+                                <th style="padding: 10px; border: 1px solid #dee2e6; text-align: left;">Campo</th>
+                                <th style="padding: 10px; border: 1px solid #dee2e6; text-align: left; color: #007bff;">Local</th>
+                                <th style="padding: 10px; border: 1px solid #dee2e6; text-align: left; color: #28a745;">Nuvem</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                        item.diferencas.forEach(diff => {
+                            html += `
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>${diff.campo}</strong></td>
+                            <td style="padding: 10px; border: 1px solid #dee2e6;">${diff.local || '(vazio)'}</td>
+                            <td style="padding: 10px; border: 1px solid #dee2e6;">${diff.cloud || '(vazio)'}</td>
+                        </tr>
+                    `;
+                        });
+
+                        html += '</tbody></table>';
+                    } else {
+                        html += '<p>Não há campos diferentes para mostrar.</p>';
+                    }
+
+                    html += `
+                <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="btn-resolver btn-manter-local" onclick="resolverConflitoFirebase('${tipo}', '${id}', 'manter_local'); fecharModalComparacao();">
+                        💾 Manter Local
+                    </button>
+                    <button class="btn-resolver btn-aceitar-remoto" onclick="resolverConflitoFirebase('${tipo}', '${id}', 'usar_cloud'); fecharModalComparacao();">
+                        ☁️ Usar Nuvem
+                    </button>
+                </div>
+            `;
+
+                    content.innerHTML = html;
+                    modal.style.display = 'flex';
+                }
+
+                // Resolver conflito
+                async function resolverConflitoFirebase(tipo, id, acao) {
+                    const loadingOverlay = document.getElementById('loadingOverlay');
+                    loadingOverlay.style.display = 'flex';
+                    document.getElementById('loadingMessage').textContent = 'Resolvendo conflito...';
+
+                    try {
+                        const response = await fetch('/api/vps/conflitos/resolver', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                tipo: tipo,
+                                id: id,
+                                acao: acao
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            mostrarMensagem('Conflito resolvido com sucesso!', 'success');
+                            // Recarrega lista
+                            await carregarConflitosFirebase();
+                            await carregarStatusFirebase();
+                        } else {
+                            mostrarMensagem('Erro ao resolver conflito: ' + data.message, 'error');
+                        }
+                    } catch (error) {
+                        console.error('Erro ao resolver conflito:', error);
+                        mostrarMensagem('Erro ao resolver conflito', 'error');
+                    } finally {
+                        loadingOverlay.style.display = 'none';
+                    }
+                }
+
+                // Fechar modal de comparação
+                function fecharModalComparacao() {
+                    const modal = document.getElementById('comparacaoModal');
+                    modal.style.display = 'none';
+                }
+
+                // Sincronizar manualmente
+                async function sincronizarManual() {
+                    const btn = document.getElementById('btnSyncManual');
+                    btn.disabled = true;
+                    btn.textContent = '⏳ Sincronizando...';
+
+                    try {
+                        const response = await fetch('/api/vps/sync/iniciar', {
+                            method: 'POST'
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            mostrarMensagem(data.message, 'success');
+                            await carregarConflitosFirebase();
+                            await carregarStatusFirebase();
+                        } else {
+                            mostrarMensagem('Erro: ' + data.message, 'error');
+                        }
+                    } catch (error) {
+                        console.error('Erro ao sincronizar:', error);
+                        mostrarMensagem('Erro ao sincronizar', 'error');
+                    } finally {
+                        btn.disabled = false;
+                        btn.textContent = '🔄 Sincronizar Agora';
+                    }
+                }
+
+                // Iniciar sincronização automática
+                async function iniciarSync() {
+                    try {
+                        const response = await fetch('/api/vps/sync/iniciar', {
+                            method: 'POST'
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            mostrarMensagem(data.message, 'success');
+                            await carregarStatusFirebase();
+                        } else {
+                            mostrarMensagem('Erro: ' + data.message, 'error');
+                        }
+                    } catch (error) {
+                        console.error('Erro ao iniciar sync:', error);
+                        mostrarMensagem('Erro ao iniciar sincronização', 'error');
+                    }
+                }
+
+                // Parar sincronização automática
+                async function pararSync() {
+                    try {
+                        const response = await fetch('/api/vps/sync/parar', {
+                            method: 'POST'
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            mostrarMensagem(data.message, 'success');
+                            await carregarStatusFirebase();
+                        } else {
+                            mostrarMensagem('Erro: ' + data.message, 'error');
+                        }
+                    } catch (error) {
+                        console.error('Erro ao parar sync:', error);
+                        mostrarMensagem('Erro ao parar sincronização', 'error');
+                    }
+                }
+
+                // Mostrar mensagem de status
+                function mostrarMensagem(mensagem, tipo) {
+                    const statusDiv = document.getElementById('statusMessage');
+                    statusDiv.textContent = mensagem;
+                    statusDiv.className = `status-message status-${tipo}`;
+                    statusDiv.style.display = 'block';
+
+                    setTimeout(() => {
+                        statusDiv.style.display = 'none';
+                    }, 5000);
+                }
+
+                // Função para configurar os dropdowns do topbar
+                function configurarDropdownsTopbar() {
+                    const dropdowns = document.querySelectorAll('.topbar-dropdown');
+
+                    dropdowns.forEach(dropdown => {
+                        const btn = dropdown.querySelector('.topbar-dropdown-btn');
+                        const content = dropdown.querySelector('.topbar-dropdown-content');
+
+                        if (!btn || !content) return;
+
+                        btn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            dropdowns.forEach(other => {
+                                if (other !== dropdown) other.classList.remove('active');
+                            });
+                            dropdown.classList.toggle('active');
+                        });
+                    });
+
+                    document.addEventListener('click', (e) => {
+                        if (!e.target.closest('.topbar-dropdown')) {
+                            dropdowns.forEach(d => d.classList.remove('active'));
+                        }
+                    });
+
+                    document.querySelectorAll('.topbar-dropdown-item').forEach(item => {
+                        item.addEventListener('click', () => {
+                            dropdowns.forEach(d => d.classList.remove('active'));
+                        });
+                    });
+
+                    marcarItemAtivoTopbar();
+                }
+
+                function marcarItemAtivoTopbar() {
+                    const currentPath = window.location.pathname;
+                    document.querySelectorAll('.topbar-dropdown-item').forEach(item => {
+                        item.classList.remove('active');
+                        const href = item.getAttribute('href');
+                        if (href === currentPath || (currentPath === '/' && href === '/')) {
+                            item.classList.add('active');
+                        }
+                    });
+                }
+
+                // Carregar itens ignorados da importação
+                async function carregarItensIgnorados() {
+                    const container = document.getElementById('itensIgnoradosList');
+                    const semItens = document.getElementById('semItensIgnorados');
+
+                    if (!container) return;
+
+                    try {
+                        const response = await fetch('/api/itens_ignorados/listar');
+                        const data = await response.json();
+
+                        if (!data.success) {
+                            container.innerHTML = `<p style="color: #c62828; padding: 20px; text-align: center;">Erro ao carregar itens ignorados.</p>`;
+                            return;
+                        }
+
+                        const itens = data.itens || [];
+
+                        if (itens.length === 0) {
+                            container.innerHTML = '';
+                            semItens.style.display = 'block';
+                            return;
+                        }
+
+                        semItens.style.display = 'none';
+                        container.innerHTML = '';
+
+                        itens.forEach(item => {
+                            const div = document.createElement('div');
+                            div.className = 'conflito-item';
+                            div.style.borderLeft = '4px solid #e74c3c';
+
+                            // Parse dados do backup
+                            let pacienteNome = 'Nome não disponível';
+                            let pacienteUnidade = '';
+                            try {
+                                const dados = JSON.parse(item.dados_backup || '{}');
+                                pacienteNome = getNomePaciente(dados.identificacao) || 'Nome não disponível';
+                                pacienteUnidade = dados.identificacao?.unidade_saude || '';
+                            } catch (e) {
+                                console.warn('Erro ao parsear dados do backup:', e);
+                            }
+
+                            const diasRestantes = item.dias_restantes || 0;
+                            const expirado = item.expirado || diasRestantes <= 0;
+
+                            div.innerHTML = `
+                        <div class="conflito-header">
+                            <div class="conflito-title">👤 ${pacienteNome}</div>
+                            <div class="conflito-actions">
+                                <button class="btn-resolver btn-aceitar-remoto" onclick="restaurarItemIgnorado('${item.id}')">
+                                    🔄 Restaurar
+                                </button>
+                                <button class="btn-resolver btn-comparar" onclick="editarItemIgnorado('${item.id}')">
+                                    ✏️ Editar
+                                </button>
+                                <button class="btn-resolver btn-manter-local" onclick="removerItemIgnorado('${item.id}')">
+                                    🗑️ Remover
+                                </button>
+                            </div>
+                        </div>
+                        <div class="conflito-info">
+                            <div><strong>Unidade:</strong> ${pacienteUnidade || 'Não informada'}</div>
+                            <div><strong>Origem:</strong> ${item.origem_backup || 'Importação manual'}</div>
+                            <div><strong>Data:</strong> ${new Date(item.data_criacao).toLocaleString('pt-BR')}</div>
+                            <div><strong>Motivo:</strong> ${item.motivo || 'Não informado'}</div>
+                            <div style="color: ${expirado ? '#c62828' : '#f39c12'}; font-weight: bold;">
+                                ${expirado ? '⚠️ EXPIRADO' : `⏰ Expira em ${diasRestantes} dia(s)`}
+                            </div>
+                        </div>
+                    `;
+                            container.appendChild(div);
+                        });
+                    } catch (error) {
+                        console.error('Erro ao carregar itens ignorados:', error);
+                        container.innerHTML = '<p style="color: #c62828; padding: 20px; text-align: center;">Erro ao carregar itens ignorados.</p>';
+                    }
+                }
+
+                // Restaurar item ignorado (mover de volta para importação)
+                async function restaurarItemIgnorado(itemId) {
+                    if (!confirm('Deseja restaurar este paciente? Ele será adicionado ao banco de dados.')) {
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(`/api/itens_ignorados/restaurar/${itemId}`, {
+                            method: 'POST'
+                        });
+                        const data = await response.json();
+
+                        if (data.success) {
+                            alert('Paciente restaurado com sucesso!');
+                            carregarItensIgnorados();
+                        } else {
+                            alert('Erro ao restaurar: ' + data.message);
+                        }
+                    } catch (error) {
+                        console.error('Erro:', error);
+                        alert('Erro ao restaurar item');
+                    }
+                }
+
+                // Editar item ignorado
+                async function editarItemIgnorado(itemId) {
+                    // Redirecionar para página de edição com o item_id como parâmetro
+                    window.location.href = `/novo_paciente?item_ignorado=${itemId}`;
+                }
+
+                // Remover item ignorado permanentemente
+                async function removerItemIgnorado(itemId) {
+                    if (!confirm('Tem certeza que deseja remover permanentemente este item?\nEsta ação não pode ser desfeita.')) {
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(`/api/itens_ignorados/remover/${itemId}`, {
+                            method: 'DELETE'
+                        });
+                        const data = await response.json();
+
+                        if (data.success) {
+                            alert('Item removido com sucesso!');
+                            carregarItensIgnorados();
+                        } else {
+                            alert('Erro ao remover: ' + data.message);
+                        }
+                    } catch (error) {
+                        console.error('Erro:', error);
+                        alert('Erro ao remover item');
+                    }
+                }
+
+                // Obter nome do paciente (lida com estrutura aninhada)
+                function getNomePaciente(paciente) {
+                    if (!paciente) return 'N/A';
+                    if (typeof paciente === 'string') return paciente;
+                    if (paciente.nome_gestante) return paciente.nome_gestante;
+                    if (paciente.identificacao && paciente.identificacao.nome_gestante) {
+                        return paciente.identificacao.nome_gestante;
+                    }
+                    return 'N/A';
+                }
+
+                // Obter unidade de saúde
+                function getUnidadeSaude(paciente) {
+                    if (!paciente) return 'N/A';
+                    if (paciente.unidade_saude) return paciente.unidade_saude;
+                    if (paciente.identificacao && paciente.identificacao.unidade_saude) {
+                        return paciente.identificacao.unidade_saude;
+                    }
+                    return 'N/A';
+                }
+
+                // ========== VPS DATA MANAGEMENT ==========
+                let dadosVPS = null;
+
+                async function carregarDadosVPS() {
+                    try {
+                        mostrarMensagem('Carregando dados do VPS...', 'info');
+                        const response = await fetch('/api/vps/dados/recentes');
+                        const data = await response.json();
+
+                        if (!data.success) {
+                            mostrarMensagem('Erro ao carregar dados do VPS: ' + data.message, 'error');
+                            return;
+                        }
+
+                        dadosVPS = data;
+                        document.getElementById('sectionDadosVPS').style.display = 'block';
+                        mostrarTabVPS('novos'); // Mostrar primeira tab por padrão
+                        renderizarDadosVPS();
+                        mostrarMensagem('Dados do VPS carregados com sucesso!', 'success');
+                    } catch (error) {
+                        console.error('Erro ao carregar dados VPS:', error);
+                        mostrarMensagem('Erro ao conectar com o VPS', 'error');
+                    }
+                }
+
+                function mostrarTabVPS(tab) {
+                    // Esconder todas as tabs
+                    document.querySelectorAll('.vps-tab-content').forEach(el => el.style.display = 'none');
+
+                    // Mostrar tab selecionada
+                    if (tab === 'novos') {
+                        document.getElementById('vpsNovos').style.display = 'block';
+                    } else if (tab === 'atualizados') {
+                        document.getElementById('vpsAtualizados').style.display = 'block';
+                    } else if (tab === 'locais') {
+                        document.getElementById('vpsLocais').style.display = 'block';
+                    }
+                }
+
+                function renderizarDadosVPS() {
+                    if (!dadosVPS) return;
+
+                    // Renderizar novos
+                    renderizarListaVPS('vpsNovosPacientesList', dadosVPS.pacientes.novos_vps, 'paciente', 'novos');
+                    renderizarListaVPS('vpsNovosAgendamentosList', dadosVPS.agendamentos.novos_vps, 'agendamento', 'novos');
+
+                    // Renderizar atualizados
+                    renderizarListaVPSAtualizados('vpsAtualizadosPacientesList', dadosVPS.pacientes.atualizados_vps, 'paciente');
+                    renderizarListaVPSAtualizados('vpsAtualizadosAgendamentosList', dadosVPS.agendamentos.atualizados_vps, 'agendamento');
+
+                    // Renderizar apenas locais
+                    renderizarListaVPS('vpsLocaisPacientesList', dadosVPS.pacientes.apenas_local, 'paciente', 'locais');
+                    renderizarListaVPS('vpsLocaisAgendamentosList', dadosVPS.agendamentos.apenas_local, 'agendamento', 'locais');
+                }
+
+                function renderizarListaVPS(containerId, items, tipo, categoria) {
+                    const container = document.getElementById(containerId);
+
+                    if (!items || items.length === 0) {
+                        container.innerHTML = '<p style="color: #999; padding: 10px;">Nenhum item encontrado</p>';
+                        return;
+                    }
+
+                    let html = '<div style="max-height: 400px; overflow-y: auto;">';
+                    html += '<table style="width: 100%; border-collapse: collapse;">';
+                    html += '<thead><tr style="background: #f8f9fa; position: sticky; top: 0;">';
+                    html += '<th style="padding: 10px; text-align: left;"><input type="checkbox" onclick="selecionarTodosVPS(\'' + categoria + '\', \'' + tipo + '\', this.checked)"></th>';
+
+                    if (tipo === 'paciente') {
+                        html += '<th style="padding: 10px; text-align: left;">Nome</th>';
+                        html += '<th style="padding: 10px; text-align: left;">Unidade</th>';
+                        html += '<th style="padding: 10px; text-align: left;">Última Modificação</th>';
+                    } else {
+                        html += '<th style="padding: 10px; text-align: left;">Data</th>';
+                        html += '<th style="padding: 10px; text-align: left;">Hora</th>';
+                        html += '<th style="padding: 10px; text-align: left;">Tipo</th>';
+                        html += '<th style="padding: 10px; text-align: left;">Última Modificação</th>';
+                    }
+
+                    html += '</tr></thead><tbody>';
+
+                    items.forEach(item => {
+                        html += '<tr style="border-bottom: 1px solid #dee2e6;">';
+                        html += `<td style="padding: 10px;"><input type="checkbox" class="vps-check-${categoria}-${tipo}" value="${item.id}"></td>`;
+
+                        if (tipo === 'paciente') {
+                            html += `<td style="padding: 10px;">${getNomePaciente(item)}</td>`;
+                            html += `<td style="padding: 10px;">${getUnidadeSaude(item)}</td>`;
+                            html += `<td style="padding: 10px;">${formatarDataHora(item.ultima_modificacao)}</td>`;
+                        } else {
+                            html += `<td style="padding: 10px;">${item.data_consulta || 'N/A'}</td>`;
+                            html += `<td style="padding: 10px;">${item.hora_consulta || 'N/A'}</td>`;
+                            html += `<td style="padding: 10px;">${item.tipo_consulta || 'N/A'}</td>`;
+                            html += `<td style="padding: 10px;">${formatarDataHora(item.ultima_modificacao)}</td>`;
+                        }
+
+                        html += '</tr>';
+                    });
+
+                    html += '</tbody></table></div>';
+                    container.innerHTML = html;
+                }
+
+                function renderizarListaVPSAtualizados(containerId, items, tipo) {
+                    const container = document.getElementById(containerId);
+
+                    if (!items || items.length === 0) {
+                        container.innerHTML = '<p style="color: #999; padding: 10px;">Nenhum item encontrado</p>';
+                        return;
+                    }
+
+                    let html = '<div style="max-height: 400px; overflow-y: auto;">';
+                    html += '<table style="width: 100%; border-collapse: collapse;">';
+                    html += '<thead><tr style="background: #f8f9fa; position: sticky; top: 0;">';
+                    html += '<th style="padding: 10px; text-align: left;"><input type="checkbox" onclick="selecionarTodosVPS(\'atualizados\', \'' + tipo + '\', this.checked)"></th>';
+
+                    if (tipo === 'paciente') {
+                        html += '<th style="padding: 10px; text-align: left;">Nome</th>';
+                        html += '<th style="padding: 10px; text-align: left;">VPS (Modificação)</th>';
+                        html += '<th style="padding: 10px; text-align: left;">Local (Modificação)</th>';
+                    } else {
+                        html += '<th style="padding: 10px; text-align: left;">Data</th>';
+                        html += '<th style="padding: 10px; text-align: left;">VPS (Modificação)</th>';
+                        html += '<th style="padding: 10px; text-align: left;">Local (Modificação)</th>';
+                    }
+
+                    html += '</tr></thead><tbody>';
+
+                    items.forEach(item => {
+                        const vpsData = item.vps;
+                        const localData = item.local;
+
+                        html += '<tr style="border-bottom: 1px solid #dee2e6;">';
+                        html += `<td style="padding: 10px;"><input type="checkbox" class="vps-check-atualizados-${tipo}" value="${vpsData.id}"></td>`;
+
+                        if (tipo === 'paciente') {
+                            html += `<td style="padding: 10px;">${getNomePaciente(vpsData)}</td>`;
+                        } else {
+                            html += `<td style="padding: 10px;">${vpsData.data_consulta || 'N/A'}</td>`;
+                        }
+
+                        html += `<td style="padding: 10px; background: #e8f5e9;">${formatarDataHora(vpsData.ultima_modificacao)}</td>`;
+                        html += `<td style="padding: 10px; background: #fff3e0;">${formatarDataHora(localData.ultima_modificacao)}</td>`;
+                        html += '</tr>';
+                    });
+
+                    html += '</tbody></table></div>';
+                    container.innerHTML = html;
+                }
+
+                function selecionarTodosVPS(categoria, tipo, checked) {
+                    const checkboxes = document.querySelectorAll(`.vps-check-${categoria}-${tipo}`);
+                    checkboxes.forEach(cb => cb.checked = checked);
+                }
+
+                async function baixarSelecionadosVPS(categoria) {
+                    const pacienteCheckboxes = document.querySelectorAll(`.vps-check-${categoria}-paciente:checked`);
+                    const agendamentoCheckboxes = document.querySelectorAll(`.vps-check-${categoria}-agendamento:checked`);
+                    
+                    console.log('Categoria:', categoria);
+                    console.log('Paciente checkboxes:', pacienteCheckboxes.length);
+                    console.log('Agendamento checkboxes:', agendamentoCheckboxes.length);
+
+                    const pacienteIds = Array.from(pacienteCheckboxes).map(cb => cb.value);
+                    const agendamentoIds = Array.from(agendamentoCheckboxes).map(cb => cb.value);
+                    
+                    console.log('Paciente IDs:', pacienteIds);
+                    console.log('Agendamento IDs:', agendamentoIds);
+
+                    if (pacienteIds.length === 0 && agendamentoIds.length === 0) {
+                        alert('Selecione pelo menos um item para baixar');
+                        return;
+                    }
+
+                    if (!confirm(`Deseja baixar ${pacienteIds.length} paciente(s) e ${agendamentoIds.length} agendamento(s) do VPS?`)) {
+                        return;
+                    }
+
+                    try {
+                        mostrarMensagem('Baixando dados do VPS...', 'info');
+                        console.log('Chamando /api/vps/dados/baixar...');
+                        const response = await fetch('/api/vps/dados/baixar', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ paciente_ids: pacienteIds, agendamento_ids: agendamentoIds })
+                        });
+
+                        const data = await response.json();
+                        console.log('Resposta do servidor:', data);
+
+                        if (data.success) {
+                            mostrarMensagem(data.message, 'success');
+                            carregarDadosVPS(); // Recarregar para atualizar a lista
+                        } else {
+                            mostrarMensagem('Erro: ' + data.message, 'error');
+                        }
+                    } catch (error) {
+                        console.error('Erro:', error);
+                        mostrarMensagem('Erro ao baixar dados do VPS', 'error');
+                    }
+                }
+
+                async function enviarSelecionadosVPS() {
+                    const pacienteCheckboxes = document.querySelectorAll('.vps-check-locais-paciente:checked');
+                    const agendamentoCheckboxes = document.querySelectorAll('.vps-check-locais-agendamento:checked');
+
+                    const pacienteIds = Array.from(pacienteCheckboxes).map(cb => cb.value);
+                    const agendamentoIds = Array.from(agendamentoCheckboxes).map(cb => cb.value);
+
+                    if (pacienteIds.length === 0 && agendamentoIds.length === 0) {
+                        alert('Selecione pelo menos um item para enviar');
+                        return;
+                    }
+
+                    if (!confirm(`Deseja enviar ${pacienteIds.length} paciente(s) e ${agendamentoIds.length} agendamento(s) para o VPS?`)) {
+                        return;
+                    }
+
+                    try {
+                        mostrarMensagem('Enviando dados para o VPS...', 'info');
+                        const response = await fetch('/api/vps/dados/enviar', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ paciente_ids: pacienteIds, agendamento_ids: agendamentoIds })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            mostrarMensagem(data.message, 'success');
+                            carregarDadosVPS(); // Recarregar para atualizar a lista
+                        } else {
+                            mostrarMensagem('Erro: ' + data.message, 'error');
+                        }
+                    } catch (error) {
+                        console.error('Erro:', error);
+                        mostrarMensagem('Erro ao enviar dados para o VPS', 'error');
+                    }
+                }
+
+                async function deletarSelecionadosVPS() {
+                    const pacienteCheckboxes = document.querySelectorAll('.vps-check-locais-paciente:checked');
+                    const agendamentoCheckboxes = document.querySelectorAll('.vps-check-locais-agendamento:checked');
+
+                    const pacienteIds = Array.from(pacienteCheckboxes).map(cb => cb.value);
+                    const agendamentoIds = Array.from(agendamentoCheckboxes).map(cb => cb.value);
+
+                    if (pacienteIds.length === 0 && agendamentoIds.length === 0) {
+                        alert('Selecione pelo menos um item para deletar');
+                        return;
+                    }
+
+                    if (!confirm(`⚠️ ATENÇÃO: Deseja DELETAR ${pacienteIds.length} paciente(s) e ${agendamentoIds.length} agendamento(s) do VPS?\n\nEsta ação não pode ser desfeita!`)) {
+                        return;
+                    }
+
+                    try {
+                        mostrarMensagem('Deletando dados do VPS...', 'info');
+                        const response = await fetch('/api/vps/dados/deletar', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ paciente_ids: pacienteIds, agendamento_ids: agendamentoIds })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            mostrarMensagem(data.message, 'success');
+                            carregarDadosVPS(); // Recarregar para atualizar a lista
+                        } else {
+                            mostrarMensagem('Erro: ' + data.message, 'error');
+                        }
+                    } catch (error) {
+                        console.error('Erro:', error);
+                        mostrarMensagem('Erro ao deletar dados do VPS', 'error');
+                    }
+                }
+
+                // Inicialização
+                document.addEventListener('DOMContentLoaded', function () {
+                    carregarVersao();
+                    configurarDropdownsTopbar();
+                    carregarStatusFirebase();
+                    carregarItensIgnorados();
+                    carregarDadosVPS(); // Carregar dados VPS automaticamente
+                    
+                    // Marcar divergências como visualizadas para parar alertas
+                    fetch('/api/vps/divergencias/marcar-visto', { method: 'POST' })
+                        .catch(err => console.log('Erro ao marcar como visto:', err));
+
+                    // Atualizar status a cada 30 segundos
+                    setInterval(carregarStatusFirebase, 30000);
+                });
+            </script>
+            <!-- Subprocessos UI -->
+            <script src="{{ url_for('static', filename='common/js/subprocessos.js') }}"></script>
+            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</body>
+
+</html>

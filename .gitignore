@@ -1,0 +1,159 @@
+# ==========================================
+# 🐍 Python / Flask - Gerente de Pacientes
+# ==========================================
+
+# ---- Ambientes Virtuais ----
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# ---- Python Cache ----
+__pycache__
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ---- PyInstaller ----
+*.manifest
+*.spec
+
+# ---- Logs e Banco de Dados ----
+*.log
+*.sqlite
+*.sqlite3
+*.db
+!data/.gitkeep
+
+# ---- Ambiente / Configurações Locais ----
+.env
+.flaskenv
+.env.local
+.env.*.local
+instance/
+.webassets-cache
+
+# ---- IDEs e Editores ----
+# VS Code
+.vscode/
+*.code-workspace
+.history/
+
+# PyCharm / IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim / Neovim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+.#*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ---- Testes e Cobertura ----
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# ---- Type Checking ----
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# ---- Arquivos de Distribuição / Builds ----
+*.zip
+*.tar.gz
+*.rar
+*.7z
+*.exe
+*.msi
+*.dmg
+*.pkg
+*.deb
+*.rpm
+
+# ---- Arquivos do Projeto Específicos ----
+# Build artifacts gerados pelo PyInstaller
+dist/
+build/
+
+# Arquivos de release/versão
+sha256.txt
+data/version.json
+
+# Arquivos de debug/crash
+data/crash_report.log
+.debug/
+*.debug
+
+# ---- Diretórios de Dados ----
+# Manter estrutura mas ignorar conteúdo
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+data/backups/*
+!data/backups/.gitkeep
+
+# ---- Arquivos Temporários ----
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ranking de Unidades - Gestão de Pacientes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='ranks/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='alerts/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='alerts_agendamentos/css/style.css') }}">
+    <style id="custom-theme" type="text/css"></style>
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+</head>
+<body>
+    <nav class="topbar">
+        <div class="topbar-content">
+            <div class="topbar-logo">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo">
+                <h3>Gestão de Pacientes</h3>
+            </div>
+            <div class="topbar-links">
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👥 Pacientes
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/" class="topbar-dropdown-item">📊 Indicadores</a>
+                        <a href="/ranks" class="topbar-dropdown-item active">🏆 Ranking de Unidades</a>
+                        <a href="/novo_paciente" class="topbar-dropdown-item">➕ Novo Paciente</a>
+                        <a href="/pacientes" class="topbar-dropdown-item">📋 Lista de Pacientes</a>
+                        <a href="/exportar" class="topbar-dropdown-item">💾 Exportar</a>
+                    </div>
+                </div>
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👨‍⚕️ Profissionais
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/agendamentos" class="topbar-dropdown-item">📅 Agendamentos</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Em desenvolvimento'); return false;">👨‍⚕️ Lista de Profissionais</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Em desenvolvimento'); return false;">📊 Relatórios</a>
+                    </div>
+                </div>
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        ⚙️ Configurações
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/bd" class="topbar-dropdown-item">🗄️ Banco de Dados</a>
+                        <a href="/conflitos" class="topbar-dropdown-item">⚠️ Conflitos</a>
+                        <a href="/aparencia" class="topbar-dropdown-item">🎨 Aparência</a>
+                    </div>
+                </div>
+                <a href="/ajuda" class="topbar-link btn-ajuda">❓ Ajuda</a>
+                <span id="version-info" class="topbar-version">v{{ version }}</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="ranks-container">
+        <header class="ranks-header">
+            <h1>🏆 Ranking de Unidades</h1>
+            <p class="ranks-subtitle">Unidades com os melhores resultados nos indicadores de pré-natal</p>
+        </header>
+
+        <!-- Unidade em destaque: maioria dos pacientes com melhores resultados -->
+        <section class="ranks-opcoes-section" id="ranks-opcoes-section">
+            <div class="ranks-toggle-wrapper">
+                <span class="ranks-toggle-label">Exibir ranking</span>
+                <div class="ranks-toggle-group">
+                    <button type="button" class="ranks-toggle-btn active" id="ranks-toggle-com-trava" data-trava="1">Com trava</button>
+                    <button type="button" class="ranks-toggle-btn" id="ranks-toggle-sem-trava" data-trava="0">Sem trava</button>
+                    <button type="button" class="ranks-toggle-btn ranks-toggle-btn-info" id="ranks-toggle-info">Info</button>
+                </div>
+                <p class="ranks-toggle-hint" id="ranks-toggle-hint">Padrão: com travas (amostra mínima, pisos, pesos, penalidade por dado ausente).</p>
+            </div>
+        </section>
+
+        <section class="ranks-destaque-section" id="ranks-destaque-section">
+            <h2 class="ranks-section-title">Unidade em destaque</h2>
+            <p class="ranks-section-desc" id="ranks-destaque-desc">A unidade em que a maioria dos pacientes possui os melhores resultados (média dos indicadores).</p>
+            <div class="ranks-destaque-card" id="ranks-destaque-card">
+                <div class="ranks-destaque-placeholder" id="ranks-destaque-placeholder">
+                    Carregando…
+                </div>
+                <div class="ranks-destaque-content" id="ranks-destaque-content" style="display: none;">
+                    <div class="ranks-destaque-badge">1º lugar</div>
+                    <h3 class="ranks-destaque-nome" id="ranks-destaque-nome"></h3>
+                    <p class="ranks-destaque-meta">
+                        <span class="ranks-destaque-score" id="ranks-destaque-score"></span>
+                        <span class="ranks-destaque-sep"> · </span>
+                        <span class="ranks-destaque-total" id="ranks-destaque-total"></span> pacientes
+                    </p>
+                </div>
+                <div class="ranks-destaque-empty" id="ranks-destaque-empty" style="display: none;">
+                    Nenhuma unidade com pacientes cadastrados.
+                </div>
+            </div>
+        </section>
+
+        <!-- Ranking completo -->
+        <section class="ranks-tabela-section" id="ranks-tabela-section">
+            <h2 class="ranks-section-title">Ranking completo</h2>
+            <div class="ranks-tabela-wrapper">
+                <table class="ranks-tabela" id="ranks-tabela">
+                    <thead>
+                        <tr>
+                            <th class="ranks-col-pos">#</th>
+                            <th class="ranks-col-unidade">Unidade</th>
+                            <th class="ranks-col-score">Score</th>
+                            <th class="ranks-col-total">Pacientes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ranks-tabela-body">
+                    </tbody>
+                </table>
+            </div>
+            <p class="ranks-legend" id="ranks-legend">Score = média dos percentuais positivos em: início pré-natal &lt;12 sem., ≥6 consultas, vacinas, plano de parto, grupos, Bolsa Família, vacina COVID.</p>
+        </section>
+    </div>
+
+    <div class="ranks-info-overlay" id="ranks-info-overlay" aria-hidden="true">
+        <div class="ranks-info-modal" id="ranks-info-modal" role="dialog" aria-labelledby="ranks-info-title">
+            <div class="ranks-info-header">
+                <h2 class="ranks-info-title" id="ranks-info-title">Como o ranking é calculado</h2>
+                <button type="button" class="ranks-info-close" id="ranks-info-close" aria-label="Fechar">&times;</button>
+            </div>
+            <div class="ranks-info-body" id="ranks-info-body"></div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='home/js/theme-manager.js') }}"></script>
+    <script src="{{ url_for('static', filename='ranks/js/main.js') }}"></script>
+</body>
+</html>

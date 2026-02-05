@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Novo Paciente - Gestão de Pacientes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='novo_paciente/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='alerts/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='alerts_agendamentos/css/style.css') }}">
+    <style id="custom-theme" type="text/css"></style>
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+</head>
+<body>
+    <!-- Top Bar Fixa -->
+    <nav class="topbar">
+        <div class="topbar-content">
+            <div class="topbar-logo">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo Sistema Gestão Gestante">
+                <h3>Gestão de Pacientes</h3>
+            </div>
+            <div class="topbar-links">
+                <!-- Gaveta: Pacientes -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👥 Pacientes
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/" class="topbar-dropdown-item">📊 Indicadores</a>
+                        <a href="/novo_paciente" class="topbar-dropdown-item active">➕ Novo Paciente</a>
+                        <a href="/pacientes" class="topbar-dropdown-item">📋 Lista de Pacientes</a>
+                        <a href="/exportar" class="topbar-dropdown-item">💾 Exportar</a>
+                    </div>
+                </div>
+
+                <!-- Gaveta: Profissionais -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👨‍⚕️ Profissionais
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/agendamentos" class="topbar-dropdown-item">📅 Agendamentos</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">👨‍⚕️ Lista de Profissionais</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">📊 Relatórios</a>
+                    </div>
+                </div>
+
+                <!-- Gaveta: Configurações -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        ⚙️ Configurações
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/bd" class="topbar-dropdown-item">🗄️ Banco de Dados</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">🔔 Notificações</a>
+                        <a href="/aparencia" class="topbar-dropdown-item">🎨 Aparência</a>
+                    </div>
+                </div>
+
+                <!-- Ajuda (não é gaveta) -->
+                <a href="/ajuda" class="topbar-link btn-ajuda">
+                    ❓ Ajuda
+                </a>
+
+                <span id="version-info" class="topbar-version">v{{ version }}</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sistema de Alertas de Parto Próximo -->
+    <div id="alertas-parto-container" style="display: none;">
+        <div class="alertas-header">
+            <h3>
+                🚨 Alertas de Parto
+                <span class="badge-contador" id="alertas-contador">0</span>
+            </h3>
+        </div>
+        <div id="alertas-parto-list">
+            <!-- Alertas serão inseridos aqui via JavaScript -->
+        </div>
+    </div>
+
+    <!-- Sistema de Alertas de Agendamentos Próximos -->
+    <div id="alertas-agendamentos-container" style="display: none;">
+        <div class="alertas-header-agendamentos">
+            <h3>
+                📅 Agendamentos Próximos
+                <span class="badge-contador" id="alertas-agendamentos-contador">0</span>
+            </h3>
+        </div>
+        <div id="alertas-agendamentos-list">
+            <!-- Alertas serão inseridos aqui via JavaScript -->
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>📋 Cadastro de Novo Paciente</h1>
+            <p>Preencha os dados da gestante e sua avaliação de pré-natal</p>
+        </div>
+
+        <!-- Indicador de Progresso -->
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text">
+                <span id="currentStep">1</span> de <span id="totalSteps">19</span>
+            </div>
+        </div>
+
+        <form id="formPaciente" class="form-paciente" novalidate>
+            <!-- Step 1: Nome da Gestante -->
+            <div class="wizard-step active" data-step="1">
+                <div class="step-content">
+                    <h2 class="step-title">👤 Identificação</h2>
+                    <div class="form-group">
+                        <label for="nome_gestante" class="required">Nome da Gestante</label>
+                        <input 
+                            type="text" 
+                            id="nome_gestante" 
+                            name="nome_gestante" 
+                            required 
+                            placeholder="Digite o nome completo da gestante"
+                            class="form-input"
+                        >
+                        <small class="form-help">Digite o nome completo da gestante</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Unidade de Saúde -->
+            <div class="wizard-step" data-step="2">
+                <div class="step-content">
+                    <h2 class="step-title">🏥 Unidade de Saúde</h2>
+                    <div class="form-group">
+                        <label for="unidade_saude" class="required">Unidade de Saúde</label>
+                        <input 
+                            type="text" 
+                            id="unidade_saude" 
+                            name="unidade_saude" 
+                            required 
+                            placeholder="Ex: UBS Centro, Centro de Saúde Leste..."
+                            class="form-input"
+                        >
+                        <small class="form-help">Informe a unidade de saúde onde a gestante é atendida</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Início pré-natal antes de 12 semanas -->
+            <div class="wizard-step" data-step="3">
+                <div class="step-content">
+                    <h2 class="step-title">📅 Início do Pré-Natal</h2>
+                    <div class="form-group">
+                        <label class="required">Início do pré-natal antes de 12 semanas?</label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="inicio_pre_natal_antes_12s" value="true" required>
+                                <span>✅ Sim</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="inicio_pre_natal_antes_12s" value="false">
+                                <span>❌ Não</span>
+                            </label>
+                        </div>
+                        <small class="form-help">Captação precoce é fundamental para o acompanhamento adequado</small>
+                    </div>
+                    <div class="form-group" id="inicio-pre-natal-detalhes-group" style="display: none; margin-top: 20px;">
+                        <label for="inicio_pre_natal_semanas" class="required">
+                            Quantas semanas de gestação tinha quando iniciou o pré-natal?
+                        </label>
+                        <input 
+                            type="number" 
+                            id="inicio_pre_natal_semanas" 
+                            name="inicio_pre_natal_semanas" 
+                            min="1" 
+                            max="12"
+                            placeholder="Ex: 8"
+                            class="form-input"
+                        >
+                        <small class="form-help">Informe a quantidade de semanas de gestação no início do pré-natal</small>
+                        
+                        <label for="inicio_pre_natal_observacao" style="margin-top: 20px; display: block;">
+                            Observações sobre o início do pré-natal
+                        </label>
+                        <textarea 
+                            id="inicio_pre_natal_observacao" 
+                            name="inicio_pre_natal_observacao" 
+                            class="form-input" 
+                            rows="4"
+                            placeholder="Adicione observações relevantes sobre o início do pré-natal..."
+                            style="resize: vertical; min-height: 100px; width: 100%;"
+                        ></textarea>
+                        <small class="form-help">Informações adicionais sobre o início do pré-natal (opcional)</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4: Número de consultas -->
+            <div class="wizard-step" data-step="4">
+                <div class="step-content">
+                    <h2 class="step-title">📊 Consultas de Pré-Natal</h2>
+                    <div class="form-group">
+                        <label for="consultas_pre_natal" class="required">
+                            Número de consultas de pré-natal realizadas
+                        </label>
+                        <input 
+                            type="number" 
+                            id="consultas_pre_natal" 
+                            name="consultas_pre_natal" 
+                            min="0" 
+                            max="50"
+                            required 
+                            placeholder="Ex: 8"
+                            class="form-input"
+                        >
+                        <small class="form-help">Recomenda-se mínimo de 6 consultas durante a gestação</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 5: Status das vacinas -->
+            <div class="wizard-step" data-step="5">
+                <div class="step-content">
+                    <h2 class="step-title">💉 Vacinas</h2>
+                    <div class="form-group">
+                        <label for="vacinas_completas" class="required">
+                            Status das vacinas
+                        </label>
+                        <select id="vacinas_completas" name="vacinas_completas" required class="form-input">
+                            <option value="">Selecione uma opção</option>
+                            <option value="Completa">✅ Completa</option>
+                            <option value="Incompleta">⚠️ Incompleta</option>
+                            <option value="Não avaliado">❓ Não avaliado</option>
+                        </select>
+                        <small class="form-help">Verifique o cartão de vacinação da gestante</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 6: Vacina de COVID -->
+            <div class="wizard-step" data-step="6">
+                <div class="step-content">
+                    <h2 class="step-title">💉 Vacina de COVID</h2>
+                    <div class="form-group">
+                        <label class="required">
+                            Tem vacina de COVID?
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="tem_vacina_covid" value="true" required>
+                                <span>✅ Sim</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="tem_vacina_covid" value="false">
+                                <span>❌ Não</span>
+                            </label>
+                        </div>
+                        <small class="form-help">Verifique se a gestante tem vacinação contra COVID-19</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 7: Plano de parto -->
+            <div class="wizard-step" data-step="7">
+                <div class="step-content">
+                    <h2 class="step-title">📝 Plano de Parto</h2>
+                    <div class="form-group">
+                        <label class="required">
+                            Possui plano de parto?
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="plano_parto" value="true" required>
+                                <span>✅ Sim</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="plano_parto" value="false">
+                                <span>❌ Não</span>
+                            </label>
+                        </div>
+                        <small class="form-help">Plano de parto é parte da humanização do cuidado</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 8: Participação em grupos -->
+            <div class="wizard-step" data-step="8">
+                <div class="step-content">
+                    <h2 class="step-title">👥 Grupos de Gestantes</h2>
+                    <div class="form-group">
+                        <label class="required">
+                            Participou de grupos de gestantes?
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="participou_grupos" value="true" required>
+                                <span>✅ Sim</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="participou_grupos" value="false">
+                                <span>❌ Não</span>
+                            </label>
+                        </div>
+                        <small class="form-help">Participação em grupos é importante para educação em saúde</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 9: Avaliação odontológica -->
+            <div class="wizard-step" data-step="9">
+                <div class="step-content">
+                    <h2 class="step-title">🦷 Avaliação Odontológica</h2>
+                    <div class="form-group">
+                        <label class="required">
+                            Realizou avaliação odontológica?
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="avaliacao_odontologica" value="true" required>
+                                <span>✅ Sim</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="avaliacao_odontologica" value="false">
+                                <span>❌ Não</span>
+                            </label>
+                        </div>
+                        <small class="form-help">A avaliação odontológica é importante durante a gestação</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 10: Estratificação de risco -->
+            <div class="wizard-step" data-step="10">
+                <div class="step-content">
+                    <h2 class="step-title">⚠️ Estratificação de Risco</h2>
+                    <div class="form-group">
+                        <label class="required">
+                            Foi realizada estratificação de risco?
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="estratificacao" value="true" required>
+                                <span>✅ Sim</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="estratificacao" value="false">
+                                <span>❌ Não</span>
+                            </label>
+                        </div>
+                        <small class="form-help">A estratificação de risco ajuda no acompanhamento adequado</small>
+                    </div>
+                    <div class="form-group" id="estratificacao-problema-group" style="display: none; margin-top: 20px;">
+                        <label for="estratificacao_problema">
+                            Qual o problema identificado na estratificação?
+                        </label>
+                        <textarea 
+                            id="estratificacao_problema" 
+                            name="estratificacao_problema" 
+                            class="form-input" 
+                            rows="4"
+                            placeholder="Descreva o problema identificado na estratificação de risco..."
+                            style="resize: vertical; min-height: 100px; width: 100%;"
+                        ></textarea>
+                        <small class="form-help">Descreva detalhadamente o problema de risco identificado (opcional)</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 11: Cartão de pré-natal completo -->
+            <div class="wizard-step" data-step="11">
+                <div class="step-content">
+                    <h2 class="step-title">📋 Cartão de Pré-Natal</h2>
+                    <div class="form-group">
+                        <label class="required">
+                            Cartão de pré-natal está completo?
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="cartao_pre_natal_completo" value="true" required>
+                                <span>✅ Sim</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="cartao_pre_natal_completo" value="false">
+                                <span>❌ Não</span>
+                            </label>
+                        </div>
+                        <small class="form-help">Verifique se o cartão de pré-natal está preenchido corretamente</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="required">
+                            Possui Bolsa Família?
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="possui_bolsa_familia" value="true" required>
+                                <span>✅ Sim</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="possui_bolsa_familia" value="false">
+                                <span>❌ Não</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 12: Já ganhou a criança -->
+            <div class="wizard-step" data-step="12">
+                <div class="step-content">
+                    <h2 class="step-title">👶 Já Ganhou a Criança</h2>
+                    <div class="form-group">
+                        <label class="required">
+                            Já ganhou a criança?
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="ja_ganhou_crianca" value="true" required>
+                                <span>✅ Sim</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="ja_ganhou_crianca" value="false">
+                                <span>❌ Não</span>
+                            </label>
+                        </div>
+                        <small class="form-help">Informe se a gestante já teve o parto</small>
+                    </div>
+                    <div class="form-group" id="data-ganhou-group" style="display: none; margin-top: 20px;">
+                        <label for="data_ganhou_crianca">
+                            Data (opcional - para gêmeos ou mais)
+                        </label>
+                        <input 
+                            type="date" 
+                            id="data_ganhou_crianca" 
+                            name="data_ganhou_crianca" 
+                            class="form-input"
+                        >
+                        <small class="form-help">Se foi parto múltiplo, informe a data de nascimento</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 13: Quantidade de filhos -->
+            <div class="wizard-step" data-step="13">
+                <div class="step-content">
+                    <h2 class="step-title">👨‍👩‍👧‍👦 Quantidade de Filhos</h2>
+                    <div class="form-group">
+                        <label for="quantidade_filhos" class="required">
+                            Quantidade de filhos
+                        </label>
+                        <input 
+                            type="number" 
+                            id="quantidade_filhos" 
+                            name="quantidade_filhos" 
+                            min="0" 
+                            max="20"
+                            required 
+                            placeholder="Ex: 2"
+                            class="form-input"
+                        >
+                        <small class="form-help">Informe a quantidade de filhos da gestante</small>
+                    </div>
+                    <div class="form-group" id="generos-filhos-group" style="display: none; margin-top: 20px;">
+                        <label for="generos_filhos">
+                            Gêneros (opcional)
+                        </label>
+                        <input 
+                            type="text" 
+                            id="generos_filhos" 
+                            name="generos_filhos" 
+                            placeholder="Ex: 1 menino e 1 menina"
+                            class="form-input"
+                        >
+                        <small class="form-help">Descreva os gêneros dos filhos, se desejar</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 14: Método Preventivo -->
+            <div class="wizard-step" data-step="14">
+                <div class="step-content">
+                    <h2 class="step-title">💊 Método Preventivo Atual</h2>
+                    <div class="form-group">
+                        <label for="metodo_preventivo" class="required">
+                            Método Preventivo atual
+                        </label>
+                        <select id="metodo_preventivo" name="metodo_preventivo" required class="form-input">
+                            <option value="">Selecione uma opção</option>
+                            <option value="DIU">🩺 DIU</option>
+                            <option value="Laqueadura">🔪 Laqueadura</option>
+                            <option value="Contraceptivo">💊 Contraceptivo</option>
+                            <option value="Vasectomia">⚕️ Vasectomia (parceiro)</option>
+                            <option value="Outros">📝 Outros</option>
+                        </select>
+                        <small class="form-help">Informe o método contraceptivo atual</small>
+                    </div>
+                    <div class="form-group" id="metodo-outros-group" style="display: none; margin-top: 20px;">
+                        <label for="metodo_preventivo_outros">
+                            Especifique outros métodos
+                        </label>
+                        <input 
+                            type="text" 
+                            id="metodo_preventivo_outros" 
+                            name="metodo_preventivo_outros" 
+                            placeholder="Descreva o método preventivo"
+                            class="form-input"
+                        >
+                        <small class="form-help">Informe detalhes sobre o método preventivo usado</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 15: DUM -->
+            <div class="wizard-step" data-step="15">
+                <div class="step-content">
+                    <h2 class="step-title">📅 DUM</h2>
+                    <div class="form-group">
+                        <label for="dum" class="required" style="display: flex; align-items: center; gap: 8px;">
+                            <span>Data da Última Menstruação (DUM)</span>
+                            <span class="calculator-icon" id="dum-calculator-icon" title="Clique para saber mais sobre o cálculo do DPP">🧮</span>
+                        </label>
+                        <div class="calculator-tooltip" id="dum-calculator-tooltip" style="display: none;">
+                            <div class="tooltip-content">
+                                <h3 style="margin-top: 0; color: #4a90e2;">📚 Sobre o DPP</h3>
+                                <p><strong>DPP = Data Provável do Parto</strong></p>
+                                <p>É a data estimada em que o parto deve acontecer.</p>
+                                <p><strong>Regra padrão (Regra de Naegele):</strong></p>
+                                <p style="font-family: monospace; background-color: #fff; padding: 8px; border-radius: 4px; margin: 10px 0;">
+                                    DPP = DUM + 7 dias - 3 meses
+                                </p>
+                                <p style="font-size: 0.9em; color: #666; margin: 5px 0;">
+                                    Ou equivalente: DUM + 280 dias (40 semanas)
+                                </p>
+                                <p><strong>👉 Exemplo passo a passo:</strong></p>
+                                <p style="font-family: monospace; background-color: #fff; padding: 8px; border-radius: 4px; margin: 10px 0;">
+                                    DUM: 01/01/2026<br>
+                                    +7 dias → 08/01/2026<br>
+                                    -3 meses → 08/10/2026<br>
+                                    <strong>DPP: 08/10/2026</strong>
+                                </p>
+                                <p style="font-style: italic; color: #666; margin-bottom: 0;">
+                                    É "provável" porque bebês não seguem calendário de parede. 👶⏰
+                                </p>
+                            </div>
+                        </div>
+                        <input 
+                            type="date" 
+                            id="dum" 
+                            name="dum" 
+                            required 
+                            class="form-input"
+                        >
+                        <small class="form-help">Informe a data da última menstruação da gestante</small>
+                        
+                        <!-- Calculadora de Idade Gestacional -->
+                        <div style="margin-top: 15px;">
+                            <button type="button" id="btnCalcularIdadeGestacional" class="btn btn-info" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; font-size: 0.9em;">
+                                <span>🧮</span>
+                                <span>Calcular Idade Gestacional</span>
+                            </button>
+                            <div id="resultadoIdadeGestacional" style="display: none; margin-top: 10px; padding: 12px; background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border-radius: 8px; border-left: 4px solid #4caf50;">
+                                <div style="font-weight: bold; color: #2e7d32; margin-bottom: 5px;">📊 Idade Gestacional Estimada:</div>
+                                <div id="textoIdadeGestacional" style="font-size: 1.2em; color: #1b5e20;"></div>
+                                <div style="font-size: 0.85em; color: #666; margin-top: 5px; font-style: italic;">
+                                    * Baseado na DUM informada
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 16: DPP -->
+            <div class="wizard-step" data-step="16">
+                <div class="step-content">
+                    <h2 class="step-title">📅 DPP</h2>
+                    <div class="form-group" style="position: relative;">
+                        <label for="dpp" class="required">
+                            Data Provável do Parto (DPP)
+                        </label>
+                        <input 
+                            type="date" 
+                            id="dpp" 
+                            name="dpp" 
+                            required 
+                            class="form-input"
+                        >
+                        <div class="dpp-badge" id="dpp-badge" style="display: none;">
+                            Data Provável
+                        </div>
+                        <small class="form-help">Informe a data provável do parto</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 17: KIT -->
+            <div class="wizard-step" data-step="17">
+                <div class="step-content">
+                    <h2 class="step-title">🎁 KIT</h2>
+                    <div class="form-group">
+                        <label class="required">
+                            Ganhou o KIT?
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="ganhou_kit" value="true" required>
+                                <span>✅ Sim</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="ganhou_kit" value="false">
+                                <span>❌ Não</span>
+                            </label>
+                        </div>
+                        <small class="form-help">Informe se a gestante recebeu o kit</small>
+                    </div>
+                    <div class="form-group" id="kit-tipo-group" style="display: none; margin-top: 20px;">
+                        <label class="required">
+                            Qual tipo de KIT?
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="checkbox" name="kit_tipo" value="MP" id="kit_tipo_mp">
+                                <span>MP (Mae piraporence)</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="checkbox" name="kit_tipo" value="FM" id="kit_tipo_fm">
+                                <span>FM (Filhos de Minas)</span>
+                            </label>
+                        </div>
+                        <small class="form-help">Selecione o(s) tipo(s) de kit recebido(s)</small>
+                        <div id="kit-alerta" style="display: none; margin-top: 10px; padding: 10px; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px; color: #856404;">
+                            ⚠️ <strong>Atenção:</strong> Ambos os kits foram selecionados. Verifique se a gestante realmente recebeu os dois tipos de kit.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 18: Próxima Avaliação -->
+            <div class="wizard-step" data-step="18">
+                <div class="step-content">
+                    <h2 class="step-title">📅 Próxima Avaliação</h2>
+                    <div class="info-box" style="background: #e8f5e9; border: 1px solid #4caf50; border-radius: 8px; padding: 12px; margin-bottom: 20px; color: #2e7d32;">
+                        <strong>ℹ️ Importante:</strong> Ao salvar o paciente, será criado automaticamente um agendamento no sistema de agendamentos com estes dados.
+                    </div>
+                    <div class="form-group">
+                        <label for="proxima_avaliacao" class="required">
+                            Quando marcar para a próxima avaliação?
+                        </label>
+                        <input
+                            type="date"
+                            id="proxima_avaliacao"
+                            name="proxima_avaliacao"
+                            required
+                            class="form-input"
+                            min=""
+                        >
+                        <small class="form-help">Informe a data prevista para a próxima consulta de pré-natal (deve ser hoje ou futura)</small>
+                    </div>
+                    <div class="form-group" style="margin-top: 20px;">
+                        <label for="proxima_avaliacao_hora">
+                            Horas
+                        </label>
+                        <input
+                            type="time"
+                            id="proxima_avaliacao_hora"
+                            name="proxima_avaliacao_hora"
+                            class="form-input"
+                        >
+                        <small class="form-help">Informe o horário previsto para a próxima consulta (opcional - padrão: 08:00)</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 19: Plano de parto entregue por qual unidade -->
+            <div class="wizard-step" data-step="19">
+                <div class="step-content">
+                    <h2 class="step-title">📋 Plano de Parto</h2>
+                    <div class="form-group">
+                        <label for="plano_parto_entregue_por_unidade">
+                            O plano de parto foi entregue por qual unidade?
+                        </label>
+                        <select id="plano_parto_entregue_por_unidade" name="plano_parto_entregue_por_unidade" class="form-input">
+                            <option value="Nenhuma" selected>Nenhuma</option>
+                        </select>
+                        <small class="form-help">Unidades registradas no sistema. Padrão: Nenhuma.</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botões de navegação -->
+            <div class="wizard-actions">
+                <button type="button" id="btnAnterior" class="btn btn-secondary" style="display: none;">
+                    ← Anterior
+                </button>
+                <button type="button" id="btnProximo" class="btn btn-primary" disabled>
+                    Próximo →
+                </button>
+                <button type="submit" id="btnSalvar" class="btn btn-primary" style="display: none;">
+                    💾 Salvar Paciente
+                </button>
+            </div>
+
+            <!-- Mensagem de feedback -->
+            <div id="message" class="message" style="display: none;"></div>
+        </form>
+    </div>
+    <script src="{{ url_for('static', filename='home/js/theme-manager.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='novo_paciente/js/main.js') }}"></script>
+    <script>
+        // Suprimir erros de extensões do navegador (Copilot, Edge, etc.)
+        (function() {
+            'use strict';
+            
+            // Lista de padrões de erro a suprimir
+            const errorPatterns = [
+                'message channel closed',
+                'contentLogger',
+                'chrome.runtime',
+                'browser.runtime',
+                'TDUqHSu2',
+                'asynchronous response',
+                'listener indicated',
+                'Extension context invalidated'
+            ];
+            
+            function shouldSuppressError(msg) {
+                if (!msg) return false;
+                const msgStr = String(msg).toLowerCase();
+                return errorPatterns.some(pattern => msgStr.includes(pattern.toLowerCase()));
+            }
+            
+            // Interceptar window.onerror
+            const originalError = window.onerror;
+            window.onerror = function(msg, url, line, col, error) {
+                if (shouldSuppressError(msg)) {
+                    return true; // Suprimir o erro
+                }
+                if (originalError) {
+                    return originalError.apply(this, arguments);
+                }
+                return false;
+            };
+            
+            // Interceptar unhandledrejection
+            window.addEventListener('unhandledrejection', function(e) {
+                const reason = e.reason;
+                const message = reason?.message || reason?.toString() || String(reason) || '';
+                
+                if (shouldSuppressError(message)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    return false;
+                }
+            }, true); // Capture phase
+            
+            // Interceptar console.error
+            const originalConsoleError = console.error;
+            console.error = function(...args) {
+                const message = args.map(arg => String(arg)).join(' ');
+                if (shouldSuppressError(message)) {
+                    return; // Não exibir no console
+                }
+                originalConsoleError.apply(console, args);
+            };
+            
+            // Interceptar console.warn também
+            const originalConsoleWarn = console.warn;
+            console.warn = function(...args) {
+                const message = args.map(arg => String(arg)).join(' ');
+                if (shouldSuppressError(message)) {
+                    return; // Não exibir no console
+                }
+                originalConsoleWarn.apply(console, args);
+            };
+        })();
+        
+        function abrirAjuda() {
+            fetch('/api/abrir_ajuda')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Arquivo de ajuda aberto no Bloco de Notas!');
+                    } else {
+                        alert('Erro ao abrir ajuda: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    alert('Erro ao abrir arquivo de ajuda.');
+                });
+        }
+        
+        // Carregar versão do sistema
+        async function carregarVersao() {
+            try {
+                const response = await fetch('/api/version');
+                const data = await response.json();
+                if (data.success) {
+                    const versionElement = document.getElementById('version-info');
+                    if (versionElement) {
+                        versionElement.textContent = `v${data.version}`;
+                        versionElement.title = `Build: ${data.build_date}`;
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao carregar versão:', error);
+            }
+        }
+        
+        // Configurar validação de data da próxima avaliação
+        function configurarValidacaoDataProximaAvaliacao() {
+            const campoData = document.getElementById('proxima_avaliacao');
+            if (campoData) {
+                // Definir data mínima como hoje
+                const hoje = new Date();
+                const ano = hoje.getFullYear();
+                const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+                const dia = String(hoje.getDate()).padStart(2, '0');
+                const dataMinima = `${ano}-${mes}-${dia}`;
+                campoData.min = dataMinima;
+
+                // Validação em tempo real
+                campoData.addEventListener('change', function() {
+                    const dataSelecionada = new Date(this.value);
+                    const hoje = new Date();
+                    hoje.setHours(0, 0, 0, 0);
+
+                    if (dataSelecionada < hoje) {
+                        this.setCustomValidity('A data deve ser hoje ou uma data futura');
+                        this.style.borderColor = '#f44336';
+                    } else {
+                        this.setCustomValidity('');
+                        this.style.borderColor = '';
+                    }
+                });
+            }
+        }
+
+        // Função para configurar os dropdowns do topbar
+        function configurarDropdownsTopbar() {
+            const dropdowns = document.querySelectorAll('.topbar-dropdown');
+            
+            dropdowns.forEach(dropdown => {
+                const btn = dropdown.querySelector('.topbar-dropdown-btn');
+                const content = dropdown.querySelector('.topbar-dropdown-content');
+                
+                if (!btn || !content) return;
+                
+                // Toggle ao clicar no botão
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    
+                    // Fechar todos os outros dropdowns
+                    dropdowns.forEach(otherDropdown => {
+                        if (otherDropdown !== dropdown) {
+                            otherDropdown.classList.remove('active');
+                        }
+                    });
+                    
+                    // Toggle o dropdown atual
+                    dropdown.classList.toggle('active');
+                });
+            });
+            
+            // Fechar dropdowns ao clicar fora
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.topbar-dropdown')) {
+                    dropdowns.forEach(dropdown => {
+                        dropdown.classList.remove('active');
+                    });
+                }
+            });
+            
+            // Fechar dropdowns ao clicar em um item
+            document.querySelectorAll('.topbar-dropdown-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    dropdowns.forEach(dropdown => {
+                        dropdown.classList.remove('active');
+                    });
+                });
+            });
+            
+            // Marcar item ativo baseado na URL atual
+            marcarItemAtivoTopbar();
+        }
+        
+        // Função para marcar o item ativo no topbar baseado na URL
+        function marcarItemAtivoTopbar() {
+            const currentPath = window.location.pathname;
+            const items = document.querySelectorAll('.topbar-dropdown-item');
+            
+            items.forEach(item => {
+                item.classList.remove('active');
+                const href = item.getAttribute('href');
+                
+                if (href === currentPath || (currentPath === '/' && href === '/')) {
+                    item.classList.add('active');
+                }
+            });
+        }
+        
+        // Carregar versão ao carregar a página
+        document.addEventListener('DOMContentLoaded', function() {
+            carregarVersao();
+            configurarValidacaoDataProximaAvaliacao();
+            configurarDropdownsTopbar();
+        });
+    </script>
+    <script src="{{ url_for('static', filename='alerts/js/alerts.js') }}"></script>
+    <script src="{{ url_for('static', filename='alerts_agendamentos/js/alerts.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Pacientes - Gerenciar Banco de Dados</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='bd/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='alerts/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='alerts_agendamentos/css/style.css') }}">
+    <style id="custom-theme" type="text/css"></style>
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+</head>
+<body>
+    <!-- Top Bar Fixa -->
+    <nav class="topbar">
+        <div class="topbar-content">
+            <div class="topbar-logo">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo Sistema Gestão Gestante">
+                <h3>Gestão de Pacientes</h3>
+            </div>
+            <div class="topbar-links">
+                <!-- Gaveta: Pacientes -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👥 Pacientes
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/" class="topbar-dropdown-item">📊 Indicadores</a>
+                        <a href="/novo_paciente" class="topbar-dropdown-item">➕ Novo Paciente</a>
+                        <a href="/pacientes" class="topbar-dropdown-item">📋 Lista de Pacientes</a>
+                        <a href="/exportar" class="topbar-dropdown-item">💾 Exportar</a>
+                    </div>
+                </div>
+
+                <!-- Gaveta: Profissionais -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👨‍⚕️ Profissionais
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/agendamentos" class="topbar-dropdown-item">📅 Agendamentos</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">👨‍⚕️ Lista de Profissionais</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">📊 Relatórios</a>
+                    </div>
+                </div>
+
+                <!-- Gaveta: Configurações -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        ⚙️ Configurações
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/bd" class="topbar-dropdown-item active">🗄️ Banco de Dados</a>
+                        <a href="/conflitos" class="topbar-dropdown-item">⚠️ Conflitos <span id="conflitos-badge" class="badge-contador" style="display: none;">0</span></a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">🔔 Notificações</a>
+                        <a href="/aparencia" class="topbar-dropdown-item">🎨 Aparência</a>
+                    </div>
+                </div>
+
+                <!-- Ajuda (não é gaveta) -->
+                <a href="/ajuda" class="topbar-link btn-ajuda">
+                    ❓ Ajuda
+                </a>
+
+                <span id="version-info" class="topbar-version">v{{ version }}</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sistema de Alertas de Parto Próximo -->
+    <div id="alertas-parto-container" style="display: none;">
+        <div class="alertas-header">
+            <h3>
+                🚨 Alertas de Parto
+                <span class="badge-contador" id="alertas-contador">0</span>
+            </h3>
+        </div>
+        <div id="alertas-parto-list">
+            <!-- Alertas serão inseridos aqui via JavaScript -->
+        </div>
+    </div>
+
+    <!-- Sistema de Alertas de Agendamentos Próximos -->
+    <div id="alertas-agendamentos-container" style="display: none;">
+        <div class="alertas-header-agendamentos">
+            <h3>
+                📅 Agendamentos Próximos
+                <span class="badge-contador" id="alertas-agendamentos-contador">0</span>
+            </h3>
+        </div>
+        <div id="alertas-agendamentos-list">
+            <!-- Alertas serão inseridos aqui via JavaScript -->
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>Gerenciar Banco de Dados</h1>
+            <p>Controle total e fácil da tabela de pacientes</p>
+        </div>
+
+        <!-- Barra de Ações -->
+        <div class="actions-bar">
+            <div class="search-container">
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    class="search-input" 
+                    placeholder="🔍 Pesquisar por nome ou unidade..."
+                    autocomplete="off"
+                >
+            </div>
+
+            <div class="actions-buttons">
+                <button id="addBtn" class="btn btn-success">
+                    <span>➕</span> Adicionar
+                </button>
+                <button id="refreshBtn" class="btn btn-info">
+                    <span>🔄</span> Atualizar
+                </button>
+                <button id="backupBtn" class="btn btn-primary">
+                    <span>💾</span> Criar Cópia BD
+                </button>
+                <button id="loadBackupBtn" class="btn btn-secondary">
+                    <span>📂</span> Carregar Cópia
+                </button>
+                <button id="clearDbBtn" class="btn btn-danger">
+                    <span>🗑️</span> Excluir Dados BD
+                </button>
+                <button id="syncBtn" class="btn btn-primary">
+                    <span>🔄</span> Sincronizar BD
+                </button>
+            </div>
+        </div>
+
+        <!-- Informações -->
+        <div class="info-stats">
+            <div class="stat-card">
+                <span class="stat-label">Total de Registros:</span>
+                <span id="totalRecords" class="stat-value">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Exibindo:</span>
+                <span id="showingRecords" class="stat-value">0</span>
+            </div>
+        </div>
+
+        <!-- Tabela de Pacientes -->
+        <div class="table-wrapper">
+            <table id="pacientesTable" class="data-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-column="nome">Nome <span class="sort-icon">⇅</span></th>
+                        <th class="sortable" data-column="unidade">Unidade de Saúde <span class="sort-icon">⇅</span></th>
+                        <th class="sortable" data-column="data">Data Cadastro <span class="sort-icon">⇅</span></th>
+                        <th>Pré-natal 12s</th>
+                        <th>Consultas</th>
+                        <th>Vacinas</th>
+                        <th>Plano Parto</th>
+                        <th>Participou Grupos</th>
+                        <th class="actions-column">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td colspan="9" class="loading-row">Carregando dados...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginação -->
+        <div class="pagination-container">
+            <div class="pagination-info">
+                <span id="paginationText">Página 1 de 1</span>
+            </div>
+            <div class="pagination-controls">
+                <button id="prevPageBtn" class="btn btn-secondary" disabled>← Anterior</button>
+                <button id="nextPageBtn" class="btn btn-secondary" disabled>Próxima →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Edição/Adição -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Editar Paciente</h2>
+                <button class="modal-close" id="closeModal">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="patientForm">
+                    <input type="hidden" id="patientId">
+                    
+                    <div class="form-section">
+                        <h3>Identificação</h3>
+                        <div class="form-group">
+                            <label for="nomeGestante">Nome da Gestante *</label>
+                            <input type="text" id="nomeGestante" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="unidadeSaude">Unidade de Saúde</label>
+                            <input type="text" id="unidadeSaude">
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>👶 Histórico Reprodutivo</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="jaGanhouCrianca">
+                                    Já ganhou a criança?
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group" id="data-ganhou-group" style="display: none;">
+                            <label for="dataGanhouCrianca">Data (gêmeos ou mais)</label>
+                            <input type="date" id="dataGanhouCrianca" class="form-input">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="quantidadeFilhos">Quantidade de Filhos</label>
+                                <input type="number" id="quantidadeFilhos" min="0" value="0" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label for="generosFilhos">Gêneros dos Filhos</label>
+                                <input type="text" id="generosFilhos" class="form-input" placeholder="Ex.: M, F, M">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="metodoPreventivo">Método Preventivo Atual</label>
+                                <select id="metodoPreventivo" class="form-input">
+                                    <option value="">Selecione</option>
+                                    <option value="DIU">DIU</option>
+                                    <option value="Laqueadura">Laqueadura</option>
+                                    <option value="Contraceptivo">Contraceptivo</option>
+                                    <option value="Vasectomia">Vasectomia (parceiro)</option>
+                                    <option value="Outros">Outros</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="metodo-preventivo-outros-group" style="display: none;">
+                                <label for="metodoPreventivoOutros">Especificação</label>
+                                <input type="text" id="metodoPreventivoOutros" class="form-input" placeholder="Descreva o método">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>📅 Datas Importantes</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="dum">DUM (Data da Última Menstruação)</label>
+                                <input type="date" id="dum" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label for="dpp">DPP (Data Provável do Parto)</label>
+                                <input type="date" id="dpp" class="form-input">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="proximaAvaliacao">Próxima Avaliação</label>
+                                <input type="date" id="proximaAvaliacao" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label for="proximaAvaliacaoHora">Horário</label>
+                                <input type="time" id="proximaAvaliacaoHora" class="form-input" value="08:00">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Avaliação</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="inicioPreNatal">
+                                    Início pré-natal antes de 12 semanas
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="planoParto">
+                                    Plano de parto
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="participouGrupos">
+                                    Participou de grupos
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group" id="inicio-pre-natal-detalhes-group" style="display: none;">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="inicioPreNatalSemanas">Semanas de gestação no início</label>
+                                    <input type="number" id="inicioPreNatalSemanas" min="1" max="42" class="form-input" placeholder="Ex.: 10">
+                                </div>
+                                <div class="form-group" style="flex: 1;">
+                                    <label for="inicioPreNatalObservacao">Observações sobre o início do pré-natal</label>
+                                    <textarea id="inicioPreNatalObservacao" class="form-input" rows="2" placeholder="Opcional" style="resize: vertical;"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="avaliacaoOdontologica">
+                                    Avaliação odontológica
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="estratificacao">
+                                    Estratificação
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="cartaoPreNatalCompleto">
+                                    Cartão pré-natal completo
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="possuiBolsaFamilia">
+                                    Possui Bolsa Família
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="temVacinaCovid">
+                                    Tem vacina de COVID
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="planoPartoEntreguePorUnidade">Plano de parto entregue por qual unidade?</label>
+                            <select id="planoPartoEntreguePorUnidade" class="form-input">
+                                <option value="Nenhuma">Nenhuma</option>
+                                <option value="Saúde da Mulher">Saúde da Mulher</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="consultasPreNatal">Consultas de Pré-Natal</label>
+                                <input type="number" id="consultasPreNatal" min="0" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="vacinasCompletas">Vacinas Completas</label>
+                                <select id="vacinasCompletas">
+                                    <option value="">Não avaliado</option>
+                                    <option value="Completa">Completa</option>
+                                    <option value="Incompleta">Incompleta</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group" id="estratificacao-problema-group" style="display: none;">
+                            <label for="estratificacaoProblema">Problema Identificado na Estratificação</label>
+                            <textarea 
+                                id="estratificacaoProblema" 
+                                class="form-input" 
+                                rows="4"
+                                placeholder="Descreva o problema identificado na estratificação de risco..."
+                                style="resize: vertical; min-height: 100px;"
+                            ></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>🎁 KIT</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="ganhouKit">
+                                    Ganhou o KIT?
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group" id="kit-tipo-group" style="display: none;">
+                            <label>Tipo(s) de KIT</label>
+                            <div class="form-row" style="gap: 12px;">
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                    <input type="checkbox" name="kitTipo" value="MP" id="kitTipoMp">
+                                    MP (Mãe Piraporense)
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                    <input type="checkbox" name="kitTipo" value="FM" id="kitTipoFm">
+                                    FM (Filhos de Minas)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancelBtn">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="saveBtn">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mensagem de Status -->
+    <div id="statusMessage" class="status-message" style="display: none;"></div>
+
+    <!-- Modal para confirmação de exclusão de BD -->
+    <div id="confirmClearModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⚠️ Confirmar Exclusão</h2>
+                <button class="modal-close" id="closeConfirmModal">×</button>
+            </div>
+            <div class="modal-body">
+                <p><strong>ATENÇÃO:</strong> Esta ação irá excluir TODOS os dados do banco de dados!</p>
+                <p>Esta ação não pode ser desfeita. Tem certeza que deseja continuar?</p>
+                <p>Digite <strong>CONFIRMAR</strong> para prosseguir:</p>
+                <input type="text" id="confirmText" class="control-select" placeholder="Digite CONFIRMAR">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancelClearBtn">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmClearBtn" disabled>Excluir Todos os Dados</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Input oculto para carregar backup -->
+    <input type="file" id="backupFileInput" accept=".json" style="display: none;">
+
+    <!-- Modal de Sincronização -->
+    <div id="syncModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2>🔄 Sincronizar Bancos de Dados</h2>
+                <button class="modal-close" id="closeSyncModal">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="syncContent">
+                    <div class="sync-section">
+                        <h3>Descobrir Servidores na Rede</h3>
+                        <p>Clique no botão abaixo para descobrir outros computadores na rede com o sistema rodando.</p>
+                        <button id="discoverBtn" class="btn btn-info" style="width: 100%;">
+                            <span>🔍</span> Descobrir Servidores
+                        </button>
+                        <div id="syncHostWarning" style="display: none; margin-top: 10px; padding: 10px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; color: #856404; font-size: 0.9em;"></div>
+                    </div>
+
+                    <div id="serversList" style="display: none; margin-top: 20px;">
+                        <h3>Servidores Encontrados:</h3>
+                        <div id="serversContainer"></div>
+                    </div>
+
+                    <div id="syncProgress" style="display: none; margin-top: 20px;">
+                        <h3>Sincronizando...</h3>
+                        <div class="loading-progress">
+                            <div class="loading-progress-bar">
+                                <div id="syncProgressFill" class="loading-progress-fill"></div>
+                            </div>
+                            <div class="loading-progress-text">
+                                <span id="syncProgressPercent">0%</span>
+                            </div>
+                        </div>
+                        <p id="syncStatusMessage">Preparando sincronização...</p>
+                    </div>
+
+                    <div id="syncResults" style="display: none; margin-top: 20px;">
+                        <h3>Resultado da Sincronização:</h3>
+                        <div id="syncStats"></div>
+                        <div id="removedPatientsSection" style="display: none; margin-top: 20px;">
+                            <h4>⚠️ Pacientes Removidos em Outro Servidor:</h4>
+                            <p>Os seguintes pacientes foram removidos em outro servidor. Deseja removê-los também aqui?</p>
+                            <div id="removedPatientsList"></div>
+                            <div style="margin-top: 15px;">
+                                <button id="removeSelectedBtn" class="btn btn-danger">Remover Selecionados</button>
+                                <button id="keepAllBtn" class="btn btn-secondary">Manter Todos</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="closeSyncModalBtn">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay de Loading -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-container">
+            <div class="loading-spinner"></div>
+            <div class="loading-content">
+                <h3 id="loadingTitle">Processando...</h3>
+                <p id="loadingMessage">Por favor, aguarde enquanto processamos sua solicitação.</p>
+                <div class="loading-progress">
+                    <div class="loading-progress-bar">
+                        <div id="loadingProgressFill" class="loading-progress-fill"></div>
+                    </div>
+                    <div class="loading-progress-text">
+                        <span id="loadingProgressPercent">0%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Importação Seletiva -->
+    <div id="importBackupModal" class="modal" style="z-index: 2000;">
+        <div class="modal-content" style="max-width: 95%; max-height: 90vh; overflow-y: auto; width: 1200px;">
+            <div class="modal-header" style="position: sticky; top: 0; background: white; z-index: 10;">
+                <h2>📥 Importação Seletiva de Backup</h2>
+                <button class="modal-close" id="closeImportBackupModal">×</button>
+            </div>
+            <div class="modal-body">
+                <!-- Explicação -->
+                <div style="margin-bottom: 20px; padding: 15px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #2196f3;">
+                    <h4 style="margin-top: 0; color: #1565c0;">Como funciona:</h4>
+                    <ul style="margin: 10px 0; padding-left: 20px;">
+                        <li><strong>✓ Confirmar:</strong> Importa o paciente diretamente para o seu banco de dados</li>
+                        <li><strong>✏️ Editar:</strong> Salva o paciente para revisão posterior (em "Itens em Espera")</li>
+                        <li><strong>✕ Ignorar:</strong> Não importa o paciente, mas mantém em espera por 5 dias caso mude de ideia</li>
+                    </ul>
+                    <p style="margin-bottom: 0; font-size: 0.9em; color: #666;">
+                        💡 <strong>Dica:</strong> Pacientes em espera ficam disponíveis por 5 dias para recuperação.
+                    </p>
+                </div>
+
+                <!-- Estatísticas -->
+                <div id="importStats" style="margin-bottom: 20px;"></div>
+
+                <!-- Seção de Novos Pacientes -->
+                <div id="sectionNovos" style="margin-bottom: 30px; display: none;">
+                    <h3 style="color: #2e7d32; display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 1.5em;">➕</span>
+                        Novos Pacientes
+                        <span id="countNovos" style="background: #c8e6c9; color: #2e7d32; padding: 4px 12px; border-radius: 12px; font-size: 0.8em;">0</span>
+                    </h3>
+                    <p style="font-size: 0.9em; color: #666; margin-bottom: 15px;">
+                        Pacientes que existem no backup mas ainda não estão no seu banco de dados
+                    </p>
+                    <div id="listaNovos" class="comparison-list"></div>
+                </div>
+
+                <!-- Seção de Pacientes Modificados -->
+                <div id="sectionModificados" style="margin-bottom: 30px; display: none;">
+                    <h3 style="color: #f57c00; display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 1.5em;">✏️</span>
+                        Pacientes Modificados
+                        <span id="countModificados" style="background: #ffe0b2; color: #f57c00; padding: 4px 12px; border-radius: 12px; font-size: 0.8em;">0</span>
+                    </h3>
+                    <p style="font-size: 0.9em; color: #666; margin-bottom: 15px;">
+                        Pacientes que existem em ambos os bancos mas possuem diferenças nos dados
+                    </p>
+                    <div id="listaModificados" class="comparison-list"></div>
+                </div>
+
+                <!-- Mensagem quando não há nada para importar -->
+                <div id="semDadosImportar" style="display: none; padding: 40px; text-align: center; background: #f5f5f5; border-radius: 8px;">
+                    <p style="font-size: 1.2em; color: #666;">
+                        📋 Nenhuma diferença encontrada entre o backup e seu banco de dados atual.
+                    </p>
+                </div>
+
+                <!-- Botões de Ação -->
+                <div id="importActions" style="display: flex; gap: 15px; justify-content: flex-end; margin-top: 30px; padding-top: 20px; border-top: 2px solid #eee; position: sticky; bottom: 0; background: white; padding: 20px 0;">
+                    <button type="button" class="btn btn-secondary" id="cancelarImportacao" style="padding: 12px 24px;">
+                        Cancelar
+                    </button>
+                    <button type="button" class="btn btn-warning" id="selecionarTodosIgnorar" style="padding: 12px 24px;">
+                        ✕ Selecionar Todos como Ignorar
+                    </button>
+                    <button type="button" class="btn btn-success" id="selecionarTodosConfirmar" style="padding: 12px 24px;">
+                        ✓ Selecionar Todos como Confirmar
+                    </button>
+                    <button type="button" class="btn btn-primary" id="executarImportacaoBtn" style="padding: 12px 24px; font-weight: bold;">
+                        🚀 Executar Importação
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Detalhes de Modificação -->
+    <div id="modificationDetailsModal" class="modal" style="z-index: 2100;">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>🔍 Detalhes das Modificações</h3>
+                <button class="modal-close" id="closeModificationDetails">×</button>
+            </div>
+            <div class="modal-body" id="modificationDetailsBody">
+                <!-- Details will be inserted here -->
+            </div>
+            <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" id="closeModificationDetailsBtn">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .comparison-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .comparison-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            background: white;
+        }
+        .comparison-item:last-child {
+            border-bottom: none;
+        }
+        .comparison-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .comparison-item-name {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .comparison-item-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .comparison-item-checkbox input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        .differences-list {
+            margin-top: 10px;
+            padding-left: 20px;
+        }
+        .difference-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: #fff3cd;
+            border-left: 3px solid #ffc107;
+            border-radius: 4px;
+        }
+        .difference-field {
+            font-weight: bold;
+            color: #856404;
+        }
+        .difference-values {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 5px;
+            font-size: 0.9em;
+        }
+        .diff-db {
+            color: #dc3545;
+        }
+        .diff-backup {
+            color: #28a745;
+        }
+        .stat-card-comparison {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stat-card-comparison.novos { border-top: 4px solid #28a745; }
+        .stat-card-comparison.modificados { border-top: 4px solid #ffc107; }
+        .stat-card-comparison.identicos { border-top: 4px solid #17a2b8; }
+        .stat-card-comparison.removidos { border-top: 4px solid #dc3545; }
+        .stat-value-large {
+            font-size: 2em;
+            font-weight: bold;
+        }
+        .stat-label-small {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+        .btn-view-diffs {
+            background: #ffc107;
+            color: #000;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+        }
+        .btn-view-diffs:hover {
+            background: #e0a800;
+        }
+        /* Estilos para ações de importação */
+        .acao-container {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .acao-btn {
+            padding: 6px 12px;
+            border: 2px solid;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: bold;
+            transition: all 0.3s;
+            background: white;
+        }
+        .acao-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        .acao-btn-confirmar {
+            border-color: #28a745;
+            color: #28a745;
+        }
+        .acao-btn-confirmar.active {
+            background: #28a745;
+            color: white;
+        }
+        .acao-btn-editar {
+            border-color: #ffc107;
+            color: #ffc107;
+        }
+        .acao-btn-editar.active {
+            background: #ffc107;
+            color: #000;
+        }
+        .acao-btn-ignorar {
+            border-color: #dc3545;
+            color: #dc3545;
+        }
+        .acao-btn-ignorar.active {
+            background: #dc3545;
+            color: white;
+        }
+        .motivo-input {
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.85em;
+            width: 150px;
+        }
+        .motivo-input::placeholder {
+            color: #999;
+        }
+        .item-status-confirmar { border-left: 4px solid #28a745; }
+        .item-status-editar { border-left: 4px solid #ffc107; }
+        .item-status-ignorar { border-left: 4px solid #dc3545; }
+    </style>
+
+    <script src="{{ url_for('static', filename='home/js/theme-manager.js') }}"></script>
+    <script src="{{ url_for('static', filename='bd/js/core.js') }}"></script>
+    <script src="{{ url_for('static', filename='bd/js/pacientes.js') }}"></script>
+    <script src="{{ url_for('static', filename='bd/js/backup.js') }}"></script>
+    <script src="{{ url_for('static', filename='bd/js/importacao.js') }}"></script>
+    <script src="{{ url_for('static', filename='bd/js/importacao-acoes.js') }}"></script>
+    <script src="{{ url_for('static', filename='bd/js/sync.js') }}"></script>
+    <script src="{{ url_for('static', filename='bd/js/main.js') }}"></script>
+    <script>
+        // Suprimir erros de extensões do navegador (Copilot, etc.)
+        window.addEventListener('error', function(e) {
+            if (e.message && (
+                e.message.includes('message channel closed') ||
+                e.message.includes('contentLogger') ||
+                e.message.includes('chrome.runtime') ||
+                e.message.includes('browser.runtime')
+            )) {
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        window.addEventListener('unhandledrejection', function(e) {
+            if (e.reason && (
+                e.reason.message && (
+                    e.reason.message.includes('message channel closed') ||
+                    e.reason.message.includes('contentLogger')
+                )
+            )) {
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        function abrirAjuda() {
+            fetch('/api/abrir_ajuda')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Arquivo de ajuda aberto no Bloco de Notas!');
+                    } else {
+                        alert('Erro ao abrir ajuda: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    alert('Erro ao abrir arquivo de ajuda.');
+                });
+        }
+        
+        // Carregar versão do sistema
+        async function carregarVersao() {
+            try {
+                const response = await fetch('/api/version');
+                const data = await response.json();
+                if (data.success) {
+                    const versionElement = document.getElementById('version-info');
+                    if (versionElement) {
+                        versionElement.textContent = `v${data.version}`;
+                        versionElement.title = `Build: ${data.build_date}`;
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao carregar versão:', error);
+            }
+        }
+        
+        // Função para configurar os dropdowns do topbar
+        function configurarDropdownsTopbar() {
+            const dropdowns = document.querySelectorAll('.topbar-dropdown');
+            
+            dropdowns.forEach(dropdown => {
+                const btn = dropdown.querySelector('.topbar-dropdown-btn');
+                const content = dropdown.querySelector('.topbar-dropdown-content');
+                
+                if (!btn || !content) return;
+                
+                // Toggle ao clicar no botão
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    
+                    // Fechar todos os outros dropdowns
+                    dropdowns.forEach(otherDropdown => {
+                        if (otherDropdown !== dropdown) {
+                            otherDropdown.classList.remove('active');
+                        }
+                    });
+                    
+                    // Toggle o dropdown atual
+                    dropdown.classList.toggle('active');
+                });
+            });
+            
+            // Fechar dropdowns ao clicar fora
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.topbar-dropdown')) {
+                    dropdowns.forEach(dropdown => {
+                        dropdown.classList.remove('active');
+                    });
+                }
+            });
+            
+            // Fechar dropdowns ao clicar em um item
+            document.querySelectorAll('.topbar-dropdown-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    dropdowns.forEach(dropdown => {
+                        dropdown.classList.remove('active');
+                    });
+                });
+            });
+            
+            // Marcar item ativo baseado na URL atual
+            marcarItemAtivoTopbar();
+        }
+        
+        // Função para marcar o item ativo no topbar baseado na URL
+        function marcarItemAtivoTopbar() {
+            const currentPath = window.location.pathname;
+            const items = document.querySelectorAll('.topbar-dropdown-item');
+            
+            items.forEach(item => {
+                item.classList.remove('active');
+                const href = item.getAttribute('href');
+                
+                if (href === currentPath || (currentPath === '/' && href === '/')) {
+                    item.classList.add('active');
+                }
+            });
+        }
+        
+        // Carregar contador de conflitos
+        async function carregarContadorConflitos() {
+            try {
+                const response = await fetch('/api/sync/conflitos');
+                const data = await response.json();
+                if (data.success) {
+                    const total = (data.pacientes?.length || 0) + (data.agendamentos?.length || 0);
+                    const badge = document.getElementById('conflitos-badge');
+                    if (badge) {
+                        if (total > 0) {
+                            badge.textContent = total;
+                            badge.style.display = 'inline-block';
+                        } else {
+                            badge.style.display = 'none';
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao carregar contador de conflitos:', error);
+            }
+        }
+
+        // Carregar versão ao carregar a página
+        document.addEventListener('DOMContentLoaded', function() {
+            carregarVersao();
+            carregarContadorConflitos();
+            configurarDropdownsTopbar();
+        });
+    </script>
+    <script src="{{ url_for('static', filename='alerts/js/alerts.js') }}"></script>
+    <script src="{{ url_for('static', filename='alerts_agendamentos/js/alerts.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Pacientes - Exportar Dados</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='exportar/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='alerts/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='alerts_agendamentos/css/style.css') }}">
+    <style id="custom-theme" type="text/css"></style>
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+</head>
+<body>
+    <!-- Top Bar Fixa -->
+    <nav class="topbar">
+        <div class="topbar-content">
+            <div class="topbar-logo">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo Sistema Gestão Gestante">
+                <h3>Gestão de Pacientes</h3>
+            </div>
+            <div class="topbar-links">
+                <!-- Gaveta: Pacientes -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👥 Pacientes
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/" class="topbar-dropdown-item">📊 Indicadores</a>
+                        <a href="/novo_paciente" class="topbar-dropdown-item">➕ Novo Paciente</a>
+                        <a href="/pacientes" class="topbar-dropdown-item">📋 Lista de Pacientes</a>
+                        <a href="/exportar" class="topbar-dropdown-item active">💾 Exportar</a>
+                    </div>
+                </div>
+
+                <!-- Gaveta: Profissionais -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👨‍⚕️ Profissionais
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/agendamentos" class="topbar-dropdown-item">📅 Agendamentos</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">👨‍⚕️ Lista de Profissionais</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">📊 Relatórios</a>
+                    </div>
+                </div>
+
+                <!-- Gaveta: Configurações -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        ⚙️ Configurações
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/bd" class="topbar-dropdown-item">🗄️ Banco de Dados</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">🔔 Notificações</a>
+                        <a href="/aparencia" class="topbar-dropdown-item">🎨 Aparência</a>
+                    </div>
+                </div>
+
+                <!-- Ajuda (não é gaveta) -->
+                <a href="/ajuda" class="topbar-link btn-ajuda">
+                    ❓ Ajuda
+                </a>
+
+                <span id="version-info" class="topbar-version">v{{ version }}</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sistema de Alertas de Parto Próximo -->
+    <div id="alertas-parto-container" style="display: none;">
+        <div class="alertas-header">
+            <h3>
+                🚨 Alertas de Parto
+                <span class="badge-contador" id="alertas-contador">0</span>
+            </h3>
+        </div>
+        <div id="alertas-parto-list">
+            <!-- Alertas serão inseridos aqui via JavaScript -->
+        </div>
+    </div>
+
+    <!-- Sistema de Alertas de Agendamentos Próximos -->
+    <div id="alertas-agendamentos-container" style="display: none;">
+        <div class="alertas-header-agendamentos">
+            <h3>
+                📅 Agendamentos Próximos
+                <span class="badge-contador" id="alertas-agendamentos-contador">0</span>
+            </h3>
+        </div>
+        <div id="alertas-agendamentos-list">
+            <!-- Alertas serão inseridos aqui via JavaScript -->
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>Exportar Dados dos Pacientes</h1>
+            <p>Escolha o formato e baixe os dados</p>
+        </div>
+
+        <!-- Seleção de Formato -->
+        <div class="export-section">
+            <h2>Selecione o Formato de Exportação</h2>
+            
+            <div class="format-options">
+                <div class="format-card" data-format="excel">
+                    <div class="format-icon">📊</div>
+                    <h3>Excel (.xlsx)</h3>
+                    <p>Arquivo Excel com tabelas formatadas</p>
+                    <div class="format-badge">Recomendado</div>
+                </div>
+
+                <div class="format-card" data-format="word">
+                    <div class="format-icon">📄</div>
+                    <h3>Word (.docx)</h3>
+                    <p>Documento Word formatado</p>
+                </div>
+
+                <div class="format-card" data-format="txt">
+                    <div class="format-icon">📝</div>
+                    <h3>Texto (.txt)</h3>
+                    <p>Arquivo de texto simples</p>
+                </div>
+            </div>
+
+            <!-- Informações adicionais -->
+            <div class="export-info">
+                <div class="info-card">
+                    <span class="info-icon">ℹ️</span>
+                    <div class="info-content">
+                        <strong>Total de pacientes:</strong>
+                        <span id="totalPacientes">Carregando...</span>
+                    </div>
+                </div>
+            </div>
+
+        <!-- Filtros por Unidade -->
+        <div class="export-filters">
+            <h3>Filtros por Unidade</h3>
+            <p class="filter-subtitle">Selecione as unidades para filtrar os dados da exportação. Os pacientes devem atender ambos os filtros.</p>
+
+            <!-- Primeiro Filtro: Unidades (Gaveta com Busca) -->
+            <div class="filter-group">
+                <label class="filter-group-label">
+                    <span class="filter-number">1º</span>
+                    <span class="filter-title">Filtro de Unidades</span>
+                </label>
+                <p class="filter-description">Selecione uma ou mais unidades (UBS, UPA, etc.). Apenas pacientes que atendem essas unidades serão incluídos.</p>
+                
+                <div class="filter-gaveta-container">
+                    <div class="filter-gaveta-header">
+                        <div class="filter-gaveta-select">
+                            <button type="button" id="filterUpasBtn" class="filter-gaveta-btn">
+                                <span id="filterUpasText">Todas</span>
+                                <span class="gaveta-arrow">▼</span>
+                            </button>
+                            <div id="filterUpasDropdown" class="filter-gaveta-dropdown">
+                                <div class="filter-search-container">
+                                    <input type="text" id="filterUpasSearch" class="filter-search-input" placeholder="🔍 Pesquisar UPAs..." autocomplete="off">
+                                </div>
+                                <div class="filter-options-container" id="filterUpasOptions">
+                                    <label class="filter-option">
+                                        <input type="checkbox" class="filter-checkbox" value="TODAS" checked id="filterUpasTodas">
+                                        <span class="filter-option-text">Todas</span>
+                                    </label>
+                                    <!-- Opções serão preenchidas via JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="selectedUpasTags" class="selected-tags">
+                    <!-- Tags das UPAs selecionadas serão exibidas aqui -->
+                </div>
+            </div>
+
+            <!-- Segundo Filtro: Campos do BD (Gaveta com Busca) -->
+            <div class="filter-group" style="margin-top: 2rem;">
+                <label class="filter-group-label">
+                    <span class="filter-number">2º</span>
+                    <span class="filter-title">Filtro por Campos</span>
+                </label>
+                <p class="filter-description">Selecione um ou mais campos para refinar ainda mais os resultados. Apenas pacientes que atendem o 1º e 2º filtros serão incluídos.</p>
+                
+                <div class="filter-gaveta-container">
+                    <div class="filter-gaveta-header">
+                        <div class="filter-gaveta-select">
+                            <button type="button" id="filterCamposBtn" class="filter-gaveta-btn">
+                                <span id="filterCamposText">Todos os campos</span>
+                                <span class="gaveta-arrow">▼</span>
+                            </button>
+                            <div id="filterCamposDropdown" class="filter-gaveta-dropdown">
+                                <div class="filter-search-container">
+                                    <input type="text" id="filterCamposSearch" class="filter-search-input" placeholder="🔍 Pesquisar campos..." autocomplete="off">
+                                </div>
+                                <div class="filter-options-container" id="filterCamposOptions">
+                                    <label class="filter-option">
+                                        <input type="checkbox" class="filter-checkbox" value="TODOS" checked id="filterCamposTodos">
+                                        <span class="filter-option-text">Todos os campos</span>
+                                    </label>
+                                    <!-- Opções serão preenchidas via JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="selectedCamposTags" class="selected-tags">
+                    <!-- Tags dos campos selecionados serão exibidos aqui -->
+                </div>
+            </div>
+
+            <p id="filtrosResumo" class="filter-summary">Nenhum filtro ativo.</p>
+            
+            <!-- Preview de quantas pessoas estão sendo carregadas -->
+            <div class="filter-preview">
+                <div class="preview-card">
+                    <div class="preview-icon">👥</div>
+                    <div class="preview-content">
+                        <span class="preview-label">Pacientes na planilha:</span>
+                        <span id="previewContagem" class="preview-count">Carregando...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="custom-toggle">
+            <label class="custom-switch">
+                <input type="checkbox" id="togglePersonalizar">
+                <span>Personalizar planilha</span>
+            </label>
+            <p class="custom-note">Ative para montar a própria planilha e exportar apenas os campos desejados.</p>
+        </div>
+
+        <div id="customPanel" class="custom-panel">
+            <div class="custom-panel-header">
+                <h3>Mini planilha personalizada</h3>
+                <p>Selecione um campo e clique em "+" para adicioná-lo à exportação.</p>
+            </div>
+
+            <div class="custom-builder-input">
+                <select id="customColumnSelect"></select>
+                <button type="button" id="customAddBtn" class="btn btn-info custom-add">+</button>
+            </div>
+
+            <div id="customList" class="custom-list">
+                <span class="custom-placeholder">Nenhuma coluna selecionada.</span>
+            </div>
+        </div>
+
+        <!-- Botão de Exportação -->
+        <div class="export-button-container">
+            <button id="exportBtn" class="btn btn-primary" disabled>
+                <span class="btn-icon">⬇️</span>
+                Exportar Dados
+            </button>
+        </div>
+
+        <!-- Mensagem de status -->
+        <div id="statusMessage" class="status-message" style="display: none;"></div>
+    </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='home/js/theme-manager.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='exportar/js/main.js') }}"></script>
+    <script>
+        // Suprimir erros de extensões do navegador (Copilot, etc.)
+        window.addEventListener('error', function(e) {
+            if (e.message && (
+                e.message.includes('message channel closed') ||
+                e.message.includes('contentLogger') ||
+                e.message.includes('chrome.runtime') ||
+                e.message.includes('browser.runtime')
+            )) {
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        window.addEventListener('unhandledrejection', function(e) {
+            if (e.reason && (
+                e.reason.message && (
+                    e.reason.message.includes('message channel closed') ||
+                    e.reason.message.includes('contentLogger')
+                )
+            )) {
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        function abrirAjuda() {
+            fetch('/api/abrir_ajuda')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Arquivo de ajuda aberto no Bloco de Notas!');
+                    } else {
+                        alert('Erro ao abrir ajuda: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    alert('Erro ao abrir arquivo de ajuda.');
+                });
+        }
+        
+        // Carregar versão do sistema
+        async function carregarVersao() {
+            try {
+                const response = await fetch('/api/version');
+                const data = await response.json();
+                if (data.success) {
+                    const versionElement = document.getElementById('version-info');
+                    if (versionElement) {
+                        versionElement.textContent = `v${data.version}`;
+                        versionElement.title = `Build: ${data.build_date}`;
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao carregar versão:', error);
+            }
+        }
+        
+        // Função para configurar os dropdowns do topbar
+        function configurarDropdownsTopbar() {
+            const dropdowns = document.querySelectorAll('.topbar-dropdown');
+            
+            dropdowns.forEach(dropdown => {
+                const btn = dropdown.querySelector('.topbar-dropdown-btn');
+                const content = dropdown.querySelector('.topbar-dropdown-content');
+                
+                if (!btn || !content) return;
+                
+                // Toggle ao clicar no botão
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    
+                    // Fechar todos os outros dropdowns
+                    dropdowns.forEach(otherDropdown => {
+                        if (otherDropdown !== dropdown) {
+                            otherDropdown.classList.remove('active');
+                        }
+                    });
+                    
+                    // Toggle o dropdown atual
+                    dropdown.classList.toggle('active');
+                });
+            });
+            
+            // Fechar dropdowns ao clicar fora
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.topbar-dropdown')) {
+                    dropdowns.forEach(dropdown => {
+                        dropdown.classList.remove('active');
+                    });
+                }
+            });
+            
+            // Fechar dropdowns ao clicar em um item
+            document.querySelectorAll('.topbar-dropdown-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    dropdowns.forEach(dropdown => {
+                        dropdown.classList.remove('active');
+                    });
+                });
+            });
+            
+            // Marcar item ativo baseado na URL atual
+            marcarItemAtivoTopbar();
+        }
+        
+        // Função para marcar o item ativo no topbar baseado na URL
+        function marcarItemAtivoTopbar() {
+            const currentPath = window.location.pathname;
+            const items = document.querySelectorAll('.topbar-dropdown-item');
+            
+            items.forEach(item => {
+                item.classList.remove('active');
+                const href = item.getAttribute('href');
+                
+                if (href === currentPath || (currentPath === '/' && href === '/')) {
+                    item.classList.add('active');
+                }
+            });
+        }
+        
+        // Carregar versão ao carregar a página
+        document.addEventListener('DOMContentLoaded', function() {
+            carregarVersao();
+            configurarDropdownsTopbar();
+        });
+    </script>
+    <script src="{{ url_for('static', filename='alerts/js/alerts.js') }}"></script>
+    <script src="{{ url_for('static', filename='alerts_agendamentos/js/alerts.js') }}"></script>
+</body>
+</html>

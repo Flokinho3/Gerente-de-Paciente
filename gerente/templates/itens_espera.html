@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Pacientes - Itens em Espera</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='bd/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='alerts/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='alerts_agendamentos/css/style.css') }}">
+    <style id="custom-theme" type="text/css"></style>
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+    <style>
+        .itens-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .item-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-left: 4px solid #ffc107;
+            transition: all 0.3s ease;
+        }
+        .item-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+        .item-card.para-edicao {
+            border-left-color: #f57c00;
+        }
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+        .item-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+            margin: 0;
+        }
+        .item-meta {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 5px;
+        }
+        .item-motivo {
+            background: #fff3e0;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 15px 0;
+            font-size: 0.9em;
+            color: #666;
+        }
+        .item-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        .expiracao-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+        .expiracao-badge.urgente {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card-custom {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .stat-card-custom .number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #1565c0;
+        }
+        .stat-card-custom .label {
+            color: #666;
+            margin-top: 5px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        .empty-state-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+        .loading-overlay-custom {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .filtros-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .filtro-btn {
+            padding: 8px 16px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .filtro-btn.active {
+            background: #1565c0;
+            color: white;
+            border-color: #1565c0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Bar Fixa -->
+    <nav class="topbar">
+        <div class="topbar-content">
+            <div class="topbar-logo">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo Sistema Gestão Gestante">
+                <h3>Gestão de Pacientes</h3>
+            </div>
+            <div class="topbar-links">
+                <!-- Gaveta: Pacientes -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👥 Pacientes
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/" class="topbar-dropdown-item">📊 Indicadores</a>
+                        <a href="/novo_paciente" class="topbar-dropdown-item">➕ Novo Paciente</a>
+                        <a href="/pacientes" class="topbar-dropdown-item">📋 Lista de Pacientes</a>
+                        <a href="/exportar" class="topbar-dropdown-item">💾 Exportar</a>
+                    </div>
+                </div>
+
+                <!-- Gaveta: Profissionais -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👨‍⚕️ Profissionais
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/agendamentos" class="topbar-dropdown-item">📅 Agendamentos</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">👨‍⚕️ Lista de Profissionais</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">📊 Relatórios</a>
+                    </div>
+                </div>
+
+                <!-- Gaveta: Configurações -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn active">
+                        ⚙️ Configurações
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/bd" class="topbar-dropdown-item">🗄️ Banco de Dados</a>
+                        <a href="/conflitos" class="topbar-dropdown-item">⚠️ Conflitos <span id="conflitos-badge" class="badge-contador" style="display: none;">0</span></a>
+                        <a href="/itens_espera" class="topbar-dropdown-item active">⏳ Itens em Espera <span id="espera-badge" class="badge-contador" style="display: none;">0</span></a>
+                        <a href="/aparencia" class="topbar-dropdown-item">🎨 Aparência</a>
+                    </div>
+                </div>
+
+                <!-- Ajuda -->
+                <a href="/ajuda" class="topbar-link btn-ajuda">❓ Ajuda</a>
+
+                <span id="version-info" class="topbar-version">v{{ version }}</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sistema de Alertas -->
+    <div id="alertas-parto-container" style="display: none;">
+        <div class="alertas-header">
+            <h3>🚨 Alertas de Parto <span class="badge-contador" id="alertas-contador">0</span></h3>
+        </div>
+        <div id="alertas-parto-list"></div>
+    </div>
+
+    <div id="alertas-agendamentos-container" style="display: none;">
+        <div class="alertas-header-agendamentos">
+            <h3>📅 Agendamentos Próximos <span class="badge-contador" id="alertas-agendamentos-contador">0</span></h3>
+        </div>
+        <div id="alertas-agendamentos-list"></div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>⏳ Itens em Espera</h1>
+            <p>Pacientes importados que estão aguardando decisão (válidos por 5 dias)</p>
+        </div>
+
+        <!-- Estatísticas -->
+        <div class="stats-cards">
+            <div class="stat-card-custom">
+                <div class="number" id="totalItens">0</div>
+                <div class="label">Total em Espera</div>
+            </div>
+            <div class="stat-card-custom">
+                <div class="number" id="itensParaEdicao">0</div>
+                <div class="label">Para Edição</div>
+            </div>
+            <div class="stat-card-custom">
+                <div class="number" id="itensIgnorados">0</div>
+                <div class="label">Ignorados</div>
+            </div>
+            <div class="stat-card-custom">
+                <div class="number" id="diasRestantes">5</div>
+                <div class="label">Dias de Espera</div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filtros-container">
+            <button class="filtro-btn active" data-filtro="todos" onclick="filtrarItens('todos')">Todos</button>
+            <button class="filtro-btn" data-filtro="edicao" onclick="filtrarItens('edicao')">✏️ Para Edição</button>
+            <button class="filtro-btn" data-filtro="ignorar" onclick="filtrarItens('ignorar')">✕ Ignorados</button>
+        </div>
+
+        <!-- Ações em Massa -->
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+            <button class="btn btn-info" onclick="carregarItens()">
+                <span>🔄</span> Atualizar
+            </button>
+            <button class="btn btn-warning" onclick="confirmarTodos('restaurar')">
+                <span>✓</span> Restaurar Todos
+            </button>
+            <button class="btn btn-danger" onclick="confirmarTodos('remover')">
+                <span>🗑️</span> Remover Todos
+            </button>
+            <button class="btn btn-secondary" onclick="limparExpirados()">
+                <span>🧹</span> Limpar Expirados
+            </button>
+        </div>
+
+        <!-- Lista de Itens -->
+        <div id="itensContainer" class="itens-grid">
+            <div class="empty-state">
+                <div class="empty-state-icon">📋</div>
+                <h3>Nenhum item em espera</h3>
+                <p>Quando você importar um backup e escolher "Editar" ou "Ignorar", os pacientes aparecerão aqui.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação -->
+    <div id="confirmModal" class="modal" style="z-index: 3000;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 id="confirmTitle">Confirmar Ação</h3>
+                <button class="modal-close" onclick="fecharModalConfirm()">×</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage">Tem certeza?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="fecharModalConfirm()">Cancelar</button>
+                <button class="btn btn-primary" id="confirmActionBtn" onclick="executarAcaoConfirmada()">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Edição -->
+    <div id="editItemModal" class="modal" style="z-index: 3000;">
+        <div class="modal-content" style="max-width: 95%; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header" style="position: sticky; top: 0; background: white; z-index: 10;">
+                <h3>✏️ Editar Paciente antes de Importar</h3>
+                <button class="modal-close" onclick="fecharModalEdit()">×</button>
+            </div>
+            <div class="modal-body" id="editModalBody">
+                <!-- Form will be inserted here -->
+            </div>
+            <div class="modal-footer" style="position: sticky; bottom: 0; background: white; padding: 20px 0;">
+                <button class="btn btn-secondary" onclick="fecharModalEdit()">Cancelar</button>
+                <button class="btn btn-success" onclick="salvarEdicaoItem()">💾 Salvar e Importar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-container">
+            <div class="loading-spinner"></div>
+            <div class="loading-content">
+                <h3 id="loadingTitle">Processando...</h3>
+                <p id="loadingMessage">Por favor, aguarde.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='home/js/theme-manager.js') }}"></script>
+    <script>
+        // Variáveis globais
+        let itensEspera = [];
+        let itemEditando = null;
+        let acaoConfirmada = null;
+        let filtroAtual = 'todos';
+
+        // Carregar itens em espera
+        async function carregarItens() {
+            try {
+                mostrarLoading('Carregando itens...');
+                
+                const response = await fetch('/api/itens_ignorados/listar');
+                const data = await response.json();
+                
+                esconderLoading();
+                
+                if (data.success) {
+                    itensEspera = data.itens || [];
+                    atualizarEstatisticas();
+                    renderizarItens();
+                    atualizarBadge();
+                } else {
+                    alert('Erro ao carregar itens: ' + data.message);
+                }
+            } catch (error) {
+                esconderLoading();
+                console.error('Erro:', error);
+                alert('Erro ao carregar itens em espera');
+            }
+        }
+
+        // Atualizar estatísticas
+        function atualizarEstatisticas() {
+            const total = itensEspera.length;
+            const paraEdicao = itensEspera.filter(i => i.motivo && i.motivo.includes('edição')).length;
+            const ignorados = total - paraEdicao;
+            
+            document.getElementById('totalItens').textContent = total;
+            document.getElementById('itensParaEdicao').textContent = paraEdicao;
+            document.getElementById('itensIgnorados').textContent = ignorados;
+        }
+
+        // Renderizar itens
+        function renderizarItens() {
+            const container = document.getElementById('itensContainer');
+            
+            // Filtrar itens
+            let itensFiltrados = itensEspera;
+            if (filtroAtual === 'edicao') {
+                itensFiltrados = itensEspera.filter(i => i.motivo && i.motivo.toLowerCase().includes('edição'));
+            } else if (filtroAtual === 'ignorar') {
+                itensFiltrados = itensEspera.filter(i => !i.motivo || !i.motivo.toLowerCase().includes('edição'));
+            }
+            
+            if (itensFiltrados.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <div class="empty-state-icon">📋</div>
+                        <h3>Nenhum item ${filtroAtual !== 'todos' ? 'nesta categoria ' : ''}em espera</h3>
+                        <p>Itens importados aparecerão aqui quando você escolher "Editar" ou "Ignorar" durante a importação.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = itensFiltrados.map(item => {
+                const dados = JSON.parse(item.dados_backup || '{}');
+                const nome = dados.identificacao?.nome_gestante || 'Nome não informado';
+                const unidade = dados.identificacao?.unidade_saude || 'Unidade não informada';
+                const dataImportacao = new Date(item.data_ignorado).toLocaleDateString('pt-BR');
+                const dataExpiracao = new Date(item.data_expiracao).toLocaleDateString('pt-BR');
+                const diasRestantes = Math.ceil((new Date(item.data_expiracao) - new Date()) / (1000 * 60 * 60 * 24));
+                const paraEdicao = item.motivo && item.motivo.toLowerCase().includes('edição');
+                
+                return `
+                    <div class="item-card ${paraEdicao ? 'para-edicao' : ''}">
+                        <div class="item-header">
+                            <div>
+                                <div class="item-title">${nome}</div>
+                                <div class="item-meta">${unidade}</div>
+                                <div class="item-meta">Importado em: ${dataImportacao}</div>
+                            </div>
+                            <span class="expiracao-badge ${diasRestantes <= 1 ? 'urgente' : ''}">
+                                ⏰ Expira em ${diasRestantes} dia(s)
+                            </span>
+                        </div>
+                        
+                        <div class="item-motivo">
+                            <strong>Motivo:</strong> ${item.motivo || 'Não informado'}<br>
+                            <small>Origem: ${item.origem_backup}</small>
+                        </div>
+                        
+                        <div class="item-actions">
+                            <button class="btn btn-success" onclick="restaurarItem('${item.id}')">
+                                ✓ Restaurar
+                            </button>
+                            <button class="btn btn-warning" onclick="abrirEdicaoItem('${item.id}')">
+                                ✏️ Editar
+                            </button>
+                            <button class="btn btn-danger" onclick="confirmarRemoverItem('${item.id}')">
+                                🗑️ Remover
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Filtrar itens
+        function filtrarItens(filtro) {
+            filtroAtual = filtro;
+            
+            // Atualizar botões
+            document.querySelectorAll('.filtro-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filtro === filtro);
+            });
+            
+            renderizarItens();
+        }
+
+        // Restaurar item (importar para o banco)
+        async function restaurarItem(itemId) {
+            if (!confirm('Deseja importar este paciente para o banco de dados?')) return;
+            
+            try {
+                mostrarLoading('Importando paciente...');
+                
+                const response = await fetch(`/api/itens_ignorados/restaurar/${itemId}`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                esconderLoading();
+                
+                if (data.success) {
+                    alert('✅ Paciente importado com sucesso!');
+                    carregarItens();
+                } else {
+                    alert('❌ Erro: ' + data.message);
+                }
+            } catch (error) {
+                esconderLoading();
+                alert('Erro ao restaurar item');
+            }
+        }
+
+        // Confirmar remoção
+        function confirmarRemoverItem(itemId) {
+            acaoConfirmada = { tipo: 'remover', itemId };
+            document.getElementById('confirmTitle').textContent = '🗑️ Confirmar Remoção';
+            document.getElementById('confirmMessage').textContent = 'Tem certeza que deseja remover permanentemente este paciente da lista de espera?';
+            document.getElementById('confirmActionBtn').className = 'btn btn-danger';
+            document.getElementById('confirmActionBtn').textContent = 'Remover';
+            document.getElementById('confirmModal').classList.add('active');
+        }
+
+        // Confirmar ação em todos
+        function confirmarTodos(acao) {
+            const itensFiltrados = filtroAtual === 'todos' ? itensEspera : 
+                itensEspera.filter(i => {
+                    if (filtroAtual === 'edicao') return i.motivo && i.motivo.toLowerCase().includes('edição');
+                    if (filtroAtual === 'ignorar') return !i.motivo || !i.motivo.toLowerCase().includes('edição');
+                    return true;
+                });
+            
+            if (itensFiltrados.length === 0) {
+                alert('Não há itens para esta ação');
+                return;
+            }
+            
+            acaoConfirmada = { tipo: acao, todos: true, ids: itensFiltrados.map(i => i.id) };
+            
+            if (acao === 'restaurar') {
+                document.getElementById('confirmTitle').textContent = '✓ Restaurar Todos';
+                document.getElementById('confirmMessage').textContent = `Deseja importar todos os ${itensFiltrados.length} paciente(s) para o banco de dados?`;
+                document.getElementById('confirmActionBtn').className = 'btn btn-success';
+            } else {
+                document.getElementById('confirmTitle').textContent = '🗑️ Remover Todos';
+                document.getElementById('confirmMessage').textContent = `Deseja remover permanentemente ${itensFiltrados.length} paciente(s) da lista de espera?`;
+                document.getElementById('confirmActionBtn').className = 'btn btn-danger';
+            }
+            
+            document.getElementById('confirmModal').classList.add('active');
+        }
+
+        // Executar ação confirmada
+        async function executarAcaoConfirmada() {
+            if (!acaoConfirmada) return;
+            
+            fecharModalConfirm();
+            mostrarLoading('Processando...');
+            
+            try {
+                let sucessos = 0;
+                let erros = 0;
+                
+                const ids = acaoConfirmada.todos ? acaoConfirmada.ids : [acaoConfirmada.itemId];
+                
+                for (const id of ids) {
+                    try {
+                        const endpoint = acaoConfirmada.tipo === 'restaurar' 
+                            ? `/api/itens_ignorados/restaurar/${id}`
+                            : `/api/itens_ignorados/remover/${id}`;
+                        
+                        const response = await fetch(endpoint, {
+                            method: acaoConfirmada.tipo === 'restaurar' ? 'POST' : 'DELETE'
+                        });
+                        
+                        const data = await response.json();
+                        if (data.success) sucessos++;
+                        else erros++;
+                    } catch (e) {
+                        erros++;
+                    }
+                }
+                
+                esconderLoading();
+                
+                if (erros === 0) {
+                    alert(`✅ ${sucessos} paciente(s) processado(s) com sucesso!`);
+                } else {
+                    alert(`⚠️ ${sucessos} sucesso(s) e ${erros} erro(s)`);
+                }
+                
+                carregarItens();
+            } catch (error) {
+                esconderLoading();
+                alert('Erro ao processar ação');
+            }
+            
+            acaoConfirmada = null;
+        }
+
+        // Limpar expirados
+        async function limparExpirados() {
+            if (!confirm('Deseja remover todos os itens que já expiraram?')) return;
+            
+            try {
+                mostrarLoading('Limpando itens expirados...');
+                
+                const response = await fetch('/api/itens_ignorados/limpar_expirados', {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                esconderLoading();
+                
+                if (data.success) {
+                    alert(`🧹 ${data.removidos || 0} item(s) expirado(s) removido(s)`);
+                    carregarItens();
+                } else {
+                    alert('Erro: ' + data.message);
+                }
+            } catch (error) {
+                esconderLoading();
+                alert('Erro ao limpar itens expirados');
+            }
+        }
+
+        // Abrir modal de edição
+        async function abrirEdicaoItem(itemId) {
+            const item = itensEspera.find(i => i.id === itemId);
+            if (!item) return;
+            
+            itemEditando = item;
+            const dados = JSON.parse(item.dados_backup || '{}');
+            
+            // Criar formulário simplificado
+            document.getElementById('editModalBody').innerHTML = `
+                <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <strong>Editando:</strong> ${dados.identificacao?.nome_gestante || 'Paciente'}<br>
+                    <small>Faça as alterações necessárias antes de importar</small>
+                </div>
+                <div id="formEdicaoContainer">
+                    <p>Carregando formulário...</p>
+                </div>
+            `;
+            
+            document.getElementById('editItemModal').classList.add('active');
+            
+            // Aqui você pode expandir para carregar um formulário completo similar ao de pacientes
+            // Por enquanto, vamos usar uma abordagem simples
+        }
+
+        // Fechar modal de edição
+        function fecharModalEdit() {
+            document.getElementById('editItemModal').classList.remove('active');
+            itemEditando = null;
+        }
+
+        // Salvar edição
+        async function salvarEdicaoItem() {
+            if (!itemEditando) return;
+            
+            // Implementação simplificada - pode ser expandida
+            fecharModalEdit();
+            await restaurarItem(itemEditando.id);
+        }
+
+        // Fechar modal de confirmação
+        function fecharModalConfirm() {
+            document.getElementById('confirmModal').classList.remove('active');
+            acaoConfirmada = null;
+        }
+
+        // Loading
+        function mostrarLoading(mensagem = 'Processando...') {
+            document.getElementById('loadingTitle').textContent = mensagem;
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function esconderLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        // Atualizar badge no menu
+        async function atualizarBadge() {
+            try {
+                const response = await fetch('/api/itens_ignorados/listar');
+                const data = await response.json();
+                
+                const total = data.itens?.length || 0;
+                const badge = document.getElementById('espera-badge');
+                
+                if (badge) {
+                    if (total > 0) {
+                        badge.textContent = total > 99 ? '99+' : total;
+                        badge.style.display = 'inline-block';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao atualizar badge:', error);
+            }
+        }
+
+        // Carregar versão
+        async function carregarVersao() {
+            try {
+                const response = await fetch('/api/version');
+                const data = await response.json();
+                if (data.success) {
+                    const el = document.getElementById('version-info');
+                    if (el) el.textContent = `v${data.version}`;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar versão:', error);
+            }
+        }
+
+        // Configurar dropdowns
+        function configurarDropdownsTopbar() {
+            const dropdowns = document.querySelectorAll('.topbar-dropdown');
+            
+            dropdowns.forEach(dropdown => {
+                const btn = dropdown.querySelector('.topbar-dropdown-btn');
+                
+                if (btn) {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        dropdowns.forEach(d => {
+                            if (d !== dropdown) d.classList.remove('active');
+                        });
+                        dropdown.classList.toggle('active');
+                    });
+                }
+            });
+            
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.topbar-dropdown')) {
+                    dropdowns.forEach(d => d.classList.remove('active'));
+                }
+            });
+        }
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            carregarItens();
+            carregarVersao();
+            configurarDropdownsTopbar();
+        });
+    </script>
+    <script src="{{ url_for('static', filename='alerts/js/alerts.js') }}"></script>
+    <script src="{{ url_for('static', filename='alerts_agendamentos/js/alerts.js') }}"></script>
+</body>
+</html>

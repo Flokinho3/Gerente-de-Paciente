@@ -1,0 +1,26 @@
+:root {
+  /* ========== CORES PRINCIPAIS ========== */
+  --bg: #fcf8f9;              /* Fundo geral: Rosa quase branco para não cansar a vista */
+  --card: #ffffff;            /* Cartões: Branco puro para destacar do fundo */
+  --primary: #d48498;         /* Cor primária: Rosa "Old Rose" profissional e sóbrio */
+  --primary-hover: #bc6e81;   /* Primária (hover): Tom mais fechado para feedback */
+  --secondary: #9b84b3;       /* Cor secundária: Lavanda para equilibrar o rosa */
+  --secondary-hover: #7e6799; /* Secundária (hover) */
+  --accent: #f9ebe0;          /* Destaque: Tom pêssego muito claro para áreas suaves */
+  --text: #3d3436;            /* Texto principal: Marrom acinzentado profundo (melhor que preto) */
+  --text-muted: #8c7a7d;      /* Texto secundário: Rosa acinzentado */
+  
+  /* ========== ESTADOS E FEEDBACK ========== */
+  --success: #689f38;         /* Sucesso: Verde oliva para harmonizar com o rosa */
+  --success-light: #e8f5e9;   /* Sucesso (claro) */
+  --warning: #fbc02d;         /* Aviso: Amarelo suave */
+  --warning-light: #fff9c4;   /* Aviso (claro) */
+  --danger: #d32f2f;          /* Erro: Vermelho clínico */
+  --danger-light: #ffcdd2;    /* Erro (claro) */
+  --info: #4fc3f7;            /* Informação: Azul céu */
+  --info-light: #e1f5fe;      /* Informação (claro) */
+  
+  /* ========== TONS NEUTROS ========== */
+  --border: #e8dadd;          /* Bordas: Rosa neutro para sutileza */
+  --border-light: #f2e9eb;    /* Bordas claras */
+}

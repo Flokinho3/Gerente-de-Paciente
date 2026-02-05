@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Pacientes - Indicadores</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='alerts/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='alerts_agendamentos/css/style.css') }}">
+    <style id="custom-theme" type="text/css"></style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+</head>
+
+<body>
+    <!-- Top Bar Fixa -->
+    <nav class="topbar">
+        <div class="topbar-content">
+            <div class="topbar-logo">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo Sistema Gestão Gestante">
+                <h3>Gestão de Pacientes</h3>
+            </div>
+            <div class="topbar-links">
+                <!-- Gaveta: Pacientes -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👥 Pacientes
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/" class="topbar-dropdown-item active">📊 Indicadores</a>
+                        <a href="/ranks" class="topbar-dropdown-item">🏆 Ranking de Unidades</a>
+                        <a href="/novo_paciente" class="topbar-dropdown-item">➕ Novo Paciente</a>
+                        <a href="/pacientes" class="topbar-dropdown-item">📋 Lista de Pacientes</a>
+                        <a href="/exportar" class="topbar-dropdown-item">💾 Exportar</a>
+                    </div>
+                </div>
+
+                <!-- Gaveta: Profissionais -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👨‍⚕️ Profissionais
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/agendamentos" class="topbar-dropdown-item">📅 Agendamentos</a>
+                        <a href="#" class="topbar-dropdown-item"
+                            onclick="alert('Funcionalidade em desenvolvimento'); return false;">👨‍⚕️ Lista de
+                            Profissionais</a>
+                        <a href="#" class="topbar-dropdown-item"
+                            onclick="alert('Funcionalidade em desenvolvimento'); return false;">📊 Relatórios</a>
+                    </div>
+                </div>
+
+                <!-- Gaveta: Configurações -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        ⚙️ Configurações
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/bd" class="topbar-dropdown-item">🗄️ Banco de Dados</a>
+                        <a href="/conflitos" class="topbar-dropdown-item">⚠️ Conflitos <span id="conflitos-badge"
+                                class="badge-contador" style="display: none;">0</span></a>
+                        <a href="#" class="topbar-dropdown-item"
+                            onclick="alert('Funcionalidade em desenvolvimento'); return false;">🔔 Notificações</a>
+                        <a href="/aparencia" class="topbar-dropdown-item">🎨 Aparência</a>
+                    </div>
+                </div>
+
+                <!-- Ajuda (não é gaveta) -->
+                <a href="/ajuda" class="topbar-link btn-ajuda">
+                    ❓ Ajuda
+                </a>
+
+                <span id="version-info" class="topbar-version">v{{ version }}</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sistema de Alertas de Parto Próximo -->
+    <div id="alertas-parto-container" style="display: none;">
+        <div class="alertas-header">
+            <h3>
+                🚨 Alertas de Parto
+                <span class="badge-contador" id="alertas-contador">0</span>
+            </h3>
+        </div>
+        <div id="alertas-parto-list">
+            <!-- Alertas serão inseridos aqui via JavaScript -->
+        </div>
+    </div>
+
+    <!-- Sistema de Alertas de Agendamentos Próximos -->
+    <div id="alertas-agendamentos-container" style="display: none;">
+        <div class="alertas-header-agendamentos">
+            <h3>
+                📅 Agendamentos Próximos
+                <span class="badge-contador" id="alertas-agendamentos-contador">0</span>
+            </h3>
+        </div>
+        <div id="alertas-agendamentos-list">
+            <!-- Alertas serão inseridos aqui via JavaScript -->
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>Gestão de Pacientes</h1>
+            <p>Indicadores de Pré-Natal</p>
+        </div>
+
+        <!-- Seção de Comparação de Gráficos -->
+        <div class="comparacao-section">
+            <h2 class="section-title">Comparar Indicadores entre Unidades</h2>
+            <div class="comparacao-controls">
+                <div class="control-group">
+                    <label for="comparacao-filtro">Indicador para Comparar:</label>
+                    <select id="comparacao-filtro" class="control-select">
+                        <!-- Indicadores principais -->
+                        <optgroup label="Indicadores Principais">
+                            <option value="inicio_pre_natal_antes_12s">Início do pré-natal antes de 12 semanas</option>
+                            <option value="consultas_pre_natal">Consultas de pré-natal</option>
+                            <option value="vacinas_completas">Vacinas completas</option>
+                            <option value="plano_parto">Plano de parto</option>
+                            <option value="participou_grupos">Participação em grupos</option>
+                        </optgroup>
+                        <!-- Avaliação Pré-Natal -->
+                        <optgroup label="Avaliação Pré-Natal">
+                            <option value="inicio_pre_natal_semanas">Semanas de gestação no início do pré-natal</option>
+                            <option value="inicio_pre_natal_observacao">Observações sobre início do pré-natal</option>
+                            <option value="avaliacao_odontologica">Avaliação odontológica</option>
+                            <option value="estratificacao">Estratificação de risco</option>
+                            <option value="estratificacao_problema">Problema na estratificação</option>
+                            <option value="cartao_pre_natal_completo">Cartão de pré-natal completo</option>
+                            <option value="possui_bolsa_familia">Possui Bolsa Família</option>
+                            <option value="tem_vacina_covid">Tem vacina de COVID</option>
+                            <option value="plano_parto_entregue_por_unidade">Plano de parto entregue por unidade
+                            </option>
+                        </optgroup>
+                        <!-- Datas e Gestação -->
+                        <optgroup label="Datas e Gestação">
+                            <option value="dum">Data da Última Menstruação (DUM)</option>
+                            <option value="dpp">Data Provável do Parto (DPP)</option>
+                            <option value="data_salvamento">Data de salvamento</option>
+                        </optgroup>
+                        <!-- Kit -->
+                        <optgroup label="Kit">
+                            <option value="ganhou_kit">Ganhou kit</option>
+                            <option value="kit_tipo">Tipo de kit</option>
+                        </optgroup>
+                        <!-- Próxima Avaliação -->
+                        <optgroup label="Próxima Avaliação">
+                            <option value="proxima_avaliacao">Data da próxima avaliação</option>
+                            <option value="proxima_avaliacao_hora">Hora da próxima avaliação</option>
+                        </optgroup>
+                        <!-- Histórico Reprodutivo -->
+                        <optgroup label="Histórico Reprodutivo">
+                            <option value="ja_ganhou_crianca">Já ganhou a criança</option>
+                            <option value="data_ganhou_crianca">Data que ganhou a criança</option>
+                            <option value="quantidade_filhos">Quantidade de filhos</option>
+                            <option value="generos_filhos">Gêneros dos filhos</option>
+                            <option value="metodo_preventivo">Método preventivo</option>
+                            <option value="metodo_preventivo_outros">Método preventivo (outros)</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="comparacao-estilo">Estilo do Gráfico:</label>
+                    <select id="comparacao-estilo" class="control-select">
+                        <option value="pie">Pizza</option>
+                        <option value="bar">Barras</option>
+                        <option value="line">Linha</option>
+                        <option value="doughnut">Rosca</option>
+                    </select>
+                </div>
+                <div class="control-group unidades-selecao-group">
+                    <label for="unidade-search">Buscar Unidade:</label>
+                    <input type="text" id="unidade-search" class="control-select"
+                        placeholder="Digite o nome da unidade..." autocomplete="off">
+                    <div class="unidades-lista-container">
+                        <label>Unidades Selecionadas:</label>
+                        <div id="unidades-selecionadas" class="unidades-selecionadas-list"></div>
+                        <div id="unidades-lista" class="unidades-lista-dropdown"></div>
+                    </div>
+                </div>
+                <button id="btn-adicionar-comparacao" class="btn btn-primary">Comparar</button>
+            </div>
+            <div id="comparacao-charts-container" class="comparacao-charts-container"></div>
+        </div>
+
+        <!-- Seção de Comparação de Pacientes Específicos -->
+        <div class="comparacao-section">
+            <h2 class="section-title">Comparar Pacientes Específicos</h2>
+            <div class="pacientes-selecao">
+                <div class="control-group">
+                    <label for="paciente-search">Buscar Paciente:</label>
+                    <input type="text" id="paciente-search" class="control-select"
+                        placeholder="Digite o nome do paciente..." autocomplete="off">
+                </div>
+                <div class="pacientes-lista-container">
+                    <label>Pacientes Selecionados:</label>
+                    <div id="pacientes-selecionados" class="pacientes-selecionados-list"></div>
+                    <div id="pacientes-lista" class="pacientes-lista-dropdown"></div>
+                </div>
+                <div class="comparacao-controls">
+                    <button id="btn-comparar-pacientes" class="btn btn-primary" disabled>Comparar Pacientes
+                        Selecionados</button>
+                    <button id="btn-limpar-pacientes" class="btn btn-secondary">Limpar Seleção</button>
+                </div>
+            </div>
+            <div id="comparacao-pacientes-container" class="comparacao-charts-container"></div>
+        </div>
+
+        <!-- Sistema de Abas -->
+        <div class="tabs-container">
+            <div class="tabs-header">
+                <button class="tab-button active" data-tab="geral" id="tab-geral">
+                    📊 Geral
+                </button>
+                <!-- Abas dinâmicas serão inseridas aqui -->
+            </div>
+            <div class="tabs-content">
+                <div class="tab-panel active" id="panel-geral">
+                    <div class="indicadores-grid">
+                        <!-- Indicador 1: Início pré-natal antes de 12 semanas -->
+                        <div class="indicador-card">
+                            <div class="indicador-header">
+                                <h2><span class="status-indicator" id="status1-geral">🟢</span> Início do pré-natal
+                                    antes de 12 semanas</h2>
+                                <span class="badge">Indicador clássico do SUS</span>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="chart1-geral"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Indicador 2: Média de consultas de pré-natal -->
+                        <div class="indicador-card">
+                            <div class="indicador-header">
+                                <h2><span class="status-indicator" id="status2-geral">🟢</span> Média de consultas de
+                                    pré-natal</h2>
+                                <span class="badge">Qualidade do acompanhamento</span>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="chart2-geral"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Indicador 3: Vacinas completas -->
+                        <div class="indicador-card">
+                            <div class="indicador-header">
+                                <h2><span class="status-indicator" id="status3-geral">🟢</span> Vacinas completas</h2>
+                                <span class="badge">Segurança materno-infantil</span>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="chart3-geral"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Indicador 4: Plano de parto -->
+                        <div class="indicador-card">
+                            <div class="indicador-header">
+                                <h2><span class="status-indicator" id="status4-geral">🟢</span> Plano de parto</h2>
+                                <span class="badge">Humanização do cuidado</span>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="chart4-geral"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Indicador 5: Participação em grupos -->
+                        <div class="indicador-card">
+                            <div class="indicador-header">
+                                <h2><span class="status-indicator" id="status5-geral">🟢</span> Participação em grupos
+                                </h2>
+                                <span class="badge">Educação em saúde</span>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="chart5-geral"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Painéis dinâmicos serão inseridos aqui -->
+                </div>
+            </div>
+        </div>
+        <!-- Módulos do sistema Home -->
+        <script src="{{ url_for('static', filename='common/js/subprocessos.js') }}"></script>
+        <script src="{{ url_for('static', filename='home/js/utils.js') }}"></script>
+        <script src="{{ url_for('static', filename='home/js/indicadores.js') }}"></script>
+        <script src="{{ url_for('static', filename='home/js/charts.js') }}"></script>
+        <script src="{{ url_for('static', filename='home/js/comparacao.js') }}"></script>
+        <script src="{{ url_for('static', filename='home/js/tabs.js') }}"></script>
+        <script src="{{ url_for('static', filename='home/js/pacientes-compare.js') }}"></script>
+        <script src="{{ url_for('static', filename='home/js/filtro-dinamico.js') }}"></script>
+        <script src="{{ url_for('static', filename='home/js/theme-manager.js') }}"></script>
+        <script src="{{ url_for('static', filename='home/js/aparencia.js') }}"></script>
+        <script src="{{ url_for('static', filename='home/js/home.js') }}"></script>
+        <script>
+            // Suprimir erros de extensões do navegador (Copilot, etc.)
+            window.addEventListener('error', function (e) {
+                if (e.message && (
+                    e.message.includes('message channel closed') ||
+                    e.message.includes('contentLogger') ||
+                    e.message.includes('chrome.runtime') ||
+                    e.message.includes('browser.runtime')
+                )) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+
+            window.addEventListener('unhandledrejection', function (e) {
+                if (e.reason && (
+                    e.reason.message && (
+                        e.reason.message.includes('message channel closed') ||
+                        e.reason.message.includes('contentLogger')
+                    )
+                )) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+
+            function abrirAjuda() {
+                fetch('/api/abrir_ajuda')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('Arquivo de ajuda aberto no Bloco de Notas!');
+                        } else {
+                            alert('Erro ao abrir ajuda: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro:', error);
+                        alert('Erro ao abrir arquivo de ajuda.');
+                    });
+            }
+
+            // Carregar versão do sistema
+            async function carregarVersao() {
+                try {
+                    const response = await fetch('/api/version');
+                    const data = await response.json();
+                    if (data.success) {
+                        const versionElement = document.getElementById('version-info');
+                        if (versionElement) {
+                            versionElement.textContent = `v${data.version}`;
+                            versionElement.title = `Build: ${data.build_date}`;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar versão:', error);
+                }
+            }
+
+            // Carregar contador de conflitos
+            async function carregarContadorConflitos() {
+                try {
+                    const response = await fetch('/api/sync/conflitos');
+                    const data = await response.json();
+                    if (data.success) {
+                        const total = (data.pacientes?.length || 0) + (data.agendamentos?.length || 0);
+                        const badge = document.getElementById('conflitos-badge');
+                        if (badge) {
+                            if (total > 0) {
+                                badge.textContent = total;
+                                badge.style.display = 'inline-block';
+                            } else {
+                                badge.style.display = 'none';
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar contador de conflitos:', error);
+                }
+            }
+
+            // Carregar versão e contador ao carregar a página
+            document.addEventListener('DOMContentLoaded', () => {
+                carregarVersao();
+                carregarContadorConflitos();
+            });
+        </script>
+        <script src="{{ url_for('static', filename='alerts/js/alerts.js') }}"></script>
+        <script src="{{ url_for('static', filename='alerts_agendamentos/js/alerts.js') }}"></script>
+
+        <!-- Sistema de Notificações de Divergências VPS -->
+        <script src="{{ url_for('static', filename='common/js/divergencias_notificacao.js') }}"></script>
+        <script>
+            // Iniciar verificação de divergências quando a página carregar
+            document.addEventListener('DOMContentLoaded', () => {
+                // Aguardar 5 segundos antes de iniciar para não sobrecarregar o carregamento inicial
+                setTimeout(() => {
+                    iniciarVerificacaoDivergencias();
+                }, 5000);
+            });
+        </script>
+</body>
+
+</html>

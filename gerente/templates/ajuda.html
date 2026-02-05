@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Pacientes - Ajuda</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='alerts/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='alerts_agendamentos/css/style.css') }}">
+    <style id="custom-theme" type="text/css"></style>
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+    <style>
+        .ajuda-container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 30px;
+            background: var(--card);
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .ajuda-header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid var(--primary);
+        }
+        .ajuda-header h1 {
+            color: var(--primary);
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .ajuda-header p {
+            color: var(--text-muted);
+            font-size: 1.1em;
+        }
+        .pagina-section {
+            margin-bottom: 50px;
+            padding: 25px;
+            background: var(--accent);
+            border-radius: 10px;
+            border-left: 5px solid var(--primary);
+        }
+        .pagina-section h2 {
+            color: var(--primary);
+            font-size: 1.8em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .pagina-section h3 {
+            color: var(--secondary);
+            font-size: 1.2em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .pagina-section p {
+            color: var(--text);
+            line-height: 1.8;
+            margin-bottom: 15px;
+        }
+        .pagina-section ul {
+            color: var(--text);
+            line-height: 1.8;
+            margin-left: 25px;
+            margin-bottom: 15px;
+        }
+        .pagina-section li {
+            margin-bottom: 8px;
+        }
+        .funcionalidade-box {
+            background: var(--card);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 3px solid var(--secondary);
+        }
+        .funcionalidade-box strong {
+            color: var(--primary);
+            display: block;
+            margin-bottom: 5px;
+        }
+        .link-pagina {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 8px 16px;
+            background: var(--primary);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .link-pagina:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            text-decoration: none;
+            color: white;
+        }
+        .separator {
+            border-top: 2px solid var(--border);
+            margin: 40px 0;
+        }
+        .dica-box {
+            background: var(--info-light);
+            border-left: 4px solid var(--info);
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        #btn-abrir-ajuda {
+            cursor: pointer;
+            font-family: inherit;
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Bar Fixa -->
+    <nav class="topbar">
+        <div class="topbar-content">
+            <div class="topbar-logo">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo Sistema Gestão Gestante">
+                <h3>Gestão de Pacientes</h3>
+            </div>
+            <div class="topbar-links">
+                <!-- Gaveta: Pacientes -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👥 Pacientes
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/" class="topbar-dropdown-item">📊 Indicadores</a>
+                        <a href="/ranks" class="topbar-dropdown-item">🏆 Ranking de Unidades</a>
+                        <a href="/novo_paciente" class="topbar-dropdown-item">➕ Novo Paciente</a>
+                        <a href="/pacientes" class="topbar-dropdown-item">📋 Lista de Pacientes</a>
+                        <a href="/exportar" class="topbar-dropdown-item">💾 Exportar</a>
+                    </div>
+                </div>
+
+                <!-- Gaveta: Profissionais -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        👨‍⚕️ Profissionais
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/agendamentos" class="topbar-dropdown-item">📅 Agendamentos</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">👨‍⚕️ Lista de Profissionais</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">📊 Relatórios</a>
+                    </div>
+                </div>
+
+                <!-- Gaveta: Configurações -->
+                <div class="topbar-dropdown">
+                    <button class="topbar-dropdown-btn">
+                        ⚙️ Configurações
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="topbar-dropdown-content">
+                        <a href="/bd" class="topbar-dropdown-item">🗄️ Banco de Dados</a>
+                        <a href="/conflitos" class="topbar-dropdown-item">⚠️ Conflitos</a>
+                        <a href="#" class="topbar-dropdown-item" onclick="alert('Funcionalidade em desenvolvimento'); return false;">🔔 Notificações</a>
+                        <a href="/aparencia" class="topbar-dropdown-item">🎨 Aparência</a>
+                    </div>
+                </div>
+
+                <!-- Ajuda (não é gaveta) -->
+                <a href="/ajuda" class="topbar-link btn-ajuda">
+                    ❓ Ajuda
+                </a>
+
+                <span id="version-info" class="topbar-version">v{{ version }}</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Alertas de Parto / Agendamentos (como nas demais páginas) -->
+    <div id="alertas-parto-container" style="display: none;">
+        <div class="alertas-header">
+            <h3>🚨 Alertas de Parto <span class="badge-contador" id="alertas-contador">0</span></h3>
+        </div>
+        <div id="alertas-parto-list"></div>
+    </div>
+    <div id="alertas-agendamentos-container" style="display: none;">
+        <div class="alertas-header-agendamentos">
+            <h3>📅 Agendamentos Próximos <span class="badge-contador" id="alertas-agendamentos-contador">0</span></h3>
+        </div>
+        <div id="alertas-agendamentos-list"></div>
+    </div>
+
+    <div class="container">
+        <div class="ajuda-container">
+            <div class="ajuda-header">
+                <h1>📚 Guia de Funcionalidades</h1>
+                <p>Entenda como usar cada página do sistema</p>
+                <p style="margin-top: 16px;">
+                    <button type="button" id="btn-abrir-ajuda" class="link-pagina" style="border: none; cursor: pointer; font-size: 1rem;">
+                        📄 Abrir arquivo de ajuda (Bloco de Notas)
+                    </button>
+                </p>
+            </div>
+
+            <!-- Página: Indicadores -->
+            <div class="pagina-section">
+                <h2>📊 Indicadores</h2>
+                <p>Página principal que exibe gráficos e estatísticas sobre os pacientes cadastrados.</p>
+                
+                <h3>Principais Mecânicas:</h3>
+                <ul>
+                    <li><strong>Gráficos de Indicadores:</strong> Visualize 5 indicadores principais de pré-natal em formato de gráficos (pizza, barras, etc.)</li>
+                    <li><strong>Abas por Unidade:</strong> Cada unidade de saúde tem sua própria aba com gráficos específicos</li>
+                    <li><strong>Comparação entre Unidades:</strong> Selecione múltiplas unidades e compare indicadores entre elas</li>
+                    <li><strong>Comparação de Pacientes:</strong> Selecione pacientes específicos para comparar seus dados lado a lado</li>
+                    <li><strong>Filtros Dinâmicos:</strong> Escolha qualquer campo do banco de dados para criar gráficos personalizados</li>
+                </ul>
+                <a href="/" class="link-pagina">Acessar Indicadores →</a>
+            </div>
+
+            <!-- Página: Ranking -->
+            <div class="pagina-section">
+                <h2>🏆 Ranking de Unidades</h2>
+                <p>Visualize o ranking das unidades de saúde com base nos indicadores de pré-natal.</p>
+                <h3>Principais Mecânicas:</h3>
+                <ul>
+                    <li><strong>Ranking:</strong> Unidades ordenadas por desempenho nos indicadores</li>
+                    <li><strong>Comparação:</strong> Veja e compare os resultados entre unidades</li>
+                </ul>
+                <a href="/ranks" class="link-pagina">Acessar Ranking →</a>
+            </div>
+
+            <!-- Página: Novo Paciente -->
+            <div class="pagina-section">
+                <h2>➕ Novo Paciente</h2>
+                <p>Formulário passo a passo para cadastrar uma nova gestante no sistema.</p>
+                
+                <h3>Principais Mecânicas:</h3>
+                <ul>
+                    <li><strong>Wizard de 17 Passos:</strong> Formulário dividido em etapas para facilitar o preenchimento</li>
+                    <li><strong>Barra de Progresso:</strong> Visualize quantos passos faltam para completar o cadastro</li>
+                    <li><strong>Navegação:</strong> Use os botões "Anterior" e "Próximo" para navegar entre os passos</li>
+                    <li><strong>Validação:</strong> Campos obrigatórios são marcados e validados antes de avançar</li>
+                    <li><strong>Salvamento:</strong> Ao finalizar, clique em "Salvar Paciente" para gravar os dados</li>
+                </ul>
+                <a href="/novo_paciente" class="link-pagina">Acessar Novo Paciente →</a>
+            </div>
+
+            <!-- Página: Lista de Pacientes -->
+            <div class="pagina-section">
+                <h2>📋 Lista de Pacientes</h2>
+                <p>Visualize e pesquise todos os pacientes cadastrados no sistema.</p>
+                
+                <h3>Principais Mecânicas:</h3>
+                <ul>
+                    <li><strong>Busca em Tempo Real:</strong> Digite o nome do paciente na barra de pesquisa para filtrar instantaneamente</li>
+                    <li><strong>Cartões de Pacientes:</strong> Cada paciente é exibido em um cartão com informações resumidas</li>
+                    <li><strong>Paginação:</strong> Navegue entre páginas quando houver muitos pacientes</li>
+                    <li><strong>Perfil Detalhado:</strong> Clique em um cartão para abrir o perfil completo do paciente em um painel lateral</li>
+                    <li><strong>Fechar Perfil:</strong> Use o botão "×" ou clique fora do painel para fechar o perfil</li>
+                </ul>
+                <a href="/pacientes" class="link-pagina">Acessar Lista de Pacientes →</a>
+            </div>
+
+            <!-- Página: Exportar -->
+            <div class="pagina-section">
+                <h2>💾 Exportar</h2>
+                <p>Exporte os dados dos pacientes para arquivos Excel, Word ou texto.</p>
+                
+                <h3>Principais Mecânicas:</h3>
+                <ul>
+                    <li><strong>Seleção de Formato:</strong> Escolha entre Excel (.xlsx), Word (.docx) ou Texto (.txt)</li>
+                    <li><strong>Filtros por Unidade:</strong> Selecione uma ou mais unidades de saúde para filtrar os dados exportados</li>
+                    <li><strong>Filtros por Campos:</strong> Escolha campos específicos para incluir apenas pacientes que tenham esses dados preenchidos</li>
+                    <li><strong>Filtros Combinados:</strong> Os filtros funcionam em conjunto (AND) - paciente deve atender todos os critérios</li>
+                    <li><strong>Download Automático:</strong> Após selecionar formato e filtros, o arquivo é baixado automaticamente</li>
+                </ul>
+                <a href="/exportar" class="link-pagina">Acessar Exportar →</a>
+            </div>
+
+            <!-- Página: Banco de Dados -->
+            <div class="pagina-section">
+                <h2>🗄️ Banco de Dados</h2>
+                <p>Gerencie todos os registros do sistema em formato de tabela.</p>
+                
+                <h3>Principais Mecânicas:</h3>
+                <ul>
+                    <li><strong>Tabela Completa:</strong> Visualize todos os pacientes em formato de tabela com todas as colunas</li>
+                    <li><strong>Pesquisa:</strong> Use a barra de pesquisa para filtrar por nome ou unidade de saúde</li>
+                    <li><strong>Editar Registro:</strong> Clique no ícone de lápis para editar os dados de um paciente</li>
+                    <li><strong>Excluir Registro:</strong> Clique no ícone de lixeira para remover um paciente (com confirmação)</li>
+                    <li><strong>Backup:</strong> Crie uma cópia de segurança do banco de dados completo</li>
+                    <li><strong>Restaurar Backup:</strong> Carregue um backup anterior para restaurar os dados</li>
+                    <li><strong>Sincronização:</strong> Sincronize dados entre múltiplos servidores na rede</li>
+                </ul>
+                <a href="/bd" class="link-pagina">Acessar Banco de Dados →</a>
+            </div>
+
+            <!-- Página: Conflitos -->
+            <div class="pagina-section">
+                <h2>⚠️ Conflitos</h2>
+                <p>Resolva conflitos de sincronização entre servidores (pacientes ou agendamentos duplicados ou divergentes).</p>
+                <h3>Principais Mecânicas:</h3>
+                <ul>
+                    <li><strong>Lista de Conflitos:</strong> Visualize pacientes e agendamentos em conflito</li>
+                    <li><strong>Resolução:</strong> Escolha qual versão manter ou como mesclar os dados</li>
+                </ul>
+                <a href="/conflitos" class="link-pagina">Acessar Conflitos →</a>
+            </div>
+
+            <!-- Página: Agendamentos -->
+            <div class="pagina-section">
+                <h2>📅 Agendamentos</h2>
+                <p>Sistema completo para gerenciar agendamentos de consultas dos pacientes.</p>
+                
+                <h3>Principais Mecânicas:</h3>
+                <ul>
+                    <li><strong>Calendário Mensal:</strong> Visualize todos os agendamentos em um calendário mensal interativo</li>
+                    <li><strong>Navegação de Meses:</strong> Use os botões "Anterior" e "Próximo" para mudar de mês</li>
+                    <li><strong>Agendamentos do Dia:</strong> Clique em um dia do calendário para ver todos os agendamentos daquele dia</li>
+                    <li><strong>Adicionar Agendamento:</strong> Preencha o formulário com paciente, data, hora e tipo de consulta</li>
+                    <li><strong>Busca de Paciente:</strong> Digite o nome do paciente para encontrar e selecionar rapidamente</li>
+                    <li><strong>Lista de Agendamentos:</strong> Visualize todos os agendamentos em formato de lista</li>
+                    <li><strong>Editar/Excluir:</strong> Modifique ou remova agendamentos existentes</li>
+                    <li><strong>Histórico:</strong> Acesse o histórico completo de agendamentos passados</li>
+                </ul>
+                <a href="/agendamentos" class="link-pagina">Acessar Agendamentos →</a>
+            </div>
+
+            <!-- Página: Aparência -->
+            <div class="pagina-section">
+                <h2>🎨 Aparência</h2>
+                <p>Personalize as cores e o tema visual do sistema.</p>
+                
+                <h3>Principais Mecânicas:</h3>
+                <ul>
+                    <li><strong>Editor de Cores:</strong> Altere as cores principais do sistema usando seletores de cor</li>
+                    <li><strong>Preview em Tempo Real:</strong> Veja as mudanças instantaneamente no painel de visualização</li>
+                    <li><strong>Grupos de Cores:</strong> Organize as cores por categorias (Principais, Texto, Estados, etc.)</li>
+                    <li><strong>Salvar Tema:</strong> Dê um nome ao tema e salve para uso futuro</li>
+                    <li><strong>Resetar:</strong> Volte para o tema padrão a qualquer momento</li>
+                    <li><strong>Aplicar:</strong> As mudanças são aplicadas imediatamente em todas as páginas</li>
+                </ul>
+                <a href="/aparencia" class="link-pagina">Acessar Aparência →</a>
+            </div>
+
+            <div class="separator"></div>
+
+            <div class="dica-box">
+                <strong>💡 Dica:</strong> Use o menu superior para navegar rapidamente entre as páginas. O botão "Ajuda" está sempre disponível em todas as páginas para consultar este guia.
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts (sem home.js: tema e topbar inline para evitar conflitos) -->
+    <script src="{{ url_for('static', filename='home/js/theme-manager.js') }}"></script>
+    <script>
+        async function carregarVersao() {
+            try {
+                const r = await fetch('/api/version');
+                const d = await r.json();
+                if (d.success) {
+                    const el = document.getElementById('version-info');
+                    if (el) { el.textContent = 'v' + d.version; el.title = 'Build: ' + (d.build_date || ''); }
+                }
+            } catch (e) { console.error('Erro ao carregar versão:', e); }
+        }
+
+        function abrirAjuda() {
+            fetch('/api/abrir_ajuda')
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (d.success) alert('Arquivo de ajuda aberto no Bloco de Notas!');
+                    else alert('Erro ao abrir ajuda: ' + (d.message || ''));
+                })
+                .catch(function(e) {
+                    console.error('Erro:', e);
+                    alert('Erro ao abrir arquivo de ajuda.');
+                });
+        }
+
+        function configurarDropdownsTopbar() {
+            var dropdowns = document.querySelectorAll('.topbar-dropdown');
+            dropdowns.forEach(function(d) {
+                var btn = d.querySelector('.topbar-dropdown-btn');
+                var content = d.querySelector('.topbar-dropdown-content');
+                if (!btn || !content) return;
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    dropdowns.forEach(function(o) { if (o !== d) o.classList.remove('active'); });
+                    d.classList.toggle('active');
+                });
+            });
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.topbar-dropdown'))
+                    dropdowns.forEach(function(d) { d.classList.remove('active'); });
+            });
+            document.querySelectorAll('.topbar-dropdown-item').forEach(function(item) {
+                item.addEventListener('click', function() {
+                    dropdowns.forEach(function(d) { d.classList.remove('active'); });
+                });
+            });
+            marcarItemAtivoTopbar();
+        }
+
+        function marcarItemAtivoTopbar() {
+            var path = window.location.pathname;
+            document.querySelectorAll('.topbar-dropdown-item').forEach(function(item) {
+                item.classList.remove('active');
+                var href = item.getAttribute('href');
+                if (href && href !== '#' && (href === path || (path === '/' && href === '/'))) item.classList.add('active');
+            });
+            var btnAjuda = document.querySelector('a.topbar-link.btn-ajuda[href="/ajuda"]');
+            if (btnAjuda) {
+                btnAjuda.classList.toggle('active', path === '/ajuda');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            try { themeManager.loadAndApplyTheme(); } catch (e) { console.error('Erro ao carregar tema:', e); }
+            carregarVersao();
+            configurarDropdownsTopbar();
+            var btn = document.getElementById('btn-abrir-ajuda');
+            if (btn) btn.addEventListener('click', abrirAjuda);
+        });
+    </script>
+    <script src="{{ url_for('static', filename='alerts/js/alerts.js') }}"></script>
+    <script src="{{ url_for('static', filename='alerts_agendamentos/js/alerts.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+:root {
+  /* ========== CORES PRINCIPAIS ========== */
+  /* Escolhi um azul marinho profundo quase preto para o fundo para simular o espaço, 
+     mantendo o contraste necessário para ambientes hospitalares escuros. */
+  --bg: #0b0e14;              /* Fundo geral (Espaço profundo) */
+  
+  /* O cartão utiliza um fundo escuro com transparência (glassmorphism) para o efeito galáctico. */
+  --card: #161b22;            /* Cartões */
+  
+  /* Usei um roxo vibrante e um ciano neon para remeter a nebulosas e tecnologia futurista. */
+  --primary: #7b2cbf;          /* Cor primária (Roxo Nebulosa) */
+  --primary-hover: #9d4edd;    /* Primária (hover) */
+  --secondary: #00b4d8;        /* Cor secundária (Ciano Estelar) */
+  --secondary-hover: #48cae4;  /* Secundária (hover) */
+  
+  /* O destaque é um tom de roxo muito sutil para áreas de seleção. */
+  --accent: #240046;           /* Destaque */
+  
+  /* Texto em branco levemente acinzentado para evitar o brilho excessivo sobre o fundo preto. */
+  --text: #e0e1dd;             /* Texto principal */
+  --text-muted: #778da9;       /* Texto secundário */
+  
+  /* ========== ESTADOS E FEEDBACK ========== */
+  /* Cores de feedback mantêm o brilho neon para se destacarem no tema escuro. */
+  --success: #06d6a0;          /* Sucesso */
+  --success-light: #1b4332;    /* Sucesso (claro/fundo) */
+  --warning: #ffd166;          /* Aviso */
+  --warning-light: #443a1a;    /* Aviso (claro/fundo) */
+  --danger: #ef476f;           /* Erro */
+  --danger-light: #4a121f;     /* Erro (claro/fundo) */
+  --info: #118ab2;             /* Informação */
+  --info-light: #073b4c;       /* Informação (claro/fundo) */
+  
+  /* ========== TONS NEUTROS ========== */
+  /* Bordas finas e frias para delimitar os elementos sem quebrar a estética "dark". */
+  --border: #30363d;           /* Bordas */
+  --border-light: #21262d;     /* Bordas claras */
+}

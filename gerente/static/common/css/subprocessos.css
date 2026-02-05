@@ -1,0 +1,55 @@
+/* Container para alertas de processos em segundo plano */
+#subprocessos-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 300px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column-reverse; /* Novos embaixo ou em cima? Stack costuma ser bottom-up se ancorado no bottom */
+    gap: 10px;
+    pointer-events: none; /* Permite clicar através do container */
+}
+
+.subprocesso-item {
+    background-color: rgba(30, 30, 30, 0.9);
+    color: #fff;
+    padding: 10px 15px;
+    border-radius: 6px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    font-size: 0.85rem;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0;
+    transform: translateX(20px);
+    animation: slideIn 0.3s forwards;
+    pointer-events: auto; /* Permite interagir com o toast se necessário */
+    border-left: 4px solid #555;
+    transition: all 0.3s ease;
+}
+
+.subprocesso-item.removing {
+    opacity: 0;
+    transform: translateX(20px);
+}
+
+/* Tipos de alertas */
+.subprocesso-item.type-info { border-left-color: #3498db; }
+.subprocesso-item.type-success { border-left-color: #2ecc71; }
+.subprocesso-item.type-warning { border-left-color: #f1c40f; color: #fff; }
+.subprocesso-item.type-error { border-left-color: #e74c3c; }
+.subprocesso-item.type-working { border-left-color: #9b59b6; }
+
+/* Ícones simplificados com CSS puro ou Emoji */
+.subprocesso-icon {
+    font-size: 1.2em;
+}
+
+@keyframes slideIn {
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
