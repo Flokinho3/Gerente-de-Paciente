@@ -15,6 +15,7 @@ from datetime import datetime
 from io import StringIO
 from pathlib import Path
 from zipfile import ZipFile
+from typing import Sequence
 
 import sys
 
@@ -110,8 +111,44 @@ def _ensure_shortcut(target_exe: Path) -> None:
         _append_log([f"[{datetime.now().isoformat()}] Falha ao criar atalho: {exc}"])
 
 
+def _resolve_update_destination() -> Path:
+    """Define o destino da atualizacao evitando loop de subpastas."""
+    if _FROZEN and ROOT.name.lower() == "gerente":
+        return ROOT
+    desktop = _desktop_directory()
+    return desktop / "Gerente"
+
+
+def _select_extract_root() -> Path:
+    """Seleciona a raiz real do pacote extraido para evitar subpastas."""
+    entries = [item for item in EXTRACT_DIR.iterdir()]
+    if len(entries) == 1 and entries[0].is_dir():
+        return entries[0]
+    for name in ("Gerente", "dist"):
+        candidate = EXTRACT_DIR / name
+        if candidate.exists() and candidate.is_dir():
+            return candidate
+    return EXTRACT_DIR
+
+
+def _log_expected_layout(destination: Path) -> None:
+    missing: list[str] = []
+    if not (destination / "Gerente.exe").exists():
+        missing.append("Gerente.exe")
+    if not (destination / "Launcher.exe").exists():
+        missing.append("Launcher.exe")
+    if not (destination / "data").exists():
+        missing.append("data/")
+    if not (destination / ".env_Exemplo").exists():
+        missing.append(".env_Exemplo")
+    if not ((destination / "versao.json").exists() or (destination / "version.json").exists()):
+        missing.append("versao.json|version.json")
+    if missing:
+        _append_log([f"[{datetime.now().isoformat()}] Layout incompleto no destino: {', '.join(missing)}"])
+
+
 def _prepare_desktop_copy(zip_path: Path) -> None:
-    """Extrai o zip e copia o conteúdo para a pasta 'Gerente' na área de trabalho."""
+    """Extrai o zip e copia o conteúdo para a pasta 'Gerente'."""
     if not zip_path.exists():
         _append_log(
             [f"[{datetime.now().isoformat()}] Falha: zip não encontrado para copiar à área de trabalho."]
@@ -129,9 +166,12 @@ def _prepare_desktop_copy(zip_path: Path) -> None:
         _append_log([f"[{datetime.now().isoformat()}] Erro ao extrair zip: {exc}"])
         return
 
-    desktop = _desktop_directory()
-    destination = desktop / "Gerente"
+    destination = _resolve_update_destination()
     destination.mkdir(parents=True, exist_ok=True)
+
+    source_root = _select_extract_root()
+    if source_root != EXTRACT_DIR:
+        _append_log([f"[{datetime.now().isoformat()}] Usando raiz extraida: {source_root}"])
 
     _kill_existing_gerente()
     exe_target = destination / "Gerente.exe"
@@ -144,7 +184,7 @@ def _prepare_desktop_copy(zip_path: Path) -> None:
             )
             return
 
-    for item in EXTRACT_DIR.iterdir():
+    for item in source_root.iterdir():
         target_item = destination / item.name
         
         # Preservar pasta data/ (banco de dados do cliente) - não sobrescrever
@@ -163,6 +203,7 @@ def _prepare_desktop_copy(zip_path: Path) -> None:
             shutil.copy2(item, target_item)
 
     _ensure_shortcut(exe_target)
+    _log_expected_layout(destination)
     _append_log([f"[{datetime.now().isoformat()}] Cópia de atualização criada em: {destination}"])
 
     # Limpar resíduos da atualização

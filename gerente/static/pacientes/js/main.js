@@ -220,11 +220,9 @@ function atualizarBotoesPaginacao() {
 // Funções auxiliares
 function formatarData(dataString) {
     if (!dataString) return 'Data não disponível';
-    try {
-        return new Date(dataString).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-    } catch (e) {
-        return dataString;
-    }
+    const d = new Date(dataString);
+    if (isNaN(d.getTime())) return 'Data não disponível';
+    return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function formatarBoolean(valor) {

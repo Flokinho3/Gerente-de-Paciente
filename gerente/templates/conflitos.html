@@ -330,25 +330,30 @@
 
             <!-- Atualizados no VPS -->
             <div id="vpsAtualizados" class="vps-tab-content" style="display: none;">
-                <h3 style="color: #ffc107;">🔄 Dados Atualizados no VPS (versão mais recente)</h3>
+                <h3 style="color: #ffc107;">🔄 Dados Sincronizáveis (existem em ambos)</h3>
                 <p style="color: #666; font-size: 0.9em; margin-bottom: 10px;">
-                    Estes dados existem tanto localmente quanto no VPS, mas a versão do VPS é mais recente.
+                    Estes dados existem tanto localmente quanto no VPS. Compare as datas de modificação e escolha a direção da sincronização:
+                    <strong style="color: #4caf50;">verde = mais recente</strong>, <strong style="color: #ff9800;">laranja = mais antigo</strong>.
                 </p>
 
                 <div style="margin-bottom: 20px;">
-                    <h4>Pacientes Atualizados</h4>
+                    <h4>Pacientes Sincronizáveis</h4>
                     <div id="vpsAtualizadosPacientesList" class="vps-data-list"></div>
                 </div>
 
                 <div>
-                    <h4>Agendamentos Atualizados</h4>
+                    <h4>Agendamentos Sincronizáveis</h4>
                     <div id="vpsAtualizadosAgendamentosList" class="vps-data-list"></div>
                 </div>
 
                 <div style="margin-top: 15px; text-align: right;">
                     <button class="btn-firebase" onclick="baixarSelecionadosVPS('atualizados')"
-                        style="background: #ffc107; color: #000;">
-                        ⬇️ Baixar Selecionados
+                        style="background: #4caf50; color: white;">
+                        ⬇️ Baixar do VPS (VPS → Local)
+                    </button>
+                    <button class="btn-firebase" onclick="enviarSelecionadosVPS('atualizados')"
+                        style="background: #ff9800; color: white; margin-left: 10px;">
+                        ⬆️ Enviar ao VPS (Local → VPS)
                     </button>
                 </div>
             </div>
@@ -372,7 +377,7 @@
                 </div>
 
                 <div style="margin-top: 15px; text-align: right;">
-                    <button class="btn-firebase" onclick="enviarSelecionadosVPS()"
+                    <button class="btn-firebase" onclick="enviarSelecionadosVPS('locais')"
                         style="background: #007bff; color: white;">
                         ⬆️ Enviar Selecionados ao VPS
                     </button>
@@ -519,7 +524,17 @@
                         const data = await response.json();
 
                         if (data.success) {
-                            syncRunning = data.sync_running;
+                            // Verificar se VPS está configurado
+                            if (!data.vps_configured) {
+                                const statusEl = document.getElementById('syncStatus');
+                                if (statusEl) {
+                                    statusEl.textContent = 'VPS não configurado';
+                                    statusEl.style.color = 'orange';
+                                }
+                                return;
+                            }
+                            
+                            syncRunning = data.sync_running || false;
                             atualizarUIStatus(data);
 
                             // Se tem conflitos, carrega lista
@@ -1454,12 +1469,12 @@
 
                     if (tipo === 'paciente') {
                         html += '<th style="padding: 10px; text-align: left;">Nome</th>';
-                        html += '<th style="padding: 10px; text-align: left;">VPS (Modificação)</th>';
                         html += '<th style="padding: 10px; text-align: left;">Local (Modificação)</th>';
+                        html += '<th style="padding: 10px; text-align: left;">VPS (Modificação)</th>';
                     } else {
                         html += '<th style="padding: 10px; text-align: left;">Data</th>';
-                        html += '<th style="padding: 10px; text-align: left;">VPS (Modificação)</th>';
                         html += '<th style="padding: 10px; text-align: left;">Local (Modificação)</th>';
+                        html += '<th style="padding: 10px; text-align: left;">VPS (Modificação)</th>';
                     }
 
                     html += '</tr></thead><tbody>';
@@ -1468,17 +1483,26 @@
                         const vpsData = item.vps;
                         const localData = item.local;
 
+                        // Determinar qual é mais recente
+                        const localMod = localData.ultima_modificacao || localData.data_salvamento || '';
+                        const vpsMod = vpsData.ultima_modificacao || vpsData.data_salvamento || '';
+                        
+                        const localIsNewer = localMod > vpsMod;
+                        const localBg = localIsNewer ? '#e8f5e9' : '#fff3e0'; // verde se mais recente, laranja se antigo
+                        const vpsBg = localIsNewer ? '#fff3e0' : '#e8f5e9';
+
                         html += '<tr style="border-bottom: 1px solid #dee2e6;">';
-                        html += `<td style="padding: 10px;"><input type="checkbox" class="vps-check-atualizados-${tipo}" value="${vpsData.id}"></td>`;
+                        // Armazenar tanto ID local quanto VPS para permitir sincronização bidirecional
+                        html += `<td style="padding: 10px;"><input type="checkbox" class="vps-check-atualizados-${tipo}" value="${localData.id}" data-vps-id="${vpsData.id}"></td>`;
 
                         if (tipo === 'paciente') {
-                            html += `<td style="padding: 10px;">${getNomePaciente(vpsData)}</td>`;
+                            html += `<td style="padding: 10px;">${getNomePaciente(localData)}</td>`;
                         } else {
-                            html += `<td style="padding: 10px;">${vpsData.data_consulta || 'N/A'}</td>`;
+                            html += `<td style="padding: 10px;">${localData.data_consulta || 'N/A'}</td>`;
                         }
 
-                        html += `<td style="padding: 10px; background: #e8f5e9;">${formatarDataHora(vpsData.ultima_modificacao)}</td>`;
-                        html += `<td style="padding: 10px; background: #fff3e0;">${formatarDataHora(localData.ultima_modificacao)}</td>`;
+                        html += `<td style="padding: 10px; background: ${localBg};">${formatarDataHora(localMod)}</td>`;
+                        html += `<td style="padding: 10px; background: ${vpsBg};">${formatarDataHora(vpsMod)}</td>`;
                         html += '</tr>';
                     });
 
@@ -1499,8 +1523,13 @@
                     console.log('Paciente checkboxes:', pacienteCheckboxes.length);
                     console.log('Agendamento checkboxes:', agendamentoCheckboxes.length);
 
-                    const pacienteIds = Array.from(pacienteCheckboxes).map(cb => cb.value);
-                    const agendamentoIds = Array.from(agendamentoCheckboxes).map(cb => cb.value);
+                    // Para categoria "atualizados", usar IDs do VPS; caso contrário, usar IDs locais
+                    const pacienteIds = Array.from(pacienteCheckboxes).map(cb => 
+                        categoria === 'atualizados' ? (cb.getAttribute('data-vps-id') || cb.value) : cb.value
+                    );
+                    const agendamentoIds = Array.from(agendamentoCheckboxes).map(cb => 
+                        categoria === 'atualizados' ? (cb.getAttribute('data-vps-id') || cb.value) : cb.value
+                    );
                     
                     console.log('Paciente IDs:', pacienteIds);
                     console.log('Agendamento IDs:', agendamentoIds);
@@ -1510,7 +1539,7 @@
                         return;
                     }
 
-                    if (!confirm(`Deseja baixar ${pacienteIds.length} paciente(s) e ${agendamentoIds.length} agendamento(s) do VPS?`)) {
+                    if (!confirm(`Deseja baixar ${pacienteIds.length} paciente(s) e ${agendamentoIds.length} agendamento(s) do VPS e SUBSTITUIR os dados locais?`)) {
                         return;
                     }
 
@@ -1538,9 +1567,9 @@
                     }
                 }
 
-                async function enviarSelecionadosVPS() {
-                    const pacienteCheckboxes = document.querySelectorAll('.vps-check-locais-paciente:checked');
-                    const agendamentoCheckboxes = document.querySelectorAll('.vps-check-locais-agendamento:checked');
+                async function enviarSelecionadosVPS(categoria = 'locais') {
+                    const pacienteCheckboxes = document.querySelectorAll(`.vps-check-${categoria}-paciente:checked`);
+                    const agendamentoCheckboxes = document.querySelectorAll(`.vps-check-${categoria}-agendamento:checked`);
 
                     const pacienteIds = Array.from(pacienteCheckboxes).map(cb => cb.value);
                     const agendamentoIds = Array.from(agendamentoCheckboxes).map(cb => cb.value);
@@ -1550,7 +1579,8 @@
                         return;
                     }
 
-                    if (!confirm(`Deseja enviar ${pacienteIds.length} paciente(s) e ${agendamentoIds.length} agendamento(s) para o VPS?`)) {
+                    const acao = categoria === 'atualizados' ? 'SUBSTITUIR os dados do VPS' : 'adicionar ao VPS';
+                    if (!confirm(`Deseja enviar ${pacienteIds.length} paciente(s) e ${agendamentoIds.length} agendamento(s) e ${acao}?`)) {
                         return;
                     }
 

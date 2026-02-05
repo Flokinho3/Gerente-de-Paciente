@@ -77,7 +77,8 @@ function formatarData(dataString) {
     if (!dataString) return 'Data não disponível';
     try {
         const data = new Date(dataString);
-        return data.toLocaleDateString('pt-BR', {
+        if (isNaN(data.getTime())) return 'Data não disponível';
+        return data.toLocaleString('pt-BR', {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',
@@ -85,7 +86,7 @@ function formatarData(dataString) {
             minute: '2-digit'
         });
     } catch (e) {
-        return dataString;
+        return 'Data não disponível';
     }
 }
 

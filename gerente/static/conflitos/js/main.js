@@ -31,9 +31,10 @@ function formatarData(dataStr) {
     if (!dataStr) return 'N/A';
     try {
         const data = new Date(dataStr);
+        if (isNaN(data.getTime())) return 'N/A';
         return data.toLocaleString('pt-BR');
     } catch {
-        return dataStr;
+        return 'N/A';
     }
 }
 
@@ -48,6 +49,7 @@ function formatarDataHora(dataHoraStr) {
     if (!dataHoraStr) return 'N/A';
     try {
         const data = new Date(dataHoraStr);
+        if (isNaN(data.getTime())) return 'N/A';
         return data.toLocaleString('pt-BR', {
             year: 'numeric',
             month: '2-digit',
@@ -56,7 +58,7 @@ function formatarDataHora(dataHoraStr) {
             minute: '2-digit'
         });
     } catch {
-        return dataHoraStr;
+        return 'N/A';
     }
 }
 

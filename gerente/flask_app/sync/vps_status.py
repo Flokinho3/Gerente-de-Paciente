@@ -3,6 +3,13 @@ from flask import Blueprint, jsonify, request
 import requests
 import os
 
+# Carregar variáveis de ambiente do .env
+try:
+    from gerente.env_loader import load_env
+    load_env()
+except ImportError:
+    pass
+
 
 def get_vps_client():
     """Retorna sessão autenticada para o VPS"""
@@ -56,13 +63,56 @@ def register_vps_status(bp: Blueprint):
         try:
             if not _check_local_auth():
                 return jsonify({"success": False, "message": "Unauthorized"}), 401
+            
+            # Verificar se VPS está configurado
+            vps_url = os.getenv('VPS_URL', '').strip()
+            vps_password = os.getenv('VPS_PASSWORD', '').strip()
+            
+            if not vps_url or not vps_password:
+                return jsonify({
+                    "success": True, 
+                    "vps_configured": False,
+                    "sync_running": False, 
+                    "last_sync": None,
+                    "message": "VPS não configurado"
+                })
+            
             from gerente.vps_sync_manager import get_sync_manager
             manager = get_sync_manager()
             status = manager.get_status_sync()
-            return jsonify({"success": True, "sync_running": status.get("sync_ativa", False), "last_sync": status.get("ultima_sync")})
+            
+            # Se houver erro no status, retornar resposta válida mesmo assim
+            if "erro" in status:
+                return jsonify({
+                    "success": True,
+                    "vps_configured": True,
+                    "sync_running": status.get("sync_ativa", False),
+                    "last_sync": status.get("ultima_sync"),
+                    "error": status.get("erro")
+                })
+            
+            return jsonify({
+                "success": True, 
+                "vps_configured": True,
+                "sync_running": status.get("sync_ativa", False), 
+                "last_sync": status.get("ultima_sync"),
+                "vps_disponivel": status.get("vps_disponivel", False),
+                "dados_locais": status.get("dados_locais"),
+                "pendentes": status.get("pendentes", 0)
+            })
         except Exception as e:
             import traceback
-            return jsonify({"success": False, "message": "Erro ao consultar status"}), 500
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Erro em /sync/status: {traceback.format_exc()}")
+            # Retornar resposta válida mesmo com erro
+            return jsonify({
+                "success": True,
+                "vps_configured": False,
+                "sync_running": False,
+                "last_sync": None,
+                "error": str(e)
+            })
 
     @bp.route("/conflitos", methods=["GET"])
     def vps_conflitos():

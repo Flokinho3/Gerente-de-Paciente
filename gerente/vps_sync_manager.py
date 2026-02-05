@@ -5,7 +5,7 @@ Verifica periodicamente alterações e sincroniza com o servidor central
 import threading
 import time
 from datetime import datetime
-from typing import Dict, Optional, List
+from typing import Dict, Any, List
 from gerente.database import Database
 from gerente.vps_client import get_vps_client
 from gerente.flask_app.event_logger import log_event
@@ -32,7 +32,7 @@ class VpsSyncManager:
             if not self.vps_client:
                 return
 
-            status = self.vps_client.get_status()
+            status: Dict[str, Any] = self.vps_client.get_status()
             if not status.get('success', False):
                 return
 
@@ -276,22 +276,45 @@ class VpsSyncManager:
     def get_status_sync(self) -> Dict:
         """Retorna status completo da sincronização"""
         try:
+            # Tentar obter cliente VPS se não existir
             if not self.vps_client:
-                self.vps_client = get_vps_client()
-
+                try:
+                    self.vps_client = get_vps_client()
+                except Exception:
+                    pass  # VPS não configurado ou indisponível
+            
             vps_status = {}
+            vps_disponivel = False
+            
             if self.vps_client:
-                vps_status = self.vps_client.get_status()
-
-            pacientes_local = self.db_local.obter_todos_pacientes()
-            agendamentos_local = self.db_local.listar_agendamentos()
-
+                try:
+                    vps_status = self.vps_client.get_status()
+                    vps_disponivel = vps_status.get('success', False)
+                except Exception:
+                    vps_disponivel = False
+            
+            pacientes_local = []
+            agendamentos_local = []
+            
+            try:
+                pacientes_local = self.db_local.obter_todos_pacientes()
+                agendamentos_local = self.db_local.listar_agendamentos()
+            except Exception:
+                pass  # Banco local pode não estar disponível
+            
             pendentes = {}
-            if vps_status.get('success'):
-                pendentes = self.vps_client.verificar_pendentes(pacientes_local, agendamentos_local)
-
+            if vps_disponivel and self.vps_client:
+                try:
+                    pendentes = self.vps_client.verificar_pendentes(pacientes_local, agendamentos_local)
+                except Exception:
+                    pass  # Erro ao verificar pendentes
+            
+            pendentes_count = 0
+            if pendentes:
+                pendentes_count = pendentes.get('pacientes', {}).get('pendentes', 0) + pendentes.get('agendamentos', {}).get('pendentes', 0)
+            
             return {
-                "vps_disponivel": vps_status.get('success', False),
+                "vps_disponivel": vps_disponivel,
                 "vps_status": vps_status,
                 "sync_ativa": self.rodando,
                 "ultima_sync": self.ultima_sync.isoformat() if self.ultima_sync else None,
@@ -299,11 +322,15 @@ class VpsSyncManager:
                     "pacientes": len(pacientes_local),
                     "agendamentos": len(agendamentos_local)
                 },
-                "pendentes": pendentes.get('pacientes', {}).get('pendentes', 0) + pendentes.get('agendamentos', {}).get('pendentes', 0)
+                "pendentes": pendentes_count
             }
 
         except Exception as e:
-            return {"erro": str(e)}
+            return {
+                "erro": str(e),
+                "sync_ativa": self.rodando,
+                "ultima_sync": self.ultima_sync.isoformat() if self.ultima_sync else None
+            }
 
 
 _sync_manager = None

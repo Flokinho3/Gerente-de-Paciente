@@ -125,6 +125,8 @@ export function initializeFormSubmit() {
         
         // Coletar dados do formulário primeiro (antes de validar)
         const formData = new FormData(form);
+        // Definir `proximaAvaliacao` a partir do FormData para evitar ReferenceError
+        const proximaAvaliacao = formData.get('proxima_avaliacao');
         
         // Validar último step manualmente
         if (!validateCurrentStep()) {

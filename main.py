@@ -1,23 +1,25 @@
 import os
 import sys
+from datetime import datetime
+from typing import Any, cast
 
 from gerente.env_loader import get_env_path, load_env
 from gerente.flask_app import cleanup_flask
-from gerente.inicio.utils import _log_debug, exibir_erro
-from gerente.inicio.opcoes import (
-    deve_exibir_console,
-    deve_usar_tray,
-    mostrar_informacoes_sistema,
-    obter_configuracoes,
-    registrar_handlers_sinal,
+from gerente.inicio.utils import _log_debug, exibir_erro                                                        # type: ignore
+from gerente.inicio.opcoes import (                                                                             # type: ignore
+    deve_exibir_console,                                                                                        # type: ignore                  
+    deve_usar_tray,                                                                                             # type: ignore
+    mostrar_informacoes_sistema,                                                                                # type: ignore
+    obter_configuracoes,                                                                                        # type: ignore
+    registrar_handlers_sinal,                                                                                   # type: ignore
 )
-from gerente.inicio.rede import porta_acessivel, verificar_e_liberar_porta
+from gerente.inicio.rede import porta_acessivel, verificar_e_liberar_porta# type: ignore
 from gerente.inicio.servidores import (
-    iniciar_com_tray_icon,
-    iniciar_modo_desenvolvimento,
-    iniciar_modo_executavel_sem_tray,
-    iniciar_modo_silencioso,
-    iniciar_servidores_duplos,
+    iniciar_com_tray_icon,                                                                                      # type: ignore
+    iniciar_modo_desenvolvimento,                                                                               # type: ignore
+    iniciar_modo_executavel_sem_tray,                                                                           # type: ignore
+    iniciar_modo_silencioso,                                                                                    # type: ignore
+    iniciar_servidores_duplos,                                                                                  # type: ignore
 )
 
 
@@ -45,7 +47,7 @@ def main():
     # Garantir que version.json existe (necessário para o launcher/atualizador)
     _ensure_version_file()
     
-    config = obter_configuracoes()
+    config = cast(dict[str, Any], obter_configuracoes())
 
     # Verificação do .env (apenas em modo debug)
     if config.get('debug_mode') and deve_exibir_console(config):

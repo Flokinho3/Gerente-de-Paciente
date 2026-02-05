@@ -3,6 +3,13 @@ from flask import Blueprint, jsonify, request
 import os
 from werkzeug.utils import secure_filename
 
+# Carregar variáveis de ambiente do .env
+try:
+    from gerente.env_loader import load_env
+    load_env()
+except ImportError:
+    pass
+
 
 def register_vps_sync(bp: Blueprint):
     """Registra endpoints de sync VPS"""
