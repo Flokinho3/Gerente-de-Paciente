@@ -336,3 +336,77 @@ export function toggleCampoMetodoOutros() {
         updateProgress();
     }
 }
+
+// Função para atualizar badges e visibilidade do agendamento baseado nas condições
+export function atualizarEstadoAgendamento() {
+    const radiosEstratificacao = document.querySelectorAll('input[name="estratificacao"]');
+    const radiosJaGanhou = document.querySelectorAll('input[name="ja_ganhou_crianca"]');
+    const badgeEstratificacao = document.getElementById('estratificacao-badge');
+    const badgeJaGanhou = document.getElementById('ja-ganhou-badge');
+    const stepAgendamento = document.getElementById('step-proxima-avaliacao');
+    const agendamentoInfoBox = document.getElementById('agendamento-info-box');
+    const proximaAvaliacaoInput = document.getElementById('proxima_avaliacao');
+    const proximaAvaliacaoHoraInput = document.getElementById('proxima_avaliacao_hora');
+    
+    // Verificar valores selecionados
+    const estratificacaoSelecionada = Array.from(radiosEstratificacao).find(radio => radio.checked);
+    const jaGanhouSelecionado = Array.from(radiosJaGanhou).find(radio => radio.checked);
+    
+    const temEstratificacao = estratificacaoSelecionada && estratificacaoSelecionada.value === 'true';
+    const temJaGanhou = jaGanhouSelecionado && jaGanhouSelecionado.value === 'true';
+    
+    // Mostrar/esconder badges
+    if (badgeEstratificacao) {
+        badgeEstratificacao.style.display = temEstratificacao ? 'inline-block' : 'none';
+    }
+    if (badgeJaGanhou) {
+        badgeJaGanhou.style.display = temJaGanhou ? 'inline-block' : 'none';
+    }
+    
+    // Se tem estratificação ou já ganhou, esconder o step de agendamento
+    const naoPodeAgendar = temEstratificacao || temJaGanhou;
+    
+    if (stepAgendamento) {
+        if (naoPodeAgendar) {
+            stepAgendamento.style.display = 'none';
+            stepAgendamento.classList.add('hidden-step');
+            // Limpar valores dos campos de agendamento
+            if (proximaAvaliacaoInput) {
+                proximaAvaliacaoInput.value = '';
+                proximaAvaliacaoInput.removeAttribute('required');
+            }
+            if (proximaAvaliacaoHoraInput) {
+                proximaAvaliacaoHoraInput.value = '';
+            }
+        } else {
+            stepAgendamento.style.display = '';
+            stepAgendamento.classList.remove('hidden-step');
+        }
+    }
+    
+    // Atualizar mensagem informativa
+    if (agendamentoInfoBox) {
+        if (naoPodeAgendar) {
+            let mensagem = '⚠️ <strong>Agendamento não permitido:</strong> ';
+            if (temEstratificacao && temJaGanhou) {
+                mensagem += 'Paciente com risco e já teve filho.';
+            } else if (temEstratificacao) {
+                mensagem += 'Paciente com estratificação de risco.';
+            } else {
+                mensagem += 'Paciente já teve filho.';
+            }
+            agendamentoInfoBox.innerHTML = mensagem;
+            agendamentoInfoBox.style.background = '#ffebee';
+            agendamentoInfoBox.style.borderColor = '#f44336';
+            agendamentoInfoBox.style.color = '#c62828';
+        } else {
+            agendamentoInfoBox.innerHTML = '<strong>ℹ️ Importante:</strong> Ao salvar o paciente, será criado automaticamente um agendamento no sistema de agendamentos com estes dados.';
+            agendamentoInfoBox.style.background = '#e8f5e9';
+            agendamentoInfoBox.style.borderColor = '#4caf50';
+            agendamentoInfoBox.style.color = '#2e7d32';
+        }
+    }
+    
+    // Atualizar progresso
+    updateProgress();
+}

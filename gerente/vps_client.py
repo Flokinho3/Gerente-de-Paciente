@@ -47,8 +47,12 @@ class VPSClient:
     """Cliente para sincronização com servidor VPS"""
 
     def __init__(self, vps_url: str = None, password: str = None):
-        self.vps_url = vps_url or os.getenv('VPS_URL', 'http://168.231.95.33:8080')
-        self.password = password or os.getenv('VPS_PASSWORD', '*******')
+        self.vps_url = vps_url or os.getenv('VPS_URL', '').strip()
+        self.password = password or os.getenv('VPS_PASSWORD', '').strip()
+        if not self.vps_url:
+            raise ValueError('VPS_URL não configurado')
+        if not self.password:
+            raise ValueError('VPS_PASSWORD não configurado')
         self.session = requests.Session()
         self.session.headers.update({'X-API-Password': self.password})
 

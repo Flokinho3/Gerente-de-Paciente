@@ -9,11 +9,20 @@ logger = logging.getLogger(__name__)
 
 def register_vps_data(bp: Blueprint):
     """Registra endpoints de dados VPS"""
+
+    def _check_local_auth():
+        local_pwd = os.getenv('LOCAL_API_PASSWORD', '').strip()
+        if not local_pwd:
+            return True
+        provided = request.headers.get('X-Local-Auth') or request.headers.get('X-API-Password')
+        return provided == local_pwd
     
     @bp.route("/dados/recentes", methods=["GET"])
     def vps_dados_recentes():
         """Lista dados mais recentes do VPS comparados com dados locais"""
         try:
+            if not _check_local_auth():
+                return jsonify({"success": False, "message": "Unauthorized"}), 401
             from gerente.vps_client import get_vps_client
             import uuid
             import re
@@ -136,12 +145,14 @@ def register_vps_data(bp: Blueprint):
             })
         except Exception as e:
             import traceback
-            return jsonify({"success": False, "message": str(e), "traceback": traceback.format_exc()}), 500
+            return jsonify({"success": False, "message": "Erro ao buscar dados VPS"}), 500
 
     @bp.route("/dados/enviar", methods=["POST"])
     def vps_enviar_dados():
         """Envia dados selecionados para o VPS"""
         try:
+            if not _check_local_auth():
+                return jsonify({"success": False, "message": "Unauthorized"}), 401
             from gerente.vps_client import get_vps_client
             
             data = request.get_json()
@@ -195,8 +206,7 @@ def register_vps_data(bp: Blueprint):
                 "resultados": resultados
             })
         except Exception as e:
-            import traceback
-            return jsonify({"success": False, "message": str(e), "traceback": traceback.format_exc()}), 500
+            return jsonify({"success": False, "message": "Erro ao enviar dados"}), 500
 
     @bp.route("/dados/baixar", methods=["POST"])
     def vps_baixar_dados():
@@ -227,6 +237,9 @@ def register_vps_data(bp: Blueprint):
         
         try:
             from gerente.vps_client import get_vps_client
+
+            if not _check_local_auth():
+                return jsonify({"success": False, "message": "Unauthorized"}), 401
             
             data = request.get_json()
             if not data:
@@ -442,13 +455,16 @@ def register_vps_data(bp: Blueprint):
             })
         except Exception as e:
             import traceback
-            return jsonify({"success": False, "message": str(e), "traceback": traceback.format_exc()}), 500
+            return jsonify({"success": False, "message": "Erro ao baixar dados"}), 500
 
     @bp.route("/dados/deletar", methods=["POST"])
     def vps_deletar_dados():
         """Deleta dados selecionados do VPS"""
         try:
             from gerente.vps_client import get_vps_client
+
+            if not _check_local_auth():
+                return jsonify({"success": False, "message": "Unauthorized"}), 401
             
             data = request.get_json()
             if not data:
@@ -494,4 +510,4 @@ def register_vps_data(bp: Blueprint):
             })
         except Exception as e:
             import traceback
-            return jsonify({"success": False, "message": str(e), "traceback": traceback.format_exc()}), 500
+            return jsonify({"success": False, "message": "Erro ao deletar dados"}), 500

@@ -1420,12 +1420,16 @@
                         if (tipo === 'paciente') {
                             html += `<td style="padding: 10px;">${getNomePaciente(item)}</td>`;
                             html += `<td style="padding: 10px;">${getUnidadeSaude(item)}</td>`;
-                            html += `<td style="padding: 10px;">${formatarDataHora(item.ultima_modificacao)}</td>`;
+                            // Usar ultima_modificacao ou data_salvamento como fallback
+                            const dataMod = item.ultima_modificacao || item.data_salvamento || '-';
+                            html += `<td style="padding: 10px;">${formatarDataHora(dataMod)}</td>`;
                         } else {
                             html += `<td style="padding: 10px;">${item.data_consulta || 'N/A'}</td>`;
                             html += `<td style="padding: 10px;">${item.hora_consulta || 'N/A'}</td>`;
                             html += `<td style="padding: 10px;">${item.tipo_consulta || 'N/A'}</td>`;
-                            html += `<td style="padding: 10px;">${formatarDataHora(item.ultima_modificacao)}</td>`;
+                            // Usar ultima_modificacao ou data_salvamento como fallback
+                            const dataMod = item.ultima_modificacao || item.data_salvamento || '-';
+                            html += `<td style="padding: 10px;">${formatarDataHora(dataMod)}</td>`;
                         }
 
                         html += '</tr>';

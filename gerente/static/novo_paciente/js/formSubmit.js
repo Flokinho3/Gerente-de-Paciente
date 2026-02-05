@@ -158,18 +158,20 @@ export function initializeFormSubmit() {
             return;
         }
 
-        // Validar data da próxima avaliação (deve ser futura)
-        const proximaAvaliacao = formData.get('proxima_avaliacao');
-        if (proximaAvaliacao) {
+        // Validar data da próxima avaliação apenas se o step estiver visível (deve ser futura)
+        const stepAgendamento = document.getElementById('step-proxima-avaliacao');
+        const isAgendamentoVisible = stepAgendamento && stepAgendamento.style.display !== 'none' && !stepAgendamento.classList.contains('hidden-step');
+        
+        if (isAgendamentoVisible && proximaAvaliacao) {
             const dataAvaliacao = new Date(proximaAvaliacao);
             const hoje = new Date();
             hoje.setHours(0, 0, 0, 0); // Resetar horas para comparar apenas datas
 
             if (dataAvaliacao < hoje) {
                 showMessage('❌ A data da próxima avaliação deve ser hoje ou uma data futura', true);
-                // Ir para o step 17 para mostrar o campo
-                setCurrentStep(17);
-                showStep(17);
+                // Ir para o step 18 para mostrar o campo
+                setCurrentStep(18);
+                showStep(18);
                 updateProgress();
                 return;
             }

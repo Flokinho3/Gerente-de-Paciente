@@ -6,6 +6,7 @@
     <title>Novo Paciente - Gestão de Pacientes</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='home/css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='novo_paciente/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='novo_paciente/css/calculator.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='alerts/css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='alerts_agendamentos/css/style.css') }}">
     <style id="custom-theme" type="text/css"></style>
@@ -346,6 +347,7 @@
                             <label class="radio-label">
                                 <input type="radio" name="estratificacao" value="true" required>
                                 <span>✅ Sim</span>
+                                <span class="paciente-info-badge" id="estratificacao-badge" style="display: none; margin-left: 10px; background: #f44336; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.85em;">Paciente com risco</span>
                             </label>
                             <label class="radio-label">
                                 <input type="radio" name="estratificacao" value="false">
@@ -421,6 +423,7 @@
                             <label class="radio-label">
                                 <input type="radio" name="ja_ganhou_crianca" value="true" required>
                                 <span>✅ Sim</span>
+                                <span class="paciente-info-badge" id="ja-ganhou-badge" style="display: none; margin-left: 10px; background: #ff9800; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.85em;">Paciente com filho</span>
                             </label>
                             <label class="radio-label">
                                 <input type="radio" name="ja_ganhou_crianca" value="false">
@@ -594,6 +597,27 @@
                         </div>
                         <small class="form-help">Informe a data provável do parto</small>
                     </div>
+                    
+                    <!-- Calculadora Manual de DPP -->
+                    <div class="form-group dpp-calculator-container">
+                        <h3>🧮 Calculadora Manual de DPP</h3>
+                        <p class="description">Use esta calculadora se precisar calcular manualmente a DPP baseada em outra data.</p>
+                        
+                        <div class="dpp-calculator-row">
+                            <div class="input-group">
+                                <label for="dpp-calculator-dum">DUM para cálculo:</label>
+                                <input type="date" id="dpp-calculator-dum" class="form-input">
+                            </div>
+                            <button type="button" id="btnCalcularDPP" class="btn-calcular-dpp">Calcular DPP</button>
+                        </div>
+                        
+                        <div id="dpp-calculator-result" class="dpp-calculator-result">
+                            <div class="result-title">📊 DPP Calculada:</div>
+                            <div id="dpp-calculator-value" class="result-value"></div>
+                            <div class="formula">Regra de Naegele: DUM + 1 ano - 3 meses + 7 dias</div>
+                            <button type="button" id="btnUsarDPP" class="btn-usar-dpp">Usar esta data no campo DPP</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -640,25 +664,24 @@
             </div>
 
             <!-- Step 18: Próxima Avaliação -->
-            <div class="wizard-step" data-step="18">
+            <div class="wizard-step" data-step="18" id="step-proxima-avaliacao">
                 <div class="step-content">
                     <h2 class="step-title">📅 Próxima Avaliação</h2>
-                    <div class="info-box" style="background: #e8f5e9; border: 1px solid #4caf50; border-radius: 8px; padding: 12px; margin-bottom: 20px; color: #2e7d32;">
+                    <div class="info-box" id="agendamento-info-box" style="background: #e8f5e9; border: 1px solid #4caf50; border-radius: 8px; padding: 12px; margin-bottom: 20px; color: #2e7d32;">
                         <strong>ℹ️ Importante:</strong> Ao salvar o paciente, será criado automaticamente um agendamento no sistema de agendamentos com estes dados.
                     </div>
                     <div class="form-group">
-                        <label for="proxima_avaliacao" class="required">
+                        <label for="proxima_avaliacao">
                             Quando marcar para a próxima avaliação?
                         </label>
                         <input
                             type="date"
                             id="proxima_avaliacao"
                             name="proxima_avaliacao"
-                            required
                             class="form-input"
                             min=""
                         >
-                        <small class="form-help">Informe a data prevista para a próxima consulta de pré-natal (deve ser hoje ou futura)</small>
+                        <small class="form-help">Informe a data prevista para a próxima consulta de pré-natal (opcional)</small>
                     </div>
                     <div class="form-group" style="margin-top: 20px;">
                         <label for="proxima_avaliacao_hora">

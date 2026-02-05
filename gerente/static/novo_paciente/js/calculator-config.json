@@ -1,0 +1,42 @@
+{
+    "dppCalculator": {
+        "title": "Calculadora Manual de DPP",
+        "icon": "🧮",
+        "description": "Use esta calculadora se precisar calcular manualmente a DPP baseada em outra data.",
+        "labels": {
+            "dumInput": "DUM para cálculo:",
+            "calculateButton": "Calcular DPP",
+            "resultTitle": "📊 DPP Calculada:",
+            "formula": "Regra de Naegele: DUM + 1 ano - 3 meses + 7 dias",
+            "useButton": "Usar esta data no campo DPP"
+        },
+        "styles": {
+            "container": {
+                "marginTop": "30px",
+                "padding": "20px",
+                "background": "linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)",
+                "borderRadius": "12px",
+                "borderLeft": "4px solid #2196f3"
+            },
+            "title": {
+                "color": "#1565c0",
+                "fontSize": "1.1em"
+            },
+            "resultBox": {
+                "background": "white",
+                "borderRadius": "8px",
+                "borderLeft": "4px solid #4caf50"
+            },
+            "buttons": {
+                "calculate": {
+                    "background": "#2196f3",
+                    "color": "white"
+                },
+                "use": {
+                    "background": "#4caf50",
+                    "color": "white"
+                }
+            }
+        }
+    }
+}

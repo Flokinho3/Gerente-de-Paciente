@@ -111,8 +111,13 @@ class PacienteMixin:
         if resultado['success']:
             proxima_avaliacao = (paciente_data.get('avaliacao', {}).get('proxima_avaliacao') or '').strip()
             proxima_avaliacao_hora = (paciente_data.get('avaliacao', {}).get('proxima_avaliacao_hora') or '').strip()
+            
+            # Verificar se paciente pode ser agendado (não pode se tem estratificação ou já ganhou)
+            tem_estratificacao = paciente_data.get('avaliacao', {}).get('estratificacao') == True
+            tem_ja_ganhou = paciente_data.get('avaliacao', {}).get('ja_ganhou_crianca') == True
+            pode_agendar = not (tem_estratificacao or tem_ja_ganhou)
 
-            if proxima_avaliacao:
+            if proxima_avaliacao and pode_agendar:
                 try:
                     agendamentos_existentes = self.listar_agendamentos(
                         paciente_id=paciente_id,
@@ -207,6 +212,26 @@ class PacienteMixin:
     def _gerenciar_agendamento_proxima_avaliacao(self, paciente_id: str, paciente_data: Dict, paciente_antigo: Dict = None):
         proxima_avaliacao = (paciente_data.get('avaliacao', {}).get('proxima_avaliacao') or '').strip()
         proxima_avaliacao_hora = (paciente_data.get('avaliacao', {}).get('proxima_avaliacao_hora') or '').strip()
+
+        # Verificar se paciente pode ser agendado (não pode se tem estratificação ou já ganhou)
+        tem_estratificacao = paciente_data.get('avaliacao', {}).get('estratificacao') == True
+        tem_ja_ganhou = paciente_data.get('avaliacao', {}).get('ja_ganhou_crianca') == True
+        pode_agendar = not (tem_estratificacao or tem_ja_ganhou)
+        
+        # Se não pode agendar, remover agendamentos existentes se houver
+        if not pode_agendar:
+            try:
+                agendamentos_existentes = self.listar_agendamentos(paciente_id=paciente_id)
+                for agendamento in agendamentos_existentes:
+                    if agendamento['status'] == 'agendado':
+                        self.atualizar_agendamento(
+                            agendamento_id=agendamento['id'],
+                            status='cancelado',
+                            observacoes='Agendamento cancelado: paciente com risco ou já teve filho'
+                        )
+            except Exception as e:
+                print(f"Erro ao cancelar agendamentos: {e}")
+            return
 
         mudou_data = False
         if paciente_antigo:

@@ -12,33 +12,25 @@ export function showMessage(text, isError = false) {
 }
 
 // Função para calcular DPP a partir do DUM usando a Regra de Naegele
-// Regra de Naegele: DPP = DUM + 7 dias - 3 meses
+// Regra de Naegele: DPP = DUM + 1 ano - 3 meses + 7 dias
 export function calcularDPP(dum) {
     if (!dum) return null;
     
-    // Criar objeto Date a partir da string DUM (formato YYYY-MM-DD)
-    const dataDUM = new Date(dum + 'T00:00:00');
+    // Extrair componentes da data para evitar problemas de fuso horário
+    const [ano, mes, dia] = dum.split('-').map(Number);
     
-    // Verificar se a data é válida
-    if (isNaN(dataDUM.getTime())) {
-        return null;
-    }
-    
-    // Aplicar Regra de Naegele: +7 dias, -3 meses
-    const dataDPP = new Date(dataDUM);
-    
-    // Adicionar 7 dias
-    dataDPP.setDate(dataDPP.getDate() + 7);
-    
-    // Subtrair 3 meses
-    dataDPP.setMonth(dataDPP.getMonth() - 3);
+    // Aplicar Regra de Naegele: +1 ano, -3 meses, +7 dias
+    // Usar construtor com componentes para evitar timezone issues
+    let dataDPP = new Date(ano + 1, mes - 1, dia); // +1 ano
+    dataDPP.setMonth(dataDPP.getMonth() - 3); // -3 meses
+    dataDPP.setDate(dataDPP.getDate() + 7); // +7 dias
     
     // Formatar para YYYY-MM-DD (formato esperado pelo input type="date")
-    const ano = dataDPP.getFullYear();
-    const mes = String(dataDPP.getMonth() + 1).padStart(2, '0');
-    const dia = String(dataDPP.getDate()).padStart(2, '0');
+    const anoResult = dataDPP.getFullYear();
+    const mesResult = String(dataDPP.getMonth() + 1).padStart(2, '0');
+    const diaResult = String(dataDPP.getDate()).padStart(2, '0');
     
-    return `${ano}-${mes}-${dia}`;
+    return `${anoResult}-${mesResult}-${diaResult}`;
 }
 
 /**

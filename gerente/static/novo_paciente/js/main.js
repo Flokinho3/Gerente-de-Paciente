@@ -2,7 +2,7 @@
 import { totalSteps } from './config.js';
 import { totalStepsSpan, initializeRequiredFields, form, btnProximo, btnAnterior, setCurrentStep, getCurrentStep } from './dom.js';
 import { showStep, updateProgress, nextStep, previousStep } from './wizard.js';
-import { toggleCampoInicioPreNatalDetalhes, toggleCampoEstratificacaoProblema, toggleCampoKitTipo, verificarKitsSelecionados, toggleCampoDataGanhou, toggleCampoGenerosFilhos, toggleCampoMetodoOutros } from './conditionalFields.js';
+import { toggleCampoInicioPreNatalDetalhes, toggleCampoEstratificacaoProblema, toggleCampoKitTipo, verificarKitsSelecionados, toggleCampoDataGanhou, toggleCampoGenerosFilhos, toggleCampoMetodoOutros, atualizarEstadoAgendamento } from './conditionalFields.js';
 import { validateCurrentStep } from './validation.js';
 import { initializeFormSubmit } from './formSubmit.js';
 import { calcularDPP, atualizarIdadeGestacional } from './utils.js';
@@ -80,6 +80,7 @@ form.addEventListener('change', function(e) {
             // Usar setTimeout para garantir que o DOM esteja atualizado
             setTimeout(() => {
                 toggleCampoEstratificacaoProblema();
+                atualizarEstadoAgendamento();
             }, 50);
         }
         
@@ -95,6 +96,7 @@ form.addEventListener('change', function(e) {
         if (e.target.name === 'ja_ganhou_crianca') {
             setTimeout(() => {
                 toggleCampoDataGanhou();
+                atualizarEstadoAgendamento();
             }, 50);
         }
         
@@ -178,16 +180,64 @@ function initializeIdadeGestacionalCalculator() {
     }
 }
 
+// Função para inicializar calculadora manual de DPP
+function initializeDPPCalculator() {
+    const btnCalcularDPP = document.getElementById('btnCalcularDPP');
+    const btnUsarDPP = document.getElementById('btnUsarDPP');
+    
+    if (btnCalcularDPP) {
+        btnCalcularDPP.addEventListener('click', function(e) {
+            e.preventDefault();
+            const dumCalcInput = document.getElementById('dpp-calculator-dum');
+            const resultDiv = document.getElementById('dpp-calculator-result');
+            const valueDiv = document.getElementById('dpp-calculator-value');
+            
+            if (dumCalcInput && dumCalcInput.value) {
+                const dppCalculada = calcularDPP(dumCalcInput.value);
+                if (dppCalculada && valueDiv && resultDiv) {
+                    // Formatar para exibição brasileira (DD/MM/YYYY)
+                    const [ano, mes, dia] = dppCalculada.split('-');
+                    const dppFormatada = `${dia}/${mes}/${ano}`;
+                    valueDiv.textContent = dppFormatada;
+                    resultDiv.style.display = 'block';
+                    
+                    // Guardar o valor para uso posterior
+                    resultDiv.dataset.dppValue = dppCalculada;
+                }
+            } else {
+                alert('Por favor, preencha a DUM para cálculo primeiro.');
+            }
+        });
+    }
+    
+    if (btnUsarDPP) {
+        btnUsarDPP.addEventListener('click', function(e) {
+            e.preventDefault();
+            const resultDiv = document.getElementById('dpp-calculator-result');
+            const dppInput = document.getElementById('dpp');
+            
+            if (resultDiv && resultDiv.dataset.dppValue && dppInput) {
+                dppInput.value = resultDiv.dataset.dppValue;
+                dppInput.dispatchEvent(new Event('input', { bubbles: true }));
+                const badge = document.getElementById('dpp-badge');
+                if (badge) badge.style.display = 'block';
+            }
+        });
+    }
+}
+
 // Inicializar calculadoras quando o DOM estiver pronto
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
         initializeCalculatorDPP();
         initializeIdadeGestacionalCalculator();
+        initializeDPPCalculator();
     });
 } else {
     setTimeout(function() {
         initializeCalculatorDPP();
         initializeIdadeGestacionalCalculator();
+        initializeDPPCalculator();
     }, 100);
 }
 
